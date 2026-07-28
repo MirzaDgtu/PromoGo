@@ -16,6 +16,7 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/config"
 	"github.com/MirzaDgtu/PromoGo/internal/httpserver"
 	"github.com/MirzaDgtu/PromoGo/internal/logger"
+	"github.com/MirzaDgtu/PromoGo/internal/migrate"
 	"github.com/MirzaDgtu/PromoGo/internal/notification/logchannel"
 	"github.com/MirzaDgtu/PromoGo/internal/repository/postgres"
 	"github.com/MirzaDgtu/PromoGo/internal/service"
@@ -31,15 +32,22 @@ type App struct {
 	http   *http.Server
 }
 
-// New constructs an App and its dependencies: it connects to Postgres and
-// Redis, builds the repositories and services, and configures the HTTP
-// server.
+// New constructs an App and its dependencies: it connects to Postgres,
+// applies pending migrations (see internal/migrate), connects to Redis,
+// builds the repositories and services, and configures the HTTP server. A
+// successful return means the schema is current, so /readyz reporting
+// healthy is meaningful.
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	log := logger.New(cfg.Logger)
 
 	pgPool, err := postgres.NewPool(ctx, cfg.Postgres.DSN(), cfg.Postgres.MaxConns)
 	if err != nil {
 		return nil, fmt.Errorf("connect postgres: %w", err)
+	}
+
+	if err := migrate.Run(cfg.Postgres.DSN()); err != nil {
+		pgPool.Close()
+		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
 	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Redis.Addr, Password: cfg.Redis.Password, DB: cfg.Redis.DB})

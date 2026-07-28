@@ -60,6 +60,10 @@ func handleAccrueTransaction(loyalty *service.LoyaltyService, log *slog.Logger) 
 			Phone:        body.Phone,
 			Amount:       body.Amount,
 		})
+		if errors.Is(err, domain.ErrIdempotencyConflict) {
+			writeError(w, http.StatusConflict, "transaction_id already used with different parameters")
+			return
+		}
 		if err != nil {
 			log.ErrorContext(r.Context(), "accrue points", "store_id", store.ID, "transaction_id", body.ExternalTxID, "error", err)
 			writeError(w, http.StatusInternalServerError, "accrue points")
@@ -122,6 +126,14 @@ func handleRedeemTransaction(loyalty *service.LoyaltyService, log *slog.Logger) 
 		})
 		if errors.Is(err, domain.ErrInsufficientBalance) {
 			writeError(w, http.StatusUnprocessableEntity, "insufficient balance")
+			return
+		}
+		if errors.Is(err, domain.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "client not found")
+			return
+		}
+		if errors.Is(err, domain.ErrIdempotencyConflict) {
+			writeError(w, http.StatusConflict, "transaction_id already used with different parameters")
 			return
 		}
 		if err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -41,11 +42,35 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 	}
 	defer dbTx.Rollback(ctx)
 
+	const ensureBalanceRow = `INSERT INTO balances (client_id, points) VALUES ($1, 0) ON CONFLICT (client_id) DO NOTHING`
+	if _, err := dbTx.Exec(ctx, ensureBalanceRow, tx.ClientID); err != nil {
+		return nil, nil, fmt.Errorf("post transaction %d/%s: ensure balance row: %w", tx.StoreID, tx.ExternalTxID, err)
+	}
+
+	// The "AND points + $2 >= 0" guard makes redemption atomic: without it,
+	// a concurrent redemption could pass the service layer's balance
+	// pre-check and still race here, tripping the balances_points_check
+	// CHECK constraint and surfacing as a raw DB error instead of
+	// domain.ErrInsufficientBalance. For accrual (non-negative delta) the
+	// guard is always true given the points>=0 invariant, so it's a no-op.
+	// This runs before the transaction row is inserted so the row can carry
+	// its resulting balance_after directly, rather than needing a second
+	// UPDATE after computing it.
+	const adjustBalance = `UPDATE balances SET points = points + $2 WHERE client_id = $1 AND points + $2 >= 0 RETURNING points`
+	balance := &domain.Balance{ClientID: tx.ClientID}
+	err = dbTx.QueryRow(ctx, adjustBalance, tx.ClientID, tx.PointsDelta).Scan(&balance.Points)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil, domain.ErrInsufficientBalance
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("post transaction %d/%s: adjust balance: %w", tx.StoreID, tx.ExternalTxID, err)
+	}
+
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, now())
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, now())
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta).
+	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points).
 		Scan(&tx.ID, &tx.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -54,17 +79,7 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 		}
 		return nil, nil, fmt.Errorf("post transaction %d/%s: insert: %w", tx.StoreID, tx.ExternalTxID, err)
 	}
-
-	const ensureBalanceRow = `INSERT INTO balances (client_id, points) VALUES ($1, 0) ON CONFLICT (client_id) DO NOTHING`
-	if _, err := dbTx.Exec(ctx, ensureBalanceRow, tx.ClientID); err != nil {
-		return nil, nil, fmt.Errorf("post transaction %d/%s: ensure balance row: %w", tx.StoreID, tx.ExternalTxID, err)
-	}
-
-	const adjustBalance = `UPDATE balances SET points = points + $2 WHERE client_id = $1 RETURNING points`
-	balance := &domain.Balance{ClientID: tx.ClientID}
-	if err := dbTx.QueryRow(ctx, adjustBalance, tx.ClientID, tx.PointsDelta).Scan(&balance.Points); err != nil {
-		return nil, nil, fmt.Errorf("post transaction %d/%s: adjust balance: %w", tx.StoreID, tx.ExternalTxID, err)
-	}
+	tx.BalanceAfter = balance.Points
 
 	if err := dbTx.Commit(ctx); err != nil {
 		return nil, nil, fmt.Errorf("post transaction %d/%s: commit: %w", tx.StoreID, tx.ExternalTxID, err)

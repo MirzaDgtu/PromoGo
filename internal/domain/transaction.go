@@ -18,8 +18,10 @@ const (
 
 // Transaction records one purchase/redemption event and its point effect.
 // ExternalTxID is the transaction_id 1C sends with the webhook — the unique
-// index on (StoreID, ExternalTxID) is what makes Accrue idempotent under
-// webhook retries (see Idea.md's "Идемпотентность").
+// index on (StoreID, Type, ExternalTxID) is what makes Accrue/Redeem
+// idempotent under webhook retries (see Idea.md's "Идемпотентность"). Type
+// is part of that key because accrual and redemption are separate
+// operations that may legitimately reuse the same receipt/check number.
 type Transaction struct {
 	ID           int64
 	StoreID      int64
@@ -28,6 +30,11 @@ type Transaction struct {
 	Amount       decimal.Decimal
 	Type         TransactionType
 	PointsDelta  int64
+	// BalanceAfter is the client's point balance immediately after this
+	// transaction was posted, snapshotted by LedgerRepository.Post. Replays
+	// return this stored value rather than the client's current balance, so
+	// a replayed request's response never drifts from the original one.
+	BalanceAfter int64
 	CreatedAt    time.Time
 }
 
@@ -37,8 +44,8 @@ type Transaction struct {
 // unsafe.
 type TransactionRepository interface {
 	// GetByExternalID returns domain.ErrNotFound if no transaction exists
-	// for (storeID, externalTxID) yet. Callers use this to detect a
+	// for (storeID, txType, externalTxID) yet. Callers use this to detect a
 	// replayed webhook and skip re-running the accrual/redemption logic.
-	GetByExternalID(ctx context.Context, storeID int64, externalTxID string) (*Transaction, error)
+	GetByExternalID(ctx context.Context, storeID int64, txType TransactionType, externalTxID string) (*Transaction, error)
 	ListByClient(ctx context.Context, clientID int64) ([]*Transaction, error)
 }

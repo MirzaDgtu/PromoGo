@@ -69,16 +69,16 @@ type AccrueResult struct {
 }
 
 // Accrue implements the accrual use case. It is idempotent on
-// (StoreID, ExternalTxID): a replayed webhook returns the original result
-// without crediting points twice.
+// (StoreID, Type, ExternalTxID): a replayed webhook returns the original
+// result without crediting points twice.
 func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*AccrueResult, error) {
-	if result, err := s.replayedAccrue(ctx, req.StoreID, req.ExternalTxID); result != nil || err != nil {
-		return result, err
-	}
-
 	client, err := s.resolveOrCreateClient(ctx, req.StoreID, req.Phone)
 	if err != nil {
 		return nil, fmt.Errorf("accrue: resolve client: %w", err)
+	}
+
+	if result, err := s.replayedAccrue(ctx, req.StoreID, req.ExternalTxID, client.ID, req.Amount); result != nil || err != nil {
+		return result, err
 	}
 
 	cfg, err := s.configs.GetByStore(ctx, req.StoreID)
@@ -113,7 +113,7 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 	posted, balance, err := s.ledger.Post(ctx, tx)
 	if errors.Is(err, domain.ErrConflict) {
 		// Lost a race with a concurrent replay of the same webhook.
-		return s.replayedAccrue(ctx, req.StoreID, req.ExternalTxID)
+		return s.replayedAccrue(ctx, req.StoreID, req.ExternalTxID, client.ID, req.Amount)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("accrue: post transaction: %w", err)
@@ -129,23 +129,25 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 	return &AccrueResult{PointsEarned: posted.PointsDelta, Balance: balance.Points}, nil
 }
 
-// replayedAccrue returns a non-nil AccrueResult if (storeID, externalTxID)
-// was already processed, nil (with a nil error) if not yet processed, or a
-// non-nil error if the lookup itself failed.
-func (s *LoyaltyService) replayedAccrue(ctx context.Context, storeID int64, externalTxID string) (*AccrueResult, error) {
-	existing, err := s.txs.GetByExternalID(ctx, storeID, externalTxID)
+// replayedAccrue returns a non-nil AccrueResult if (storeID,
+// TransactionAccrual, externalTxID) was already processed, nil (with a nil
+// error) if not yet processed, or a non-nil error if the lookup failed or
+// the stored transaction doesn't match clientID/amount — a colliding
+// externalTxID reused for a materially different request, which must not
+// be treated as a replay of the original.
+func (s *LoyaltyService) replayedAccrue(ctx context.Context, storeID int64, externalTxID string, clientID int64, amount decimal.Decimal) (*AccrueResult, error) {
+	existing, err := s.txs.GetByExternalID(ctx, storeID, domain.TransactionAccrual, externalTxID)
 	if errors.Is(err, domain.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("accrue: check idempotency: %w", err)
 	}
-
-	balance, err := s.balances.Get(ctx, existing.ClientID)
-	if err != nil {
-		return nil, fmt.Errorf("accrue: load balance for replay: %w", err)
+	if existing.ClientID != clientID || !existing.Amount.Equal(amount) {
+		return nil, domain.ErrIdempotencyConflict
 	}
-	return &AccrueResult{PointsEarned: existing.PointsDelta, Balance: balance.Points, Replayed: true}, nil
+
+	return &AccrueResult{PointsEarned: existing.PointsDelta, Balance: existing.BalanceAfter, Replayed: true}, nil
 }
 
 func (s *LoyaltyService) resolveOrCreateClient(ctx context.Context, storeID int64, phone string) (*domain.Client, error) {
@@ -159,6 +161,10 @@ func (s *LoyaltyService) resolveOrCreateClient(ctx context.Context, storeID int6
 
 	client = &domain.Client{StoreID: storeID, Phone: phone, CreatedAt: time.Now()}
 	if err := s.clients.Create(ctx, client); err != nil {
+		if errors.Is(err, domain.ErrConflict) {
+			// Lost a race with a concurrent registration of the same phone.
+			return s.clients.GetByPhone(ctx, storeID, phone)
+		}
 		return nil, err
 	}
 	return client, nil
@@ -183,9 +189,23 @@ type RedeemResult struct {
 }
 
 // Redeem implements the redemption use case. Like Accrue, it is idempotent
-// on (StoreID, ExternalTxID).
+// on (StoreID, Type, ExternalTxID). Returns domain.ErrNotFound if ClientID
+// doesn't belong to StoreID.
 func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*RedeemResult, error) {
-	if result, err := s.replayedRedeem(ctx, req.StoreID, req.ExternalTxID); result != nil || err != nil {
+	client, err := s.clients.GetByID(ctx, req.ClientID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil, domain.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("redeem: load client: %w", err)
+	}
+	if client.StoreID != req.StoreID {
+		// Don't distinguish "wrong store" from "doesn't exist" — a store's
+		// API key must not be able to enumerate other stores' client IDs.
+		return nil, domain.ErrNotFound
+	}
+
+	if result, err := s.replayedRedeem(ctx, req.StoreID, req.ExternalTxID, req.ClientID, req.Amount); result != nil || err != nil {
 		return result, err
 	}
 
@@ -225,7 +245,7 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 
 	posted, newBalance, err := s.ledger.Post(ctx, tx)
 	if errors.Is(err, domain.ErrConflict) {
-		return s.replayedRedeem(ctx, req.StoreID, req.ExternalTxID)
+		return s.replayedRedeem(ctx, req.StoreID, req.ExternalTxID, req.ClientID, req.Amount)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("redeem: post transaction: %w", err)
@@ -235,18 +255,17 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 }
 
 // replayedRedeem mirrors replayedAccrue for the redemption flow.
-func (s *LoyaltyService) replayedRedeem(ctx context.Context, storeID int64, externalTxID string) (*RedeemResult, error) {
-	existing, err := s.txs.GetByExternalID(ctx, storeID, externalTxID)
+func (s *LoyaltyService) replayedRedeem(ctx context.Context, storeID int64, externalTxID string, clientID int64, amount decimal.Decimal) (*RedeemResult, error) {
+	existing, err := s.txs.GetByExternalID(ctx, storeID, domain.TransactionRedeem, externalTxID)
 	if errors.Is(err, domain.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("redeem: check idempotency: %w", err)
 	}
-
-	balance, err := s.balances.Get(ctx, existing.ClientID)
-	if err != nil {
-		return nil, fmt.Errorf("redeem: load balance for replay: %w", err)
+	if existing.ClientID != clientID || !existing.Amount.Equal(amount) {
+		return nil, domain.ErrIdempotencyConflict
 	}
-	return &RedeemResult{PointsRedeemed: -existing.PointsDelta, Balance: balance.Points, Replayed: true}, nil
+
+	return &RedeemResult{PointsRedeemed: -existing.PointsDelta, Balance: existing.BalanceAfter, Replayed: true}, nil
 }

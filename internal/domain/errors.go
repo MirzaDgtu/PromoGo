@@ -15,3 +15,9 @@ var ErrConflict = errors.New("conflict")
 // ErrInsufficientBalance is returned by Redeem when the client's balance
 // cannot cover the requested redemption.
 var ErrInsufficientBalance = errors.New("insufficient balance")
+
+// ErrIdempotencyConflict is returned when a request reuses a (store_id,
+// type, external_tx_id) key that a prior request already processed, but
+// with different parameters (client or amount) — so it can't be treated as
+// a replay of that prior request.
+var ErrIdempotencyConflict = errors.New("idempotency conflict")
