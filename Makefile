@@ -1,12 +1,12 @@
 APP_NAME      := promogo
-MIGRATIONS_DIR := migrations
+MIGRATIONS_DIR := migrations/sql
 DATABASE_URL  ?= postgres://promogo:promogo@localhost:5432/promogo?sslmode=disable
 
 COMPOSE := docker compose -f deployments/docker-compose.yml
 
 .PHONY: build run test lint tidy \
         docker-up docker-down docker-logs \
-        migrate-up migrate-down migrate-status
+        migrate-up migrate-down migrate-status migrate-validate
 
 build:
 	go build -o bin/$(APP_NAME) ./cmd/$(APP_NAME)
@@ -44,3 +44,6 @@ migrate-down:
 
 migrate-status:
 	go run github.com/pressly/goose/v3/cmd/goose@latest -dir $(MIGRATIONS_DIR) postgres "$(DATABASE_URL)" status
+
+migrate-validate:
+	go run github.com/pressly/goose/v3/cmd/goose@latest -dir $(MIGRATIONS_DIR) validate

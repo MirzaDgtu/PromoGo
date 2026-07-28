@@ -13,11 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/config"
 	"github.com/MirzaDgtu/PromoGo/internal/httpserver"
 	"github.com/MirzaDgtu/PromoGo/internal/logger"
 	"github.com/MirzaDgtu/PromoGo/internal/migrate"
 	"github.com/MirzaDgtu/PromoGo/internal/notification/logchannel"
+	"github.com/MirzaDgtu/PromoGo/internal/notification/logsms"
 	"github.com/MirzaDgtu/PromoGo/internal/repository/postgres"
 	"github.com/MirzaDgtu/PromoGo/internal/service"
 )
@@ -45,7 +47,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("connect postgres: %w", err)
 	}
 
-	if err := migrate.Run(cfg.Postgres.DSN()); err != nil {
+	if err := migrate.Run(ctx, cfg.Postgres.DSN()); err != nil {
 		pgPool.Close()
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
@@ -63,23 +65,72 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	ledgerRepo := postgres.NewLedgerRepository(pgPool)
 	configRepo := postgres.NewLoyaltyConfigRepository(pgPool)
 
+	orgRepo := postgres.NewOrganizationRepository(pgPool)
+	customerAccountRepo := postgres.NewCustomerAccountRepository(pgPool)
+	customerSessionRepo := postgres.NewCustomerSessionRepository(pgPool)
+	customerConsentRepo := postgres.NewCustomerConsentRepository(pgPool)
+	staffUserRepo := postgres.NewStaffUserRepository(pgPool)
+	staffMembershipRepo := postgres.NewStaffMembershipRepository(pgPool)
+	storeAPIKeyRepo := postgres.NewStoreAPIKeyRepository(pgPool)
+	auditEventRepo := postgres.NewAuditEventRepository(pgPool)
+
 	// TODO(add-notification-channel): swap for a real FCM/SMS channel once
-	// cfg.FCM.CredentialsJSON is set; logchannel just logs in the meantime,
-	// so accrual/redemption flows are fully testable before push is wired up.
+	// cfg.FCM.CredentialsJSON is set; logchannel/logsms just log in the
+	// meantime, so device-facing flows are fully testable before push/SMS
+	// is wired up.
 	notifier := logchannel.New(log)
+	smsSender := logsms.New(log)
 
 	loyaltyService := service.New(log, clientRepo, txRepo, balanceRepo, ledgerRepo, configRepo, notifier)
+
+	accessTokenSecret := []byte(cfg.Auth.AccessTokenSecret)
+	customerAuthService := service.NewCustomerAuthService(
+		log, customerAccountRepo, customerSessionRepo, customerConsentRepo, clientRepo, auditEventRepo, smsSender, redisClient,
+		service.CustomerAuthConfig{
+			AccessTokenSecret: accessTokenSecret,
+			AccessTokenTTL:    cfg.Auth.AccessTokenTTL,
+			RefreshTokenTTL:   cfg.Auth.RefreshTokenTTL,
+			OTP: service.OTPConfig{
+				CodeTTL:             cfg.Auth.OTPTTL,
+				ResendCooldown:      cfg.Auth.OTPResendCooldown,
+				MaxAttempts:         cfg.Auth.OTPMaxAttempts,
+				RateLimitWindow:     cfg.Auth.OTPRateLimitWindow,
+				MaxRequestsPerPhone: cfg.Auth.OTPMaxRequestsPerPhone,
+				MaxRequestsPerIP:    cfg.Auth.OTPMaxRequestsPerIP,
+			},
+		},
+	)
+
+	oidcVerifier := auth.NewOIDCVerifier(cfg.OIDC.IssuerURL, cfg.OIDC.Audience, cfg.OIDC.JWKSURL, cfg.OIDC.JWKSCacheTTL)
+	staffAuthService := service.NewStaffAuthService(
+		log, staffUserRepo, staffMembershipRepo, auditEventRepo, oidcVerifier,
+		service.StaffAuthConfig{AccessTokenSecret: accessTokenSecret, AccessTokenTTL: cfg.Auth.AccessTokenTTL},
+	)
 
 	httpServer := httpserver.New(httpserver.Deps{
 		App:  cfg.App,
 		HTTP: cfg.HTTP,
 		Log:  log,
 
-		Stores:   storeRepo,
-		Clients:  clientRepo,
-		Balances: balanceRepo,
+		Stores:         storeRepo,
+		Clients:        clientRepo,
+		Balances:       balanceRepo,
+		Transactions:   txRepo,
+		LoyaltyConfigs: configRepo,
+		StoreAPIKeys:   storeAPIKeyRepo,
 
-		Loyalty: loyaltyService,
+		Organizations:    orgRepo,
+		CustomerAccounts: customerAccountRepo,
+		StaffUsers:       staffUserRepo,
+		StaffMemberships: staffMembershipRepo,
+		AuditEvents:      auditEventRepo,
+
+		Loyalty:      loyaltyService,
+		CustomerAuth: customerAuthService,
+		StaffAuth:    staffAuthService,
+
+		CustomerAccessTokenSecret: accessTokenSecret,
+		StaffAccessTokenSecret:    accessTokenSecret,
 
 		Ready: func(ctx context.Context) error {
 			if err := pgPool.Ping(ctx); err != nil {

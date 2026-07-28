@@ -1,0 +1,3 @@
+# Claude reaches these artifacts through Graphify queries. Ignoring raw output
+# prevents graph rebuilds from invalidating Claude's prompt cache.
+graphify-out/

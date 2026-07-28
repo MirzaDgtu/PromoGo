@@ -67,10 +67,10 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 	}
 
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points).
+	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint).
 		Scan(&tx.ID, &tx.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError

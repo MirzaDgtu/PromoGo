@@ -23,10 +23,10 @@ func NewStoreRepository(pool *pgxpool.Pool) *StoreRepository {
 
 // GetByID returns domain.ErrNotFound if no store has that id.
 func (r *StoreRepository) GetByID(ctx context.Context, id int64) (*domain.Store, error) {
-	const query = `SELECT id, name, api_key_hash FROM stores WHERE id = $1`
+	const query = `SELECT id, organization_id, name, COALESCE(api_key_hash, '') FROM stores WHERE id = $1`
 
 	store := &domain.Store{}
-	err := r.pool.QueryRow(ctx, query, id).Scan(&store.ID, &store.Name, &store.APIKeyHash)
+	err := r.pool.QueryRow(ctx, query, id).Scan(&store.ID, &store.OrganizationID, &store.Name, &store.APIKeyHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("store %d: %w", id, domain.ErrNotFound)
 	}
@@ -38,10 +38,10 @@ func (r *StoreRepository) GetByID(ctx context.Context, id int64) (*domain.Store,
 }
 
 func (r *StoreRepository) GetByAPIKeyHash(ctx context.Context, apiKeyHash string) (*domain.Store, error) {
-	const query = `SELECT id, name, api_key_hash FROM stores WHERE api_key_hash = $1`
+	const query = `SELECT id, organization_id, name, COALESCE(api_key_hash, '') FROM stores WHERE api_key_hash = $1`
 
 	store := &domain.Store{}
-	err := r.pool.QueryRow(ctx, query, apiKeyHash).Scan(&store.ID, &store.Name, &store.APIKeyHash)
+	err := r.pool.QueryRow(ctx, query, apiKeyHash).Scan(&store.ID, &store.OrganizationID, &store.Name, &store.APIKeyHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("store by api key: %w", domain.ErrNotFound)
 	}
@@ -52,10 +52,19 @@ func (r *StoreRepository) GetByAPIKeyHash(ctx context.Context, apiKeyHash string
 	return store, nil
 }
 
+// Create inserts store. An empty store.APIKeyHash is stored as NULL — new
+// stores created via the admin API rely solely on StoreAPIKeyRepository
+// (migrations/00019, migrations/00021) and never populate the legacy
+// single-key column.
 func (r *StoreRepository) Create(ctx context.Context, store *domain.Store) error {
-	const query = `INSERT INTO stores (name, api_key_hash) VALUES ($1, $2) RETURNING id`
+	const query = `INSERT INTO stores (organization_id, name, api_key_hash) VALUES ($1, $2, $3) RETURNING id`
 
-	if err := r.pool.QueryRow(ctx, query, store.Name, store.APIKeyHash).Scan(&store.ID); err != nil {
+	var apiKeyHash any
+	if store.APIKeyHash != "" {
+		apiKeyHash = store.APIKeyHash
+	}
+
+	if err := r.pool.QueryRow(ctx, query, store.OrganizationID, store.Name, apiKeyHash).Scan(&store.ID); err != nil {
 		return fmt.Errorf("create store %q: %w", store.Name, err)
 	}
 

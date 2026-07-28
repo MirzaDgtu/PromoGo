@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -20,6 +21,8 @@ type Config struct {
 	Redis    RedisConfig    `mapstructure:"redis"`
 	Logger   LoggerConfig   `mapstructure:"logger"`
 	FCM      FCMConfig      `mapstructure:"fcm"`
+	Auth     AuthConfig     `mapstructure:"auth"`
+	OIDC     OIDCConfig     `mapstructure:"oidc"`
 }
 
 // AppConfig holds general application metadata.
@@ -78,6 +81,35 @@ type FCMConfig struct {
 	CredentialsJSON string `mapstructure:"credentials_json"`
 }
 
+// AuthConfig configures customer OTP/session auth and staff access-token
+// issuance. AccessTokenSecret is the only field with no default — set via
+// PROMOGO_AUTH_ACCESS_TOKEN_SECRET, never committed to configs/config.yaml
+// (see Load's validation).
+type AuthConfig struct {
+	AccessTokenSecret string        `mapstructure:"access_token_secret"`
+	AccessTokenTTL    time.Duration `mapstructure:"access_token_ttl"`
+	RefreshTokenTTL   time.Duration `mapstructure:"refresh_token_ttl"`
+
+	OTPTTL                 time.Duration `mapstructure:"otp_ttl"`
+	OTPResendCooldown      time.Duration `mapstructure:"otp_resend_cooldown"`
+	OTPMaxAttempts         int           `mapstructure:"otp_max_attempts"`
+	OTPRateLimitWindow     time.Duration `mapstructure:"otp_rate_limit_window"`
+	OTPMaxRequestsPerPhone int           `mapstructure:"otp_max_requests_per_phone"`
+	OTPMaxRequestsPerIP    int           `mapstructure:"otp_max_requests_per_ip"`
+}
+
+// OIDCConfig configures staff authentication against the retailer/
+// platform's OIDC identity provider (see internal/auth/oidc.go). Any
+// OIDC-compliant IdP works; there is no PromoGo-specific default. Unset
+// (empty IssuerURL) disables staff OIDC login — /api/v1/staff/auth/oidc
+// will fail JWKS verification until configured.
+type OIDCConfig struct {
+	IssuerURL    string        `mapstructure:"issuer_url"`
+	Audience     string        `mapstructure:"audience"`
+	JWKSURL      string        `mapstructure:"jwks_url"`
+	JWKSCacheTTL time.Duration `mapstructure:"jwks_cache_ttl"`
+}
+
 // Load reads configuration from the YAML file at path, applying defaults
 // and environment variable overrides.
 func Load(path string) (*Config, error) {
@@ -103,7 +135,25 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
+	if err := cfg.validateAuth(); err != nil {
+		return nil, err
+	}
+
 	return &cfg, nil
+}
+
+// validateAuth fails fast if AccessTokenSecret is missing or weak outside
+// local development — a service that silently ran with an empty/guessable
+// JWT signing secret would be a critical, easy-to-miss vulnerability rather
+// than a loud startup failure.
+func (c *Config) validateAuth() error {
+	if c.App.Env == "development" {
+		return nil
+	}
+	if len(c.Auth.AccessTokenSecret) < 32 {
+		return fmt.Errorf("auth.access_token_secret must be set (>= 32 bytes) via PROMOGO_AUTH_ACCESS_TOKEN_SECRET outside development")
+	}
+	return nil
 }
 
 func loadDotEnv(path string) error {
@@ -166,4 +216,15 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("logger.level", "info")
 	v.SetDefault("logger.format", "json")
+
+	v.SetDefault("auth.access_token_ttl", 15*time.Minute)
+	v.SetDefault("auth.refresh_token_ttl", 30*24*time.Hour)
+	v.SetDefault("auth.otp_ttl", 5*time.Minute)
+	v.SetDefault("auth.otp_resend_cooldown", 60*time.Second)
+	v.SetDefault("auth.otp_max_attempts", 5)
+	v.SetDefault("auth.otp_rate_limit_window", time.Hour)
+	v.SetDefault("auth.otp_max_requests_per_phone", 5)
+	v.SetDefault("auth.otp_max_requests_per_ip", 20)
+
+	v.SetDefault("oidc.jwks_cache_ttl", 10*time.Minute)
 }

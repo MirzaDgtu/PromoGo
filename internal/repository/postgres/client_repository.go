@@ -22,11 +22,18 @@ func NewClientRepository(pool *pgxpool.Pool) *ClientRepository {
 	return &ClientRepository{pool: pool}
 }
 
-func (r *ClientRepository) GetByPhone(ctx context.Context, storeID int64, phone string) (*domain.Client, error) {
-	const query = `SELECT id, store_id, phone, created_at FROM clients WHERE store_id = $1 AND phone = $2`
+const clientColumns = `id, store_id, phone, customer_account_id, created_at`
 
+func scanClient(row pgx.Row) (*domain.Client, error) {
 	client := &domain.Client{}
-	err := r.pool.QueryRow(ctx, query, storeID, phone).Scan(&client.ID, &client.StoreID, &client.Phone, &client.CreatedAt)
+	err := row.Scan(&client.ID, &client.StoreID, &client.Phone, &client.CustomerAccountID, &client.CreatedAt)
+	return client, err
+}
+
+func (r *ClientRepository) GetByPhone(ctx context.Context, storeID int64, phone string) (*domain.Client, error) {
+	query := `SELECT ` + clientColumns + ` FROM clients WHERE store_id = $1 AND phone = $2`
+
+	client, err := scanClient(r.pool.QueryRow(ctx, query, storeID, phone))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("client %d/%s: %w", storeID, phone, domain.ErrNotFound)
 	}
@@ -38,10 +45,9 @@ func (r *ClientRepository) GetByPhone(ctx context.Context, storeID int64, phone 
 }
 
 func (r *ClientRepository) GetByID(ctx context.Context, id int64) (*domain.Client, error) {
-	const query = `SELECT id, store_id, phone, created_at FROM clients WHERE id = $1`
+	query := `SELECT ` + clientColumns + ` FROM clients WHERE id = $1`
 
-	client := &domain.Client{}
-	err := r.pool.QueryRow(ctx, query, id).Scan(&client.ID, &client.StoreID, &client.Phone, &client.CreatedAt)
+	client, err := scanClient(r.pool.QueryRow(ctx, query, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("client %d: %w", id, domain.ErrNotFound)
 	}
@@ -67,4 +73,62 @@ func (r *ClientRepository) Create(ctx context.Context, client *domain.Client) er
 	}
 
 	return nil
+}
+
+func (r *ClientRepository) ListUnlinkedByPhone(ctx context.Context, phone string) ([]*domain.Client, error) {
+	query := `SELECT ` + clientColumns + ` FROM clients WHERE phone = $1 AND customer_account_id IS NULL`
+
+	rows, err := r.pool.Query(ctx, query, phone)
+	if err != nil {
+		return nil, fmt.Errorf("list unlinked clients %s: %w", phone, err)
+	}
+	defer rows.Close()
+
+	var clients []*domain.Client
+	for rows.Next() {
+		client, err := scanClient(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan unlinked client %s: %w", phone, err)
+		}
+		clients = append(clients, client)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list unlinked clients %s: %w", phone, err)
+	}
+
+	return clients, nil
+}
+
+func (r *ClientRepository) LinkCustomerAccount(ctx context.Context, clientID, customerAccountID int64) error {
+	const query = `UPDATE clients SET customer_account_id = $2 WHERE id = $1`
+
+	if _, err := r.pool.Exec(ctx, query, clientID, customerAccountID); err != nil {
+		return fmt.Errorf("link client %d to customer account %d: %w", clientID, customerAccountID, err)
+	}
+
+	return nil
+}
+
+func (r *ClientRepository) ListByCustomerAccount(ctx context.Context, customerAccountID int64) ([]*domain.Client, error) {
+	query := `SELECT ` + clientColumns + ` FROM clients WHERE customer_account_id = $1`
+
+	rows, err := r.pool.Query(ctx, query, customerAccountID)
+	if err != nil {
+		return nil, fmt.Errorf("list clients for customer account %d: %w", customerAccountID, err)
+	}
+	defer rows.Close()
+
+	var clients []*domain.Client
+	for rows.Next() {
+		client, err := scanClient(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan client for customer account %d: %w", customerAccountID, err)
+		}
+		clients = append(clients, client)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list clients for customer account %d: %w", customerAccountID, err)
+	}
+
+	return clients, nil
 }

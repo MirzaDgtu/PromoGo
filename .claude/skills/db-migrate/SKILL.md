@@ -5,12 +5,14 @@ description: Create and apply goose SQL migrations for PromoGo's PostgreSQL sche
 
 # Database migrations (goose)
 
-Migrations live in `migrations/`, numbered sequentially: `00001_create_stores.sql`,
-`00002_create_clients.sql`, etc.
+Migrations live in `migrations/sql/`, numbered sequentially: `00001_create_stores.sql`,
+`00002_create_clients.sql`, etc. `migrations/embed.go` (a sibling of `sql/`, not inside it —
+see the gotcha below) embeds these `.sql` files for `internal/migrate` to apply at app startup;
+the CLI (`make migrate-*`) reads the same files straight off disk.
 
 ## Creating a migration
 
-1. Name the file `<next 5-digit number>_<snake_case_description>.sql`, e.g. `00006_add_tiers.sql`.
+1. Name the file `<next 5-digit number>_<snake_case_description>.sql`, e.g. `00012_add_tiers.sql`.
 2. Use the goose annotation format:
    ```sql
    -- +goose Up
@@ -33,6 +35,18 @@ Migrations live in `migrations/`, numbered sequentially: `00001_create_stores.sq
      comment for why. Any new table that records an external-system event needs the same
      pattern if that event can be retried/replayed.
 
+## Gotcha: never put a `.go` file in `migrations/sql/`
+
+Found 2026-07-28 when a re-audit caught `goose -dir migrations validate` failing with
+`failed to get version from file "migrations\embed.go"`: goose's directory walker tries to parse
+*every* file in its target directory for a leading migration-version number, including `.go`
+files — it doesn't just look for files it registered itself. That's why the embed shim
+(`migrations/embed.go`) lives one level up from `migrations/sql/`, which holds only `.sql` files:
+`go:embed` can reach into a subdirectory (`//go:embed sql/*.sql`) but never a parent, so this is
+the only layout where both the goose CLI (pointed at `migrations/sql`) and the embedded `fs.FS`
+(rooted at `sql/` via `fs.Sub`, see `migrations/embed.go`) can agree on one source of truth. Don't
+add any non-`.sql` file under `migrations/sql/`.
+
 ## Postgres gotcha: CHECK constraints + `ON CONFLICT DO UPDATE`
 
 Found and fixed 2026-07-28 while building this scaffold (see `internal/repository/postgres/ledger_repository.go`):
@@ -49,9 +63,10 @@ pattern — instead: `INSERT ... ON CONFLICT DO NOTHING` to ensure the row exist
 ## Running migrations
 
 ```bash
-make migrate-up      # apply all pending migrations
-make migrate-down     # roll back one migration
-make migrate-status   # show applied/pending migrations
+make migrate-up        # apply all pending migrations
+make migrate-down      # roll back one migration
+make migrate-status    # show applied/pending migrations
+make migrate-validate  # sanity-check migration file formatting (goose validate)
 ```
 
 These use `DATABASE_URL`, defaulting to `postgres://promogo:promogo@localhost:5432/promogo?sslmode=disable`
@@ -63,7 +78,7 @@ DATABASE_URL="postgres://promogo:promogo@localhost:5433/promogo?sslmode=disable"
 ```
 On Windows without `make`, run the underlying goose command directly:
 ```bash
-go run github.com/pressly/goose/v3/cmd/goose@latest -dir migrations postgres "$DATABASE_URL" up
+go run github.com/pressly/goose/v3/cmd/goose@latest -dir migrations/sql postgres "$DATABASE_URL" up
 ```
 
 ## After changing the schema

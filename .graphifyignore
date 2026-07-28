@@ -1,0 +1,5 @@
+# Generated Graphify artifacts and copies of Graphify's own instructions must
+# not become nodes in PromoGo's project graph.
+graphify-out/
+.codex/
+.claude/skills/graphify/

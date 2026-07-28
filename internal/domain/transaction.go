@@ -35,7 +35,14 @@ type Transaction struct {
 	// return this stored value rather than the client's current balance, so
 	// a replayed request's response never drifts from the original one.
 	BalanceAfter int64
-	CreatedAt    time.Time
+	// RequestFingerprint is a canonical encoding of the request parameters
+	// that produced this transaction (see internal/service's
+	// accrualFingerprint/redeemFingerprint), snapshotted at write time. A
+	// replayed (StoreID, Type, ExternalTxID) request must recompute the same
+	// fingerprint to be treated as a genuine replay — a mismatch means the
+	// ID was reused for a materially different request.
+	RequestFingerprint string
+	CreatedAt          time.Time
 }
 
 // TransactionRepository reads Transaction rows. Writes go through

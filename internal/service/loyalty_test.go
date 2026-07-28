@@ -60,6 +60,35 @@ func (f *fakeClientRepo) Create(_ context.Context, client *domain.Client) error 
 	return nil
 }
 
+func (f *fakeClientRepo) ListUnlinkedByPhone(_ context.Context, phone string) ([]*domain.Client, error) {
+	var out []*domain.Client
+	for _, c := range f.byID {
+		if c.Phone == phone && c.CustomerAccountID == nil {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeClientRepo) LinkCustomerAccount(_ context.Context, clientID, customerAccountID int64) error {
+	c, ok := f.byID[clientID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	c.CustomerAccountID = &customerAccountID
+	return nil
+}
+
+func (f *fakeClientRepo) ListByCustomerAccount(_ context.Context, customerAccountID int64) ([]*domain.Client, error) {
+	var out []*domain.Client
+	for _, c := range f.byID {
+		if c.CustomerAccountID != nil && *c.CustomerAccountID == customerAccountID {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
 // fakeTxRepo is an in-memory domain.TransactionRepository.
 type fakeTxRepo struct {
 	all []*domain.Transaction
@@ -308,5 +337,80 @@ func TestRedeem_CapsAtMaxRedeemPercentAndRejectsInsufficientBalance(t *testing.T
 	})
 	if !errors.Is(err, domain.ErrInsufficientBalance) {
 		t.Fatalf("Redeem() with zero balance: error = %v, want domain.ErrInsufficientBalance", err)
+	}
+}
+
+func TestRedeem_IdempotencyConflictOnMismatchedPoints(t *testing.T) {
+	deps := newTestService(pointsConfig(1))
+	ctx := context.Background()
+
+	client := &domain.Client{StoreID: 1, Phone: "+70000000007", CreatedAt: time.Now()}
+	if err := deps.clients.Create(ctx, client); err != nil {
+		t.Fatalf("seed client: %v", err)
+	}
+	deps.balances.set(client.ID, 100)
+
+	if _, err := deps.svc.Redeem(ctx, RedeemRequest{
+		StoreID: 1, ExternalTxID: "redeem-4", ClientID: client.ID, Points: 50, Amount: decimal.NewFromInt(100),
+	}); err != nil {
+		t.Fatalf("first Redeem() error = %v", err)
+	}
+
+	// Same transaction_id, same client and amount, but a different
+	// requested points value — must not be treated as a replay of the
+	// original 50-point redemption.
+	_, err := deps.svc.Redeem(ctx, RedeemRequest{
+		StoreID: 1, ExternalTxID: "redeem-4", ClientID: client.ID, Points: 10, Amount: decimal.NewFromInt(100),
+	})
+	if !errors.Is(err, domain.ErrIdempotencyConflict) {
+		t.Fatalf("Redeem() with reused transaction_id but different points: error = %v, want domain.ErrIdempotencyConflict", err)
+	}
+}
+
+func TestAccrue_ConflictingPhoneDoesNotCreateOrphanClient(t *testing.T) {
+	deps := newTestService(pointsConfig(1))
+	ctx := context.Background()
+
+	if _, err := deps.svc.Accrue(ctx, AccrueRequest{
+		StoreID: 1, ExternalTxID: "rcpt-4", Phone: "+70000000008", Amount: decimal.NewFromInt(200),
+	}); err != nil {
+		t.Fatalf("first Accrue() error = %v", err)
+	}
+	clientsBefore := len(deps.clients.byID)
+
+	// Same transaction_id, but a phone that has never been seen before —
+	// must be rejected as a conflict without registering a new client.
+	_, err := deps.svc.Accrue(ctx, AccrueRequest{
+		StoreID: 1, ExternalTxID: "rcpt-4", Phone: "+70000000009", Amount: decimal.NewFromInt(200),
+	})
+	if !errors.Is(err, domain.ErrIdempotencyConflict) {
+		t.Fatalf("Accrue() with reused transaction_id but a new phone: error = %v, want domain.ErrIdempotencyConflict", err)
+	}
+	if len(deps.clients.byID) != clientsBefore {
+		t.Fatalf("client count = %d, want %d (conflicting request must not create an orphan client)", len(deps.clients.byID), clientsBefore)
+	}
+}
+
+func TestRedeem_CapAppliedBeforeBalanceCheck(t *testing.T) {
+	deps := newTestService(pointsConfig(1))
+	ctx := context.Background()
+
+	client := &domain.Client{StoreID: 1, Phone: "+70000000010", CreatedAt: time.Now()}
+	if err := deps.clients.Create(ctx, client); err != nil {
+		t.Fatalf("seed client: %v", err)
+	}
+	deps.balances.set(client.ID, 60)
+
+	// balance=60, requested=80, cap (MaxRedeemPercent=50% of amount=100)=50:
+	// balance can't cover the raw request but can cover the capped one, so
+	// this must succeed, not report insufficient balance.
+	result, err := deps.svc.Redeem(ctx, RedeemRequest{
+		StoreID: 1, ExternalTxID: "redeem-5", ClientID: client.ID, Points: 80, Amount: decimal.NewFromInt(100),
+	})
+	if err != nil {
+		t.Fatalf("Redeem() error = %v, want the cap to be applied before the balance check", err)
+	}
+	if result.PointsRedeemed != 50 || result.Balance != 10 {
+		t.Fatalf("Redeem() = %+v, want PointsRedeemed=50 Balance=10", result)
 	}
 }

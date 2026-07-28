@@ -1,0 +1,4652 @@
+{
+  "nodes": [
+    {
+      "id": "g0",
+      "type": "group",
+      "label": "HTTP API Layer",
+      "x": 0,
+      "y": 0,
+      "width": 1540,
+      "height": 720,
+      "color": "1"
+    },
+    {
+      "id": "n_internal_httpserver_clients_go_balancerepository",
+      "type": "file",
+      "file": "BalanceRepository_1.md",
+      "x": 20,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server_go_balancerepository",
+      "type": "file",
+      "file": "BalanceRepository_2.md",
+      "x": 220,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_clients_go_clientrepository",
+      "type": "file",
+      "file": "ClientRepository_1.md",
+      "x": 420,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server_go_clientrepository",
+      "type": "file",
+      "file": "ClientRepository_2.md",
+      "x": 620,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_context_go_context",
+      "type": "file",
+      "file": "Context_1.md",
+      "x": 820,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server_go_context",
+      "type": "file",
+      "file": "Context_2.md",
+      "x": 1020,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_transactions_go_decimal",
+      "type": "file",
+      "file": "Decimal_2.md",
+      "x": 1220,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_deps",
+      "type": "file",
+      "file": "Deps.md",
+      "x": 20,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_clients_go_handlerfunc",
+      "type": "file",
+      "file": "HandlerFunc.md",
+      "x": 220,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_go_handlerfunc",
+      "type": "file",
+      "file": "HandlerFunc_1.md",
+      "x": 420,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_transactions_go_handlerfunc",
+      "type": "file",
+      "file": "HandlerFunc_2.md",
+      "x": 620,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_clients_go_logger",
+      "type": "file",
+      "file": "Logger_1.md",
+      "x": 820,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server_go_logger",
+      "type": "file",
+      "file": "Logger_3.md",
+      "x": 1020,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_transactions_go_logger",
+      "type": "file",
+      "file": "Logger_4.md",
+      "x": 1220,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server_new",
+      "type": "file",
+      "file": "New()_1.md",
+      "x": 20,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_requirestoreapikey",
+      "type": "file",
+      "file": "RequireStoreAPIKey().md",
+      "x": 220,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_respond_go_responsewriter",
+      "type": "file",
+      "file": "ResponseWriter_1.md",
+      "x": 420,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server_go_server",
+      "type": "file",
+      "file": "Server_1.md",
+      "x": 620,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_go_storerepository",
+      "type": "file",
+      "file": "StoreRepository_1.md",
+      "x": 820,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server_go_storerepository",
+      "type": "file",
+      "file": "StoreRepository_2.md",
+      "x": 1020,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_accruerequestbody",
+      "type": "file",
+      "file": "accrueRequestBody.md",
+      "x": 1220,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_balanceresponsebody",
+      "type": "file",
+      "file": "balanceResponseBody.md",
+      "x": 20,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_clients",
+      "type": "file",
+      "file": "clients.go.md",
+      "x": 220,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_context",
+      "type": "file",
+      "file": "context.go.md",
+      "x": 420,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "type": "file",
+      "file": "handleAccrueTransaction().md",
+      "x": 620,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_clients_handlegetclientbalance",
+      "type": "file",
+      "file": "handleGetClientBalance().md",
+      "x": 820,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "type": "file",
+      "file": "handleLookupClientByPhone().md",
+      "x": 1020,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "type": "file",
+      "file": "handleRedeemTransaction().md",
+      "x": 1220,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_hashapikey",
+      "type": "file",
+      "file": "hashAPIKey().md",
+      "x": 20,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware",
+      "type": "file",
+      "file": "middleware.go.md",
+      "x": 220,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_redeemrequestbody",
+      "type": "file",
+      "file": "redeemRequestBody.md",
+      "x": 420,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_redeemresponsebody",
+      "type": "file",
+      "file": "redeemResponseBody.md",
+      "x": 620,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_respond",
+      "type": "file",
+      "file": "respond.go.md",
+      "x": 820,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_server",
+      "type": "file",
+      "file": "server.go.md",
+      "x": 1020,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_storecontextkey",
+      "type": "file",
+      "file": "storeContextKey.md",
+      "x": 1220,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_context_storefromcontext",
+      "type": "file",
+      "file": "storeFromContext().md",
+      "x": 20,
+      "y": 480,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_transactionresponsebody",
+      "type": "file",
+      "file": "transactionResponseBody.md",
+      "x": 220,
+      "y": 480,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_transactions",
+      "type": "file",
+      "file": "transactions.go.md",
+      "x": 420,
+      "y": 480,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_respond_writeerror",
+      "type": "file",
+      "file": "writeError().md",
+      "x": 620,
+      "y": 480,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_respond_writejson",
+      "type": "file",
+      "file": "writeJSON().md",
+      "x": 820,
+      "y": 480,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g1",
+      "type": "group",
+      "label": "Product Roadmap and Discovery",
+      "x": 1620,
+      "y": 0,
+      "width": 1320,
+      "height": 720,
+      "color": "2"
+    },
+    {
+      "id": "n_clientchecklist_pos_1c_integration_discovery",
+      "type": "file",
+      "file": "1C and POS Integration Discovery.md",
+      "x": 1640,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_clientchecklist_analytics_and_communications",
+      "type": "file",
+      "file": "Analytics and Customer Communications.md",
+      "x": 1840,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_antifraud_compliance",
+      "type": "file",
+      "file": "Antifraud and Data Compliance.md",
+      "x": 2040,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_clientchecklist_business_scale_discovery",
+      "type": "file",
+      "file": "Business Scale Discovery.md",
+      "x": 2240,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_clientchecklist_client_discovery_checklist",
+      "type": "file",
+      "file": "Client Discovery Checklist.md",
+      "x": 2440,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_full_scope_cross_cutting_requirements",
+      "type": "file",
+      "file": "Cross-Cutting Product Requirements.md",
+      "x": 2640,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_clientchecklist_customer_identity_and_channels",
+      "type": "file",
+      "file": "Customer Identity and Channels.md",
+      "x": 1640,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_full_scope_deferred_experiments",
+      "type": "file",
+      "file": "Deferred ML and AB Experiments.md",
+      "x": 1840,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_deliberate_scope_exclusions",
+      "type": "file",
+      "file": "Deliberate MVP Scope Exclusions.md",
+      "x": 2040,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_deployment_and_infrastructure",
+      "type": "file",
+      "file": "Deployment Model and Technical Infrastructure.md",
+      "x": 2240,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_end_to_end_pilot_goal",
+      "type": "file",
+      "file": "End-to-End Pilot Validation Goal.md",
+      "x": 2440,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_pilot_scope",
+      "type": "file",
+      "file": "First Pilot MVP Scope.md",
+      "x": 2640,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_independent_loyalty_platform",
+      "type": "file",
+      "file": "Independent Loyalty Platform.md",
+      "x": 1640,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_loyalty_backend_and_configurator",
+      "type": "file",
+      "file": "Loyalty Backend and Configurable Mechanics.md",
+      "x": 1840,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_clientchecklist_loyalty_mechanics_discovery",
+      "type": "file",
+      "file": "Loyalty Mechanics Discovery.md",
+      "x": 2040,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_product_concept",
+      "type": "file",
+      "file": "Loyalty Platform Product Concept.md",
+      "x": 2240,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_mobile_customer_app",
+      "type": "file",
+      "file": "MVP Mobile Customer Application.md",
+      "x": 2440,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_backend_points_api",
+      "type": "file",
+      "file": "MVP Points Backend API.md",
+      "x": 2640,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_web_configurator",
+      "type": "file",
+      "file": "Minimal Web Configurator.md",
+      "x": 1640,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_minimum_security_compliance",
+      "type": "file",
+      "file": "Minimum Antifraud and Legal Compliance.md",
+      "x": 1840,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_client_mobile_identity",
+      "type": "file",
+      "file": "Mobile Client Experience and Identity.md",
+      "x": 2040,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_pos_identity_and_1c_integration",
+      "type": "file",
+      "file": "POS Identity and Pilot 1C Integration.md",
+      "x": 2240,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_full_scope_phase_1_mvp",
+      "type": "file",
+      "file": "Phase 1 Single-Store MVP.md",
+      "x": 2440,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_full_scope_phase_2_multistore_product",
+      "type": "file",
+      "file": "Phase 2 Mechanics and Multistore Product.md",
+      "x": 2640,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_full_scope_phase_3_analytics_marketing",
+      "type": "file",
+      "file": "Phase 3 Analytics and Marketing.md",
+      "x": 1640,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_full_scope_phase_4_platform_scaling",
+      "type": "file",
+      "file": "Phase 4 Platform Scaling.md",
+      "x": 1840,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_full_scope_product_roadmap",
+      "type": "file",
+      "file": "Phased Product Roadmap.md",
+      "x": 2040,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mvp_scope_pilot_delivery_and_success",
+      "type": "file",
+      "file": "Pilot Delivery and Success Criteria.md",
+      "x": 2240,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_reliable_1c_event_integration",
+      "type": "file",
+      "file": "Reliable 1C Event Integration.md",
+      "x": 2440,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_idea_retailer_analytics_marketing",
+      "type": "file",
+      "file": "Retailer Analytics and Marketing.md",
+      "x": 2640,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_clientchecklist_security_launch_governance",
+      "type": "file",
+      "file": "Security, Launch, and Governance.md",
+      "x": 1640,
+      "y": 480,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g2",
+      "type": "group",
+      "label": "Loyalty Service Core",
+      "x": 3020,
+      "y": 0,
+      "width": 1320,
+      "height": 620,
+      "color": "3"
+    },
+    {
+      "id": "n_service_loyaltyservice_accrue",
+      "type": "file",
+      "file": "dot-Accrue()_1.md",
+      "x": 3040,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_loyaltyservice_redeem",
+      "type": "file",
+      "file": "dot-Redeem().md",
+      "x": 3240,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_loyaltyservice_replayedaccrue",
+      "type": "file",
+      "file": "dot-replayedAccrue().md",
+      "x": 3440,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_loyaltyservice_replayedredeem",
+      "type": "file",
+      "file": "dot-replayedRedeem().md",
+      "x": 3640,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_loyaltyservice_resolveorcreateclient",
+      "type": "file",
+      "file": "dot-resolveOrCreateClient().md",
+      "x": 3840,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_accruerequest",
+      "type": "file",
+      "file": "AccrueRequest.md",
+      "x": 4040,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_accrueresult",
+      "type": "file",
+      "file": "AccrueResult.md",
+      "x": 3040,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_go_balancerepository",
+      "type": "file",
+      "file": "BalanceRepository_4.md",
+      "x": 3240,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanicbuild_mechanicbuild_build",
+      "type": "file",
+      "file": "Build().md",
+      "x": 3440,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_go_clientrepository",
+      "type": "file",
+      "file": "ClientRepository_4.md",
+      "x": 3640,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_go_context",
+      "type": "file",
+      "file": "Context_13.md",
+      "x": 3840,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_go_decimal",
+      "type": "file",
+      "file": "Decimal_3.md",
+      "x": 4040,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_ledgerrepository",
+      "type": "file",
+      "file": "LedgerRepository_2.md",
+      "x": 3040,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_go_logger",
+      "type": "file",
+      "file": "Logger_7.md",
+      "x": 3240,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_loyaltyconfigrepository",
+      "type": "file",
+      "file": "LoyaltyConfigRepository_2.md",
+      "x": 3440,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_loyaltyservice",
+      "type": "file",
+      "file": "LoyaltyService.md",
+      "x": 3640,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mechanic",
+      "type": "file",
+      "file": "Mechanic_2.md",
+      "x": 3840,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_new",
+      "type": "file",
+      "file": "New()_5.md",
+      "x": 4040,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_notificationchannel",
+      "type": "file",
+      "file": "NotificationChannel.md",
+      "x": 3040,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_redeemrequest",
+      "type": "file",
+      "file": "RedeemRequest.md",
+      "x": 3240,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_redeemresult",
+      "type": "file",
+      "file": "RedeemResult.md",
+      "x": 3440,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_transactionrepository",
+      "type": "file",
+      "file": "TransactionRepository_2.md",
+      "x": 3640,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_accrualfingerprint",
+      "type": "file",
+      "file": "accrualFingerprint().md",
+      "x": 3840,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty",
+      "type": "file",
+      "file": "loyalty.go.md",
+      "x": 4040,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanicbuild_mechanicbuild",
+      "type": "file",
+      "file": "mechanicbuild.go.md",
+      "x": 3040,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_notification",
+      "type": "file",
+      "file": "notification.go.md",
+      "x": 3240,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_redeemfingerprint",
+      "type": "file",
+      "file": "redeemFingerprint().md",
+      "x": 3440,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g3",
+      "type": "group",
+      "label": "Application Lifecycle and Persistence",
+      "x": 4420,
+      "y": 0,
+      "width": 1100,
+      "height": 620,
+      "color": "4"
+    },
+    {
+      "id": "n_app_app_close",
+      "type": "file",
+      "file": "dot-Close().md",
+      "x": 4440,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_balancerepository_get",
+      "type": "file",
+      "file": "dot-Get().md",
+      "x": 4640,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_ledgerrepository_post",
+      "type": "file",
+      "file": "dot-Post().md",
+      "x": 4840,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_app_app_run",
+      "type": "file",
+      "file": "dot-Run().md",
+      "x": 5040,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_app_app",
+      "type": "file",
+      "file": "App.md",
+      "x": 5240,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_balancerepository",
+      "type": "file",
+      "file": "BalanceRepository_3.md",
+      "x": 4440,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_app_app_go_context",
+      "type": "file",
+      "file": "Context.md",
+      "x": 4640,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_balance_repository_go_context",
+      "type": "file",
+      "file": "Context_6.md",
+      "x": 4840,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_ledger_repository_go_context",
+      "type": "file",
+      "file": "Context_8.md",
+      "x": 5040,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_postgres_go_context",
+      "type": "file",
+      "file": "Context_10.md",
+      "x": 5240,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_ledgerrepository",
+      "type": "file",
+      "file": "LedgerRepository_1.md",
+      "x": 4440,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_app_app_go_logger",
+      "type": "file",
+      "file": "Logger.md",
+      "x": 4640,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_app_app_new",
+      "type": "file",
+      "file": "New().md",
+      "x": 4840,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_balance_repository_newbalancerepository",
+      "type": "file",
+      "file": "NewBalanceRepository().md",
+      "x": 5040,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_ledger_repository_newledgerrepository",
+      "type": "file",
+      "file": "NewLedgerRepository().md",
+      "x": 5240,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_postgres_newpool",
+      "type": "file",
+      "file": "NewPool().md",
+      "x": 4440,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_app_app_go_pool",
+      "type": "file",
+      "file": "Pool.md",
+      "x": 4640,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_balance_repository_go_pool",
+      "type": "file",
+      "file": "Pool_1.md",
+      "x": 4840,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_ledger_repository_go_pool",
+      "type": "file",
+      "file": "Pool_3.md",
+      "x": 5040,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_postgres_go_pool",
+      "type": "file",
+      "file": "Pool_5.md",
+      "x": 5240,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_app_app_go_server",
+      "type": "file",
+      "file": "Server.md",
+      "x": 4440,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_app_app",
+      "type": "file",
+      "file": "app.go.md",
+      "x": 4640,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_balance_repository",
+      "type": "file",
+      "file": "balance_repository.go.md",
+      "x": 4840,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_ledger_repository",
+      "type": "file",
+      "file": "ledger_repository.go.md",
+      "x": 5040,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_postgres",
+      "type": "file",
+      "file": "postgres.go.md",
+      "x": 5240,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g4",
+      "type": "group",
+      "label": "Balances and Loyalty Configuration",
+      "x": 5600,
+      "y": 0,
+      "width": 1100,
+      "height": 620,
+      "color": "5"
+    },
+    {
+      "id": "n_points_mechanic_accrue",
+      "type": "file",
+      "file": "dot-Accrue().md",
+      "x": 5620,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakebalancerepo_get",
+      "type": "file",
+      "file": "dot-Get()_1.md",
+      "x": 5820,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeclientrepo_getbyid",
+      "type": "file",
+      "file": "dot-GetByID()_2.md",
+      "x": 6020,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_loyaltyconfigrepository_getbystore",
+      "type": "file",
+      "file": "dot-GetByStore().md",
+      "x": 6220,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeconfigrepo_getbystore",
+      "type": "file",
+      "file": "dot-GetByStore()_1.md",
+      "x": 6420,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeledgerrepo_post",
+      "type": "file",
+      "file": "dot-Post()_1.md",
+      "x": 5620,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_loyaltyconfigrepository_upsert",
+      "type": "file",
+      "file": "dot-Upsert().md",
+      "x": 5820,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeconfigrepo_upsert",
+      "type": "file",
+      "file": "dot-Upsert()_1.md",
+      "x": 6020,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_balance",
+      "type": "file",
+      "file": "Balance.md",
+      "x": 6220,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_balancerepository",
+      "type": "file",
+      "file": "BalanceRepository.md",
+      "x": 6420,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanic_points_points_go_context",
+      "type": "file",
+      "file": "Context_3.md",
+      "x": 5620,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_loyalty_config_repository_go_context",
+      "type": "file",
+      "file": "Context_9.md",
+      "x": 5820,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_go_context",
+      "type": "file",
+      "file": "Context_14.md",
+      "x": 6020,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_loyalty_config_go_decimal",
+      "type": "file",
+      "file": "Decimal.md",
+      "x": 6220,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_loyaltyconfig",
+      "type": "file",
+      "file": "LoyaltyConfig.md",
+      "x": 6420,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_loyaltyconfigrepository",
+      "type": "file",
+      "file": "LoyaltyConfigRepository.md",
+      "x": 5620,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_loyaltyconfigrepository",
+      "type": "file",
+      "file": "LoyaltyConfigRepository_1.md",
+      "x": 5820,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_loyalty_config_repository_newloyaltyconfigrepository",
+      "type": "file",
+      "file": "NewLoyaltyConfigRepository().md",
+      "x": 6020,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_loyalty_config_repository_go_pool",
+      "type": "file",
+      "file": "Pool_4.md",
+      "x": 6220,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_balance",
+      "type": "file",
+      "file": "balance.go.md",
+      "x": 6420,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeconfigrepo",
+      "type": "file",
+      "file": "fakeConfigRepo.md",
+      "x": 5620,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_loyalty_config",
+      "type": "file",
+      "file": "loyalty_config.go.md",
+      "x": 5820,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_loyalty_config_repository",
+      "type": "file",
+      "file": "loyalty_config_repository.go.md",
+      "x": 6020,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g5",
+      "type": "group",
+      "label": "Development and Operations Workflows",
+      "x": 6780,
+      "y": 0,
+      "width": 1100,
+      "height": 620,
+      "color": "6"
+    },
+    {
+      "id": "n__claude_skills_add_notification_channel_skill_add_notification_channel",
+      "type": "file",
+      "file": "Add Notification Channel Skill.md",
+      "x": 6800,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_dev_stack_skill_health_verification",
+      "type": "file",
+      "file": "Application Health Verification.md",
+      "x": 7000,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_add_notification_channel_skill_best_effort_delivery",
+      "type": "file",
+      "file": "Best-Effort Notification Delivery.md",
+      "x": 7200,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_db_migrate_skill_checked_increment_pattern",
+      "type": "file",
+      "file": "Checked Increment Update Pattern.md",
+      "x": 7400,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_db_migrate_skill_database_migrations",
+      "type": "file",
+      "file": "Database Migration Skill.md",
+      "x": 7600,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_deployments_docker_compose_local_stack",
+      "type": "file",
+      "file": "Docker Compose Local Stack.md",
+      "x": 6800,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_configs_config_fcm_log_fallback",
+      "type": "file",
+      "file": "FCM Log-Channel Fallback.md",
+      "x": 7000,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_dev_stack_skill_idempotent_replay_test",
+      "type": "file",
+      "file": "Idempotent Webhook Replay Test.md",
+      "x": 7200,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_dev_stack_skill_local_development_stack",
+      "type": "file",
+      "file": "Local Development Stack Skill.md",
+      "x": 7400,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_add_notification_channel_skill_notification_channel_contract",
+      "type": "file",
+      "file": "Notification Channel Contract.md",
+      "x": 7600,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_add_notification_channel_skill_provider_fallback",
+      "type": "file",
+      "file": "Notification Provider Fallback.md",
+      "x": 6800,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_configs_config_postgres_configuration",
+      "type": "file",
+      "file": "PostgreSQL Configuration.md",
+      "x": 7000,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_deployments_docker_compose_postgres_service",
+      "type": "file",
+      "file": "PostgreSQL Service.md",
+      "x": 7200,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_deployments_docker_compose_app_service",
+      "type": "file",
+      "file": "PromoGo Application Service.md",
+      "x": 7400,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_configs_config_runtime_configuration",
+      "type": "file",
+      "file": "PromoGo Runtime Configuration.md",
+      "x": 7600,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_db_migrate_skill_schema_conventions",
+      "type": "file",
+      "file": "PromoGo Schema Conventions.md",
+      "x": 6800,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_configs_config_redis_configuration",
+      "type": "file",
+      "file": "Redis Configuration.md",
+      "x": 7000,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_deployments_docker_compose_redis_service",
+      "type": "file",
+      "file": "Redis Service.md",
+      "x": 7200,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_db_migrate_skill_sql_only_migration_directory",
+      "type": "file",
+      "file": "SQL-Only Migration Directory.md",
+      "x": 7400,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_dev_stack_skill_store_seed_workflow",
+      "type": "file",
+      "file": "Test Store Seed Workflow.md",
+      "x": 7600,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_db_migrate_skill_transaction_idempotency",
+      "type": "file",
+      "file": "Transaction Idempotency Constraint.md",
+      "x": 6800,
+      "y": 400,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g6",
+      "type": "group",
+      "label": "Runtime Configuration and Startup",
+      "x": 0,
+      "y": 800,
+      "width": 1100,
+      "height": 620,
+      "color": "1"
+    },
+    {
+      "id": "n_config_httpconfig_addr",
+      "type": "file",
+      "file": "dot-Addr().md",
+      "x": 20,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_postgresconfig_dsn",
+      "type": "file",
+      "file": "dot-DSN().md",
+      "x": 220,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_appconfig",
+      "type": "file",
+      "file": "AppConfig.md",
+      "x": 420,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_config",
+      "type": "file",
+      "file": "Config.md",
+      "x": 620,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_fcmconfig",
+      "type": "file",
+      "file": "FCMConfig.md",
+      "x": 820,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_httpconfig",
+      "type": "file",
+      "file": "HTTPConfig.md",
+      "x": 20,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_level",
+      "type": "file",
+      "file": "Level.md",
+      "x": 220,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_config_config_load",
+      "type": "file",
+      "file": "Load().md",
+      "x": 420,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_logger_logger_go_logger",
+      "type": "file",
+      "file": "Logger_5.md",
+      "x": 620,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_loggerconfig",
+      "type": "file",
+      "file": "LoggerConfig.md",
+      "x": 820,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_logger_logger_new",
+      "type": "file",
+      "file": "New()_2.md",
+      "x": 20,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_postgresconfig",
+      "type": "file",
+      "file": "PostgresConfig.md",
+      "x": 220,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_config_redisconfig",
+      "type": "file",
+      "file": "RedisConfig.md",
+      "x": 420,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_viper",
+      "type": "file",
+      "file": "Viper.md",
+      "x": 620,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_config_config",
+      "type": "file",
+      "file": "config.go.md",
+      "x": 820,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_config_config_loaddotenv",
+      "type": "file",
+      "file": "loadDotEnv().md",
+      "x": 20,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_logger_logger",
+      "type": "file",
+      "file": "logger.go.md",
+      "x": 220,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_cmd_promogo_main_main",
+      "type": "file",
+      "file": "main().md",
+      "x": 420,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_cmd_promogo_main",
+      "type": "file",
+      "file": "main.go.md",
+      "x": 620,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_logger_logger_parselevel",
+      "type": "file",
+      "file": "parseLevel().md",
+      "x": 820,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_config_config_setdefaults",
+      "type": "file",
+      "file": "setDefaults().md",
+      "x": 20,
+      "y": 1200,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g7",
+      "type": "group",
+      "label": "Loyalty Service Tests",
+      "x": 1620,
+      "y": 800,
+      "width": 1100,
+      "height": 620,
+      "color": "2"
+    },
+    {
+      "id": "n_service_fakeclientrepo_create",
+      "type": "file",
+      "file": "dot-Create()_2.md",
+      "x": 1640,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeclientrepo_getbyphone",
+      "type": "file",
+      "file": "dot-GetByPhone()_1.md",
+      "x": 1840,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakebalancerepo_set",
+      "type": "file",
+      "file": "dot-set().md",
+      "x": 2040,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_go_t",
+      "type": "file",
+      "file": "T_1.md",
+      "x": 2240,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testaccrue_concurrentclientcreateracerecovered",
+      "type": "file",
+      "file": "TestAccrue_ConcurrentClientCreateRaceRecovered().md",
+      "x": 2440,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testaccrue_conflictingphonedoesnotcreateorphanclient",
+      "type": "file",
+      "file": "TestAccrue_ConflictingPhoneDoesNotCreateOrphanClient().md",
+      "x": 1640,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testaccrue_idempotencyconflictonmismatchedamount",
+      "type": "file",
+      "file": "TestAccrue_IdempotencyConflictOnMismatchedAmount().md",
+      "x": 1840,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testaccrue_replayreturnsoriginalresult",
+      "type": "file",
+      "file": "TestAccrue_ReplayReturnsOriginalResult().md",
+      "x": 2040,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testredeem_capappliedbeforebalancecheck",
+      "type": "file",
+      "file": "TestRedeem_CapAppliedBeforeBalanceCheck().md",
+      "x": 2240,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testredeem_capsatmaxredeempercentandrejectsinsufficientbalance",
+      "type": "file",
+      "file": "TestRedeem_CapsAtMaxRedeemPercentAndRejectsInsufficientBalance().md",
+      "x": 2440,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testredeem_crossstoreclientrejected",
+      "type": "file",
+      "file": "TestRedeem_CrossStoreClientRejected().md",
+      "x": 1640,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_testredeem_idempotencyconflictonmismatchedpoints",
+      "type": "file",
+      "file": "TestRedeem_IdempotencyConflictOnMismatchedPoints().md",
+      "x": 1840,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakebalancerepo",
+      "type": "file",
+      "file": "fakeBalanceRepo.md",
+      "x": 2040,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeclientrepo",
+      "type": "file",
+      "file": "fakeClientRepo.md",
+      "x": 2240,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_fakeledgerrepo",
+      "type": "file",
+      "file": "fakeLedgerRepo.md",
+      "x": 2440,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test",
+      "type": "file",
+      "file": "loyalty_test.go.md",
+      "x": 1640,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_newfakebalancerepo",
+      "type": "file",
+      "file": "newFakeBalanceRepo().md",
+      "x": 1840,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_newfakeclientrepo",
+      "type": "file",
+      "file": "newFakeClientRepo().md",
+      "x": 2040,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_newtestservice",
+      "type": "file",
+      "file": "newTestService().md",
+      "x": 2240,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_service_loyalty_test_pointsconfig",
+      "type": "file",
+      "file": "pointsConfig().md",
+      "x": 2440,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_testdeps",
+      "type": "file",
+      "file": "testDeps.md",
+      "x": 1640,
+      "y": 1200,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g8",
+      "type": "group",
+      "label": "Knowledge and Decisions",
+      "x": 3020,
+      "y": 800,
+      "width": 1100,
+      "height": 620,
+      "color": "3"
+    },
+    {
+      "id": "n_knowledge_project_questions_api_and_pos_integration",
+      "type": "file",
+      "file": "API, Data Model, 1C, and POS Integration Contracts.md",
+      "x": 3040,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_commercial_support_model",
+      "type": "file",
+      "file": "Commercial Model, Contracts, and Product Support.md",
+      "x": 3240,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_decisions_confirmed_decision_registry",
+      "type": "file",
+      "file": "Confirmed Decision Registry.md",
+      "x": 3440,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_implementation_scope_gaps",
+      "type": "file",
+      "file": "Current Implementation and Scope Gaps.md",
+      "x": 3640,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_customer_identity_channels",
+      "type": "file",
+      "file": "Customer Registration, Identity, Mobile, and Notifications.md",
+      "x": 3840,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_decisions_dec_001",
+      "type": "file",
+      "file": "DEC-001 1C Is an Event Source, Not the Loyalty Core.md",
+      "x": 3040,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_decisions_dec_002",
+      "type": "file",
+      "file": "DEC-002 Phase 1 Uses One Store and Points.md",
+      "x": 3240,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_decisions_dec_003",
+      "type": "file",
+      "file": "DEC-003 Balance Changes Through a Transactional Ledger.md",
+      "x": 3440,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_home_source_of_truth_policy",
+      "type": "file",
+      "file": "Implementation and Decision Source-of-Truth Policy.md",
+      "x": 3640,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_home_knowledge_navigation",
+      "type": "file",
+      "file": "Knowledge Base Navigation.md",
+      "x": 3840,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_pilot_governance",
+      "type": "file",
+      "file": "Pilot Goals, Ownership, and Success Criteria.md",
+      "x": 3040,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_points_economics",
+      "type": "file",
+      "file": "Points Economics, Accrual, Redemption, and Refund Rules.md",
+      "x": 3240,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_agent_workflow_post_change_validation",
+      "type": "file",
+      "file": "Post-Change Tests and Graph Update.md",
+      "x": 3440,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_post_pilot_architecture",
+      "type": "file",
+      "file": "Post-Pilot Architecture and Scaling.md",
+      "x": 3640,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_agent_workflow_query_first_investigation",
+      "type": "file",
+      "file": "Query-First Graphify Investigation.md",
+      "x": 3840,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_agent_workflow_decision_lifecycle",
+      "type": "file",
+      "file": "Question-to-Decision Lifecycle.md",
+      "x": 3040,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_operational_release_readiness",
+      "type": "file",
+      "file": "Reliability, Operations, Quality, and Release Readiness.md",
+      "x": 3240,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_security_privacy",
+      "type": "file",
+      "file": "Security, Personal Data Law, and Data Governance.md",
+      "x": 3440,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_agent_workflow_shared_agent_graph",
+      "type": "file",
+      "file": "Shared Codex and Claude Knowledge Graph.md",
+      "x": 3640,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_agent_workflow_relationship_verification",
+      "type": "file",
+      "file": "Source Verification of Graph Relationships.md",
+      "x": 3840,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_project_questions_administration_configuration",
+      "type": "file",
+      "file": "Web Configuration and Administrative Management.md",
+      "x": 3040,
+      "y": 1200,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g9",
+      "type": "group",
+      "label": "Transaction Persistence",
+      "x": 4420,
+      "y": 800,
+      "width": 880,
+      "height": 520,
+      "color": "4"
+    },
+    {
+      "id": "n_postgres_transactionrepository_getbyexternalid",
+      "type": "file",
+      "file": "dot-GetByExternalID().md",
+      "x": 4440,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_faketxrepo_getbyexternalid",
+      "type": "file",
+      "file": "dot-GetByExternalID()_1.md",
+      "x": 4640,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_transactionrepository_listbyclient",
+      "type": "file",
+      "file": "dot-ListByClient().md",
+      "x": 4840,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_faketxrepo_listbyclient",
+      "type": "file",
+      "file": "dot-ListByClient()_1.md",
+      "x": 5040,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_transaction_repository_go_context",
+      "type": "file",
+      "file": "Context_12.md",
+      "x": 4440,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_transaction_go_decimal",
+      "type": "file",
+      "file": "Decimal_1.md",
+      "x": 4640,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_transaction_repository_newtransactionrepository",
+      "type": "file",
+      "file": "NewTransactionRepository().md",
+      "x": 4840,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_transaction_repository_go_pool",
+      "type": "file",
+      "file": "Pool_7.md",
+      "x": 5040,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_transaction_go_time",
+      "type": "file",
+      "file": "Time_1.md",
+      "x": 4440,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_transaction",
+      "type": "file",
+      "file": "Transaction.md",
+      "x": 4640,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_transactionrepository",
+      "type": "file",
+      "file": "TransactionRepository.md",
+      "x": 4840,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_transactionrepository",
+      "type": "file",
+      "file": "TransactionRepository_1.md",
+      "x": 5040,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_transactiontype",
+      "type": "file",
+      "file": "TransactionType.md",
+      "x": 4440,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_service_faketxrepo",
+      "type": "file",
+      "file": "fakeTxRepo.md",
+      "x": 4640,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_transaction",
+      "type": "file",
+      "file": "transaction.go.md",
+      "x": 4840,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_transaction_repository",
+      "type": "file",
+      "file": "transaction_repository.go.md",
+      "x": 5040,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g10",
+      "type": "group",
+      "label": "Agent and Mechanic Guidance",
+      "x": 5600,
+      "y": 800,
+      "width": 880,
+      "height": 520,
+      "color": "5"
+    },
+    {
+      "id": "n_claude_one_c_webhook_integration",
+      "type": "file",
+      "file": "1C Webhook Integration.md",
+      "x": 5620,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_add_mechanic_skill_add_mechanic",
+      "type": "file",
+      "file": "Add Mechanic Skill.md",
+      "x": 5820,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_claude_configurable_loyalty_mechanics",
+      "type": "file",
+      "file": "Configurable Loyalty Mechanics.md",
+      "x": 6020,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_add_mechanic_skill_decimal_point_calculation",
+      "type": "file",
+      "file": "Decimal Point Calculation.md",
+      "x": 6220,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_claude_graphify_guidance",
+      "type": "file",
+      "file": "Graphify Repository Guidance.md",
+      "x": 5620,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_agents_graphify_rules",
+      "type": "file",
+      "file": "Graphify Rules for Codex.md",
+      "x": 5820,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_claude_graphify_skill_trigger",
+      "type": "file",
+      "file": "Graphify Skill Trigger.md",
+      "x": 6020,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_claude_graphify_workflow",
+      "type": "file",
+      "file": "Graphify Workflow for Claude Code.md",
+      "x": 6220,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_claude_independent_loyalty_core",
+      "type": "file",
+      "file": "Independent Loyalty Core.md",
+      "x": 5620,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_add_mechanic_skill_mechanic_contract",
+      "type": "file",
+      "file": "Loyalty Mechanic Contract.md",
+      "x": 5820,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_claude_planned_architecture",
+      "type": "file",
+      "file": "Planned PromoGo Architecture.md",
+      "x": 6020,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_claude_project_guidance",
+      "type": "file",
+      "file": "PromoGo Project Guidance.md",
+      "x": 6220,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n__claude_skills_add_mechanic_skill_pure_mechanic_logic",
+      "type": "file",
+      "file": "Pure Mechanic Decision Logic.md",
+      "x": 5620,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_agents_scoped_graph_queries",
+      "type": "file",
+      "file": "Scoped Graph Queries.md",
+      "x": 5820,
+      "y": 1120,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g11",
+      "type": "group",
+      "label": "Client Persistence",
+      "x": 6780,
+      "y": 800,
+      "width": 880,
+      "height": 420,
+      "color": "6"
+    },
+    {
+      "id": "n_postgres_clientrepository_create",
+      "type": "file",
+      "file": "dot-Create().md",
+      "x": 6800,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_clientrepository_getbyid",
+      "type": "file",
+      "file": "dot-GetByID().md",
+      "x": 7000,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_clientrepository_getbyphone",
+      "type": "file",
+      "file": "dot-GetByPhone().md",
+      "x": 7200,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_client",
+      "type": "file",
+      "file": "Client.md",
+      "x": 7400,
+      "y": 880,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_clientrepository",
+      "type": "file",
+      "file": "ClientRepository.md",
+      "x": 6800,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_clientrepository",
+      "type": "file",
+      "file": "ClientRepository_3.md",
+      "x": 7000,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_client_repository_go_context",
+      "type": "file",
+      "file": "Context_7.md",
+      "x": 7200,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_client_repository_newclientrepository",
+      "type": "file",
+      "file": "NewClientRepository().md",
+      "x": 7400,
+      "y": 960,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_client_repository_go_pool",
+      "type": "file",
+      "file": "Pool_2.md",
+      "x": 6800,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_client_go_time",
+      "type": "file",
+      "file": "Time.md",
+      "x": 7000,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_client",
+      "type": "file",
+      "file": "client.go.md",
+      "x": 7200,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_client_repository",
+      "type": "file",
+      "file": "client_repository.go.md",
+      "x": 7400,
+      "y": 1040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g12",
+      "type": "group",
+      "label": "Store Authentication and Persistence",
+      "x": 0,
+      "y": 1500,
+      "width": 880,
+      "height": 420,
+      "color": "1"
+    },
+    {
+      "id": "n_postgres_storerepository_create",
+      "type": "file",
+      "file": "dot-Create()_1.md",
+      "x": 20,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_storerepository_getbyapikeyhash",
+      "type": "file",
+      "file": "dot-GetByAPIKeyHash().md",
+      "x": 220,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_storerepository_getbyid",
+      "type": "file",
+      "file": "dot-GetByID()_1.md",
+      "x": 420,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_store_repository_go_context",
+      "type": "file",
+      "file": "Context_11.md",
+      "x": 620,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_store_repository_newstorerepository",
+      "type": "file",
+      "file": "NewStoreRepository().md",
+      "x": 20,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_store_repository_go_pool",
+      "type": "file",
+      "file": "Pool_6.md",
+      "x": 220,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_store",
+      "type": "file",
+      "file": "Store.md",
+      "x": 420,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_domain_storerepository",
+      "type": "file",
+      "file": "StoreRepository.md",
+      "x": 620,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_postgres_storerepository",
+      "type": "file",
+      "file": "StoreRepository_3.md",
+      "x": 20,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_store",
+      "type": "file",
+      "file": "store.go.md",
+      "x": 220,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_repository_postgres_store_repository",
+      "type": "file",
+      "file": "store_repository.go.md",
+      "x": 420,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g13",
+      "type": "group",
+      "label": "Points Mechanic Tests",
+      "x": 1620,
+      "y": 1500,
+      "width": 660,
+      "height": 420,
+      "color": "2"
+    },
+    {
+      "id": "n_points_mechanic_name",
+      "type": "file",
+      "file": "dot-Name().md",
+      "x": 1640,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_points_mechanic",
+      "type": "file",
+      "file": "Mechanic_1.md",
+      "x": 1840,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanic_points_points_new",
+      "type": "file",
+      "file": "New()_3.md",
+      "x": 2040,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanic_points_points_test_go_t",
+      "type": "file",
+      "file": "T.md",
+      "x": 1640,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanic_points_points_test_testmechanic_accrue",
+      "type": "file",
+      "file": "TestMechanic_Accrue().md",
+      "x": 1840,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanic_points_points_test_testmechanic_name",
+      "type": "file",
+      "file": "TestMechanic_Name().md",
+      "x": 2040,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanic_points_points",
+      "type": "file",
+      "file": "points.go.md",
+      "x": 1640,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_mechanic_points_points_test",
+      "type": "file",
+      "file": "points_test.go.md",
+      "x": 1840,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g14",
+      "type": "group",
+      "label": "HTTP Logging Middleware",
+      "x": 3020,
+      "y": 1500,
+      "width": 660,
+      "height": 420,
+      "color": "3"
+    },
+    {
+      "id": "n_httpserver_statuswriter_writeheader",
+      "type": "file",
+      "file": "dot-WriteHeader().md",
+      "x": 3040,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_handler",
+      "type": "file",
+      "file": "Handler.md",
+      "x": 3240,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_logging_go_logger",
+      "type": "file",
+      "file": "Logger_2.md",
+      "x": 3440,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_logging_go_responsewriter",
+      "type": "file",
+      "file": "ResponseWriter.md",
+      "x": 3040,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_logging_loggingmw",
+      "type": "file",
+      "file": "loggingMW().md",
+      "x": 3240,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_httpserver_middleware_logging",
+      "type": "file",
+      "file": "middleware_logging.go.md",
+      "x": 3440,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_httpserver_statuswriter",
+      "type": "file",
+      "file": "statusWriter.md",
+      "x": 3040,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g15",
+      "type": "group",
+      "label": "Notification Log Channel",
+      "x": 4420,
+      "y": 1500,
+      "width": 660,
+      "height": 420,
+      "color": "4"
+    },
+    {
+      "id": "n_logchannel_channel_name",
+      "type": "file",
+      "file": "dot-Name()_1.md",
+      "x": 4440,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_logchannel_channel_send",
+      "type": "file",
+      "file": "dot-Send().md",
+      "x": 4640,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_logchannel_channel",
+      "type": "file",
+      "file": "Channel.md",
+      "x": 4840,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_notification_logchannel_logchannel_go_context",
+      "type": "file",
+      "file": "Context_5.md",
+      "x": 4440,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_notification_logchannel_logchannel_go_logger",
+      "type": "file",
+      "file": "Logger_6.md",
+      "x": 4640,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_notification_logchannel_logchannel_new",
+      "type": "file",
+      "file": "New()_4.md",
+      "x": 4840,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_notification_logchannel_logchannel",
+      "type": "file",
+      "file": "logchannel.go.md",
+      "x": 4440,
+      "y": 1740,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g16",
+      "type": "group",
+      "label": "Embedded Migrations",
+      "x": 5600,
+      "y": 1500,
+      "width": 600,
+      "height": 400,
+      "color": "5"
+    },
+    {
+      "id": "n_fs",
+      "type": "file",
+      "file": "FS.md",
+      "x": 5620,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_embed",
+      "type": "file",
+      "file": "embed.go.md",
+      "x": 5820,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_embed_must",
+      "type": "file",
+      "file": "must().md",
+      "x": 5620,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g17",
+      "type": "group",
+      "label": "Migration Runner",
+      "x": 6780,
+      "y": 1500,
+      "width": 600,
+      "height": 400,
+      "color": "6"
+    },
+    {
+      "id": "n_internal_migrate_migrate_go_context",
+      "type": "file",
+      "file": "Context_4.md",
+      "x": 6800,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_migrate_migrate_run",
+      "type": "file",
+      "file": "Run().md",
+      "x": 7000,
+      "y": 1580,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_migrate_migrate",
+      "type": "file",
+      "file": "migrate.go.md",
+      "x": 6800,
+      "y": 1660,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g18",
+      "type": "group",
+      "label": "Graphify MCP Integration",
+      "x": 0,
+      "y": 2000,
+      "width": 600,
+      "height": 400,
+      "color": "1"
+    },
+    {
+      "id": "n_mcp",
+      "type": "file",
+      "file": "dot-mcp.json.md",
+      "x": 20,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mcp_mcp_server_graphify",
+      "type": "file",
+      "file": "graphify.md",
+      "x": 220,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_mcp_command_python",
+      "type": "file",
+      "file": "python.md",
+      "x": 20,
+      "y": 2160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g19",
+      "type": "group",
+      "label": "Client Store Integrity Schema",
+      "x": 1620,
+      "y": 2000,
+      "width": 600,
+      "height": 400,
+      "color": "2"
+    },
+    {
+      "id": "n_migrations_sql_00006_client_store_composite_fk",
+      "type": "file",
+      "file": "00006_client_store_composite_fk.sql.md",
+      "x": 1640,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00006_client_store_composite_fk_clients",
+      "type": "file",
+      "file": "clients_1.md",
+      "x": 1840,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00006_client_store_composite_fk_transactions",
+      "type": "file",
+      "file": "transactions_1.md",
+      "x": 1640,
+      "y": 2160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g20",
+      "type": "group",
+      "label": "Ledger Contract",
+      "x": 3020,
+      "y": 2000,
+      "width": 600,
+      "height": 400,
+      "color": "3"
+    },
+    {
+      "id": "n_domain_ledgerrepository",
+      "type": "file",
+      "file": "LedgerRepository.md",
+      "x": 3040,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_ledger",
+      "type": "file",
+      "file": "ledger.go.md",
+      "x": 3240,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g21",
+      "type": "group",
+      "label": "Mechanic Contract",
+      "x": 4420,
+      "y": 2000,
+      "width": 600,
+      "height": 400,
+      "color": "4"
+    },
+    {
+      "id": "n_domain_mechanic",
+      "type": "file",
+      "file": "Mechanic.md",
+      "x": 4440,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_internal_domain_mechanic",
+      "type": "file",
+      "file": "mechanic.go.md",
+      "x": 4640,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g22",
+      "type": "group",
+      "label": "Knowledge Base Hub",
+      "x": 5600,
+      "y": 2000,
+      "width": 600,
+      "height": 400,
+      "color": "5"
+    },
+    {
+      "id": "n_knowledge_home_graphified_project_knowledge",
+      "type": "file",
+      "file": "Graphified Code, Schema, Configuration, and Documentation.md",
+      "x": 5620,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_knowledge_home_knowledge_base_hub",
+      "type": "file",
+      "file": "PromoGo Knowledge Base Hub.md",
+      "x": 5820,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g23",
+      "type": "group",
+      "label": "Stores Schema",
+      "x": 6780,
+      "y": 2000,
+      "width": 600,
+      "height": 400,
+      "color": "6"
+    },
+    {
+      "id": "n_migrations_sql_00001_create_stores",
+      "type": "file",
+      "file": "00001_create_stores.sql.md",
+      "x": 6800,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00001_create_stores_stores",
+      "type": "file",
+      "file": "stores.md",
+      "x": 7000,
+      "y": 2080,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g24",
+      "type": "group",
+      "label": "Clients Schema",
+      "x": 0,
+      "y": 2480,
+      "width": 600,
+      "height": 400,
+      "color": "1"
+    },
+    {
+      "id": "n_migrations_sql_00002_create_clients",
+      "type": "file",
+      "file": "00002_create_clients.sql.md",
+      "x": 20,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00002_create_clients_clients",
+      "type": "file",
+      "file": "clients.md",
+      "x": 220,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g25",
+      "type": "group",
+      "label": "Balances Schema",
+      "x": 1620,
+      "y": 2480,
+      "width": 600,
+      "height": 400,
+      "color": "2"
+    },
+    {
+      "id": "n_migrations_sql_00003_create_balances",
+      "type": "file",
+      "file": "00003_create_balances.sql.md",
+      "x": 1640,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00003_create_balances_balances",
+      "type": "file",
+      "file": "balances.md",
+      "x": 1840,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g26",
+      "type": "group",
+      "label": "Transactions Schema",
+      "x": 3020,
+      "y": 2480,
+      "width": 600,
+      "height": 400,
+      "color": "3"
+    },
+    {
+      "id": "n_migrations_sql_00004_create_transactions",
+      "type": "file",
+      "file": "00004_create_transactions.sql.md",
+      "x": 3040,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00004_create_transactions_transactions",
+      "type": "file",
+      "file": "transactions.md",
+      "x": 3240,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g27",
+      "type": "group",
+      "label": "Loyalty Configuration Schema",
+      "x": 4420,
+      "y": 2480,
+      "width": 600,
+      "height": 400,
+      "color": "4"
+    },
+    {
+      "id": "n_migrations_sql_00005_create_loyalty_configs",
+      "type": "file",
+      "file": "00005_create_loyalty_configs.sql.md",
+      "x": 4440,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00005_create_loyalty_configs_loyalty_configs",
+      "type": "file",
+      "file": "loyalty_configs.md",
+      "x": 4640,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g28",
+      "type": "group",
+      "label": "Idempotency Schema",
+      "x": 5600,
+      "y": 2480,
+      "width": 600,
+      "height": 400,
+      "color": "5"
+    },
+    {
+      "id": "n_migrations_sql_00007_transaction_type_scoped_idempotency",
+      "type": "file",
+      "file": "00007_transaction_type_scoped_idempotency.sql.md",
+      "x": 5620,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00007_transaction_type_scoped_idempotency_transactions",
+      "type": "file",
+      "file": "transactions_2.md",
+      "x": 5820,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g29",
+      "type": "group",
+      "label": "Loyalty Configuration Constraints",
+      "x": 6780,
+      "y": 2480,
+      "width": 600,
+      "height": 400,
+      "color": "6"
+    },
+    {
+      "id": "n_migrations_sql_00008_loyalty_configs_constraints",
+      "type": "file",
+      "file": "00008_loyalty_configs_constraints.sql.md",
+      "x": 6800,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00008_loyalty_configs_constraints_loyalty_configs",
+      "type": "file",
+      "file": "loyalty_configs_1.md",
+      "x": 7000,
+      "y": 2560,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g30",
+      "type": "group",
+      "label": "Request Fingerprint Schema",
+      "x": 0,
+      "y": 2960,
+      "width": 600,
+      "height": 400,
+      "color": "1"
+    },
+    {
+      "id": "n_migrations_sql_00010_transaction_request_fingerprint",
+      "type": "file",
+      "file": "00010_transaction_request_fingerprint.sql.md",
+      "x": 20,
+      "y": 3040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00010_transaction_request_fingerprint_transactions",
+      "type": "file",
+      "file": "transactions_3.md",
+      "x": 220,
+      "y": 3040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g31",
+      "type": "group",
+      "label": "Transaction Invariants Schema",
+      "x": 1620,
+      "y": 2960,
+      "width": 600,
+      "height": 400,
+      "color": "2"
+    },
+    {
+      "id": "n_migrations_sql_00011_transaction_amount_and_sign_constraints",
+      "type": "file",
+      "file": "00011_transaction_amount_and_sign_constraints.sql.md",
+      "x": 1640,
+      "y": 3040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_migrations_sql_00011_transaction_amount_and_sign_constraints_transactions",
+      "type": "file",
+      "file": "transactions_4.md",
+      "x": 1840,
+      "y": 3040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g32",
+      "type": "group",
+      "label": "Domain Errors",
+      "x": 3020,
+      "y": 2960,
+      "width": 600,
+      "height": 400,
+      "color": "3"
+    },
+    {
+      "id": "n_internal_domain_errors",
+      "type": "file",
+      "file": "errors.go.md",
+      "x": 3040,
+      "y": 3040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g33",
+      "type": "group",
+      "label": "Balance History Backfill",
+      "x": 4420,
+      "y": 2960,
+      "width": 600,
+      "height": 400,
+      "color": "4"
+    },
+    {
+      "id": "n_migrations_sql_00009_backfill_transaction_balance_after",
+      "type": "file",
+      "file": "00009_backfill_transaction_balance_after.sql.md",
+      "x": 4440,
+      "y": 3040,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g34",
+      "type": "group",
+      "label": "Go Module Dependencies",
+      "x": 5600,
+      "y": 2960,
+      "width": 600,
+      "height": 400,
+      "color": "5"
+    },
+    {
+      "id": "n_pkg_github_com_mirzadgtu_promogo",
+      "type": "file",
+      "file": "github.comMirzaDgtuPromoGo.md",
+      "x": 5620,
+      "y": 3040,
+      "width": 180,
+      "height": 60
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_mcp_mcp_mcp_server_graphify",
+      "fromNode": "n_mcp",
+      "toNode": "n_mcp_mcp_server_graphify",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_mcp_mcp_server_graphify_mcp_command_python",
+      "fromNode": "n_mcp_mcp_server_graphify",
+      "toNode": "n_mcp_command_python",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_cmd_promogo_main_cmd_promogo_main_main",
+      "fromNode": "n_cmd_promogo_main",
+      "toNode": "n_cmd_promogo_main_main",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_cmd_promogo_main_main_internal_config_config_load",
+      "fromNode": "n_cmd_promogo_main_main",
+      "toNode": "n_internal_config_config_load",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_app_app",
+      "fromNode": "n_internal_app_app",
+      "toNode": "n_app_app",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_app_app_internal_app_app_new",
+      "fromNode": "n_internal_app_app",
+      "toNode": "n_internal_app_app_new",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_app_app_app_app_close",
+      "fromNode": "n_app_app",
+      "toNode": "n_app_app_close",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_app_app_app_app_run",
+      "fromNode": "n_app_app",
+      "toNode": "n_app_app_run",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_app_app_domain_client",
+      "fromNode": "n_app_app",
+      "toNode": "n_domain_client",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_app_app_internal_app_app_go_logger",
+      "fromNode": "n_app_app",
+      "toNode": "n_internal_app_app_go_logger",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_app_app_internal_app_app_go_pool",
+      "fromNode": "n_app_app",
+      "toNode": "n_internal_app_app_go_pool",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_app_app_internal_app_app_go_server",
+      "fromNode": "n_app_app",
+      "toNode": "n_internal_app_app_go_server",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_app_app_internal_app_app_new",
+      "fromNode": "n_app_app",
+      "toNode": "n_internal_app_app_new",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_app_app_new_app_app_close",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_app_app_close",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_app_app_new_app_app_run",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_app_app_run",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_app_app_new_config_config",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_config_config",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_app_app_go_context",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_app_app_go_context",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_repository_postgres_balance_repository_newbalancerepository",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_repository_postgres_balance_repository_newbalancerepository",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_repository_postgres_client_repository_newclientrepository",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_repository_postgres_client_repository_newclientrepository",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_repository_postgres_ledger_repository_newledgerrepository",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_repository_postgres_ledger_repository_newledgerrepository",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_repository_postgres_loyalty_config_repository_newloyaltyconfigrepository",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_repository_postgres_loyalty_config_repository_newloyaltyconfigrepository",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_repository_postgres_postgres_newpool",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_repository_postgres_postgres_newpool",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_repository_postgres_store_repository_newstorerepository",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_repository_postgres_store_repository_newstorerepository",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_new_internal_repository_postgres_transaction_repository_newtransactionrepository",
+      "fromNode": "n_internal_app_app_new",
+      "toNode": "n_internal_repository_postgres_transaction_repository_newtransactionrepository",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_app_app_go_context_app_app_run",
+      "fromNode": "n_internal_app_app_go_context",
+      "toNode": "n_app_app_run",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_config_appconfig",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_config_appconfig",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_config_config",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_config_config",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_config_fcmconfig",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_config_fcmconfig",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_config_httpconfig",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_config_httpconfig",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_config_loggerconfig",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_config_loggerconfig",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_config_postgresconfig",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_config_postgresconfig",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_config_redisconfig",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_config_redisconfig",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_internal_config_config_load",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_internal_config_config_load",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_internal_config_config_loaddotenv",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_internal_config_config_loaddotenv",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_internal_config_config_setdefaults",
+      "fromNode": "n_internal_config_config",
+      "toNode": "n_internal_config_config_setdefaults",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_config_config_config_appconfig",
+      "fromNode": "n_config_config",
+      "toNode": "n_config_appconfig",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_config_config_fcmconfig",
+      "fromNode": "n_config_config",
+      "toNode": "n_config_fcmconfig",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_config_config_httpconfig",
+      "fromNode": "n_config_config",
+      "toNode": "n_config_httpconfig",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_config_config_loggerconfig",
+      "fromNode": "n_config_config",
+      "toNode": "n_config_loggerconfig",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_config_config_postgresconfig",
+      "fromNode": "n_config_config",
+      "toNode": "n_config_postgresconfig",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_config_config_redisconfig",
+      "fromNode": "n_config_config",
+      "toNode": "n_config_redisconfig",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_config_internal_config_config_load",
+      "fromNode": "n_config_config",
+      "toNode": "n_internal_config_config_load",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_appconfig_httpserver_deps",
+      "fromNode": "n_config_appconfig",
+      "toNode": "n_httpserver_deps",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_httpconfig_config_httpconfig_addr",
+      "fromNode": "n_config_httpconfig",
+      "toNode": "n_config_httpconfig_addr",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_config_httpconfig_httpserver_deps",
+      "fromNode": "n_config_httpconfig",
+      "toNode": "n_httpserver_deps",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_config_postgresconfig_config_postgresconfig_dsn",
+      "fromNode": "n_config_postgresconfig",
+      "toNode": "n_config_postgresconfig_dsn",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_config_loggerconfig_internal_logger_logger_new",
+      "fromNode": "n_config_loggerconfig",
+      "toNode": "n_internal_logger_logger_new",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_load_internal_config_config_loaddotenv",
+      "fromNode": "n_internal_config_config_load",
+      "toNode": "n_internal_config_config_loaddotenv",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_load_internal_config_config_setdefaults",
+      "fromNode": "n_internal_config_config_load",
+      "toNode": "n_internal_config_config_setdefaults",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_config_config_setdefaults_viper",
+      "fromNode": "n_internal_config_config_setdefaults",
+      "toNode": "n_viper",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_balance_domain_balance",
+      "fromNode": "n_internal_domain_balance",
+      "toNode": "n_domain_balance",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_balance_domain_balancerepository",
+      "fromNode": "n_internal_domain_balance",
+      "toNode": "n_domain_balancerepository",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_balance_points_mechanic_accrue",
+      "fromNode": "n_domain_balance",
+      "toNode": "n_points_mechanic_accrue",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_balance_postgres_balancerepository_get",
+      "fromNode": "n_domain_balance",
+      "toNode": "n_postgres_balancerepository_get",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_balance_postgres_ledgerrepository_post",
+      "fromNode": "n_domain_balance",
+      "toNode": "n_postgres_ledgerrepository_post",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_balance_service_fakebalancerepo_get",
+      "fromNode": "n_domain_balance",
+      "toNode": "n_service_fakebalancerepo_get",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_balance_service_fakeledgerrepo_post",
+      "fromNode": "n_domain_balance",
+      "toNode": "n_service_fakeledgerrepo_post",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_client_domain_client",
+      "fromNode": "n_internal_domain_client",
+      "toNode": "n_domain_client",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_client_domain_clientrepository",
+      "fromNode": "n_internal_domain_client",
+      "toNode": "n_domain_clientrepository",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_internal_domain_client_go_time",
+      "fromNode": "n_domain_client",
+      "toNode": "n_internal_domain_client_go_time",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_postgres_clientrepository_create",
+      "fromNode": "n_domain_client",
+      "toNode": "n_postgres_clientrepository_create",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_postgres_clientrepository_getbyid",
+      "fromNode": "n_domain_client",
+      "toNode": "n_postgres_clientrepository_getbyid",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_postgres_clientrepository_getbyphone",
+      "fromNode": "n_domain_client",
+      "toNode": "n_postgres_clientrepository_getbyphone",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_service_fakeclientrepo",
+      "fromNode": "n_domain_client",
+      "toNode": "n_service_fakeclientrepo",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_service_fakeclientrepo_create",
+      "fromNode": "n_domain_client",
+      "toNode": "n_service_fakeclientrepo_create",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_service_fakeclientrepo_getbyid",
+      "fromNode": "n_domain_client",
+      "toNode": "n_service_fakeclientrepo_getbyid",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_service_fakeclientrepo_getbyphone",
+      "fromNode": "n_domain_client",
+      "toNode": "n_service_fakeclientrepo_getbyphone",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_client_service_loyaltyservice_resolveorcreateclient",
+      "fromNode": "n_domain_client",
+      "toNode": "n_service_loyaltyservice_resolveorcreateclient",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_ledger_domain_ledgerrepository",
+      "fromNode": "n_internal_domain_ledger",
+      "toNode": "n_domain_ledgerrepository",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_loyalty_config_domain_loyaltyconfig",
+      "fromNode": "n_internal_domain_loyalty_config",
+      "toNode": "n_domain_loyaltyconfig",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_loyalty_config_domain_loyaltyconfigrepository",
+      "fromNode": "n_internal_domain_loyalty_config",
+      "toNode": "n_domain_loyaltyconfigrepository",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_internal_domain_loyalty_config_go_decimal",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_internal_domain_loyalty_config_go_decimal",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_internal_service_loyalty_test_newtestservice",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_internal_service_loyalty_test_newtestservice",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_internal_service_loyalty_test_pointsconfig",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_internal_service_loyalty_test_pointsconfig",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_points_mechanic_accrue",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_points_mechanic_accrue",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_postgres_loyaltyconfigrepository_getbystore",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_postgres_loyaltyconfigrepository_getbystore",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_postgres_loyaltyconfigrepository_upsert",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_postgres_loyaltyconfigrepository_upsert",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_service_fakeconfigrepo",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_service_fakeconfigrepo",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_service_fakeconfigrepo_getbystore",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_service_fakeconfigrepo_getbystore",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_loyaltyconfig_service_fakeconfigrepo_upsert",
+      "fromNode": "n_domain_loyaltyconfig",
+      "toNode": "n_service_fakeconfigrepo_upsert",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_mechanic_domain_mechanic",
+      "fromNode": "n_internal_domain_mechanic",
+      "toNode": "n_domain_mechanic",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_notification_domain_notificationchannel",
+      "fromNode": "n_internal_domain_notification",
+      "toNode": "n_domain_notificationchannel",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_notificationchannel_internal_service_loyalty_new",
+      "fromNode": "n_domain_notificationchannel",
+      "toNode": "n_internal_service_loyalty_new",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_notificationchannel_service_loyaltyservice",
+      "fromNode": "n_domain_notificationchannel",
+      "toNode": "n_service_loyaltyservice",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_store_domain_store",
+      "fromNode": "n_internal_domain_store",
+      "toNode": "n_domain_store",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_store_domain_storerepository",
+      "fromNode": "n_internal_domain_store",
+      "toNode": "n_domain_storerepository",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_store_internal_httpserver_context_storefromcontext",
+      "fromNode": "n_domain_store",
+      "toNode": "n_internal_httpserver_context_storefromcontext",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_store_postgres_storerepository_create",
+      "fromNode": "n_domain_store",
+      "toNode": "n_postgres_storerepository_create",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_store_postgres_storerepository_getbyapikeyhash",
+      "fromNode": "n_domain_store",
+      "toNode": "n_postgres_storerepository_getbyapikeyhash",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_store_postgres_storerepository_getbyid",
+      "fromNode": "n_domain_store",
+      "toNode": "n_postgres_storerepository_getbyid",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_transaction_domain_transaction",
+      "fromNode": "n_internal_domain_transaction",
+      "toNode": "n_domain_transaction",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_transaction_domain_transactionrepository",
+      "fromNode": "n_internal_domain_transaction",
+      "toNode": "n_domain_transactionrepository",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_domain_transaction_domain_transactiontype",
+      "fromNode": "n_internal_domain_transaction",
+      "toNode": "n_domain_transactiontype",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transactiontype_domain_transaction",
+      "fromNode": "n_domain_transactiontype",
+      "toNode": "n_domain_transaction",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transactiontype_postgres_transactionrepository_getbyexternalid",
+      "fromNode": "n_domain_transactiontype",
+      "toNode": "n_postgres_transactionrepository_getbyexternalid",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transactiontype_service_faketxrepo_getbyexternalid",
+      "fromNode": "n_domain_transactiontype",
+      "toNode": "n_service_faketxrepo_getbyexternalid",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_internal_domain_transaction_go_decimal",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_internal_domain_transaction_go_decimal",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_internal_domain_transaction_go_time",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_internal_domain_transaction_go_time",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_points_mechanic_accrue",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_points_mechanic_accrue",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_postgres_ledgerrepository_post",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_postgres_ledgerrepository_post",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_postgres_transactionrepository_getbyexternalid",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_postgres_transactionrepository_getbyexternalid",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_postgres_transactionrepository_listbyclient",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_postgres_transactionrepository_listbyclient",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_service_fakeledgerrepo_post",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_service_fakeledgerrepo_post",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_service_faketxrepo",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_service_faketxrepo",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_service_faketxrepo_getbyexternalid",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_service_faketxrepo_getbyexternalid",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_domain_transaction_service_faketxrepo_listbyclient",
+      "fromNode": "n_domain_transaction",
+      "toNode": "n_service_faketxrepo_listbyclient",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_httpserver_balanceresponsebody",
+      "fromNode": "n_internal_httpserver_clients",
+      "toNode": "n_httpserver_balanceresponsebody",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_internal_httpserver_clients_handlegetclientbalance",
+      "fromNode": "n_internal_httpserver_clients",
+      "toNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_internal_httpserver_clients_handlelookupclientbyphone",
+      "fromNode": "n_internal_httpserver_clients",
+      "toNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_clients_go_balancerepository",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_clients_go_balancerepository",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_clients_go_clientrepository",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_clients_go_clientrepository",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_clients_go_handlerfunc",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_clients_go_handlerfunc",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_clients_go_logger",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_clients_go_logger",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_context_storefromcontext",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_context_storefromcontext",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_respond_writeerror",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_respond_writeerror",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_respond_writejson",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_respond_writejson",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlegetclientbalance_internal_httpserver_server_new",
+      "fromNode": "n_internal_httpserver_clients_handlegetclientbalance",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_go_clientrepository_internal_httpserver_clients_handlelookupclientbyphone",
+      "fromNode": "n_internal_httpserver_clients_go_clientrepository",
+      "toNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_go_balancerepository_internal_httpserver_clients_handlelookupclientbyphone",
+      "fromNode": "n_internal_httpserver_clients_go_balancerepository",
+      "toNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_go_logger_internal_httpserver_clients_handlelookupclientbyphone",
+      "fromNode": "n_internal_httpserver_clients_go_logger",
+      "toNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_go_handlerfunc_internal_httpserver_clients_handlelookupclientbyphone",
+      "fromNode": "n_internal_httpserver_clients_go_handlerfunc",
+      "toNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlelookupclientbyphone_internal_httpserver_context_storefromcontext",
+      "fromNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "toNode": "n_internal_httpserver_context_storefromcontext",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlelookupclientbyphone_internal_httpserver_respond_writeerror",
+      "fromNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "toNode": "n_internal_httpserver_respond_writeerror",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlelookupclientbyphone_internal_httpserver_respond_writejson",
+      "fromNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "toNode": "n_internal_httpserver_respond_writejson",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_clients_handlelookupclientbyphone_internal_httpserver_server_new",
+      "fromNode": "n_internal_httpserver_clients_handlelookupclientbyphone",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_context_httpserver_storecontextkey",
+      "fromNode": "n_internal_httpserver_context",
+      "toNode": "n_httpserver_storecontextkey",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_context_internal_httpserver_context_storefromcontext",
+      "fromNode": "n_internal_httpserver_context",
+      "toNode": "n_internal_httpserver_context_storefromcontext",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_context_storefromcontext_internal_httpserver_context_go_context",
+      "fromNode": "n_internal_httpserver_context_storefromcontext",
+      "toNode": "n_internal_httpserver_context_go_context",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_context_storefromcontext_internal_httpserver_transactions_handleaccruetransaction",
+      "fromNode": "n_internal_httpserver_context_storefromcontext",
+      "toNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_context_storefromcontext_internal_httpserver_transactions_handleredeemtransaction",
+      "fromNode": "n_internal_httpserver_context_storefromcontext",
+      "toNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_internal_httpserver_middleware_hashapikey",
+      "fromNode": "n_internal_httpserver_middleware",
+      "toNode": "n_internal_httpserver_middleware_hashapikey",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_internal_httpserver_middleware_requirestoreapikey",
+      "fromNode": "n_internal_httpserver_middleware",
+      "toNode": "n_internal_httpserver_middleware_requirestoreapikey",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_hashapikey_internal_httpserver_middleware_requirestoreapikey",
+      "fromNode": "n_internal_httpserver_middleware_hashapikey",
+      "toNode": "n_internal_httpserver_middleware_requirestoreapikey",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_requirestoreapikey_internal_httpserver_middleware_go_handlerfunc",
+      "fromNode": "n_internal_httpserver_middleware_requirestoreapikey",
+      "toNode": "n_internal_httpserver_middleware_go_handlerfunc",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_requirestoreapikey_internal_httpserver_middleware_go_storerepository",
+      "fromNode": "n_internal_httpserver_middleware_requirestoreapikey",
+      "toNode": "n_internal_httpserver_middleware_go_storerepository",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_requirestoreapikey_internal_httpserver_respond_writeerror",
+      "fromNode": "n_internal_httpserver_middleware_requirestoreapikey",
+      "toNode": "n_internal_httpserver_respond_writeerror",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_requirestoreapikey_internal_httpserver_server_new",
+      "fromNode": "n_internal_httpserver_middleware_requirestoreapikey",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_logging_httpserver_statuswriter",
+      "fromNode": "n_internal_httpserver_middleware_logging",
+      "toNode": "n_httpserver_statuswriter",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_logging_internal_httpserver_middleware_logging_loggingmw",
+      "fromNode": "n_internal_httpserver_middleware_logging",
+      "toNode": "n_internal_httpserver_middleware_logging_loggingmw",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_logging_loggingmw_handler",
+      "fromNode": "n_internal_httpserver_middleware_logging_loggingmw",
+      "toNode": "n_handler",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_logging_loggingmw_internal_httpserver_middleware_logging_go_logger",
+      "fromNode": "n_internal_httpserver_middleware_logging_loggingmw",
+      "toNode": "n_internal_httpserver_middleware_logging_go_logger",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_middleware_logging_loggingmw_internal_httpserver_server_new",
+      "fromNode": "n_internal_httpserver_middleware_logging_loggingmw",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_httpserver_statuswriter_httpserver_statuswriter_writeheader",
+      "fromNode": "n_httpserver_statuswriter",
+      "toNode": "n_httpserver_statuswriter_writeheader",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_statuswriter_internal_httpserver_middleware_logging_go_responsewriter",
+      "fromNode": "n_httpserver_statuswriter",
+      "toNode": "n_internal_httpserver_middleware_logging_go_responsewriter",
+      "label": "embeds [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_internal_httpserver_respond_writeerror",
+      "fromNode": "n_internal_httpserver_respond",
+      "toNode": "n_internal_httpserver_respond_writeerror",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_internal_httpserver_respond_writejson",
+      "fromNode": "n_internal_httpserver_respond",
+      "toNode": "n_internal_httpserver_respond_writejson",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_writejson_internal_httpserver_respond_writeerror",
+      "fromNode": "n_internal_httpserver_respond_writejson",
+      "toNode": "n_internal_httpserver_respond_writeerror",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_writejson_internal_httpserver_respond_go_responsewriter",
+      "fromNode": "n_internal_httpserver_respond_writejson",
+      "toNode": "n_internal_httpserver_respond_go_responsewriter",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_writejson_internal_httpserver_transactions_handleaccruetransaction",
+      "fromNode": "n_internal_httpserver_respond_writejson",
+      "toNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_writejson_internal_httpserver_transactions_handleredeemtransaction",
+      "fromNode": "n_internal_httpserver_respond_writejson",
+      "toNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_go_responsewriter_internal_httpserver_respond_writeerror",
+      "fromNode": "n_internal_httpserver_respond_go_responsewriter",
+      "toNode": "n_internal_httpserver_respond_writeerror",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_writeerror_internal_httpserver_server_new",
+      "fromNode": "n_internal_httpserver_respond_writeerror",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_writeerror_internal_httpserver_transactions_handleaccruetransaction",
+      "fromNode": "n_internal_httpserver_respond_writeerror",
+      "toNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_respond_writeerror_internal_httpserver_transactions_handleredeemtransaction",
+      "fromNode": "n_internal_httpserver_respond_writeerror",
+      "toNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_server_httpserver_deps",
+      "fromNode": "n_internal_httpserver_server",
+      "toNode": "n_httpserver_deps",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_server_internal_httpserver_server_new",
+      "fromNode": "n_internal_httpserver_server",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_deps_internal_httpserver_server_go_balancerepository",
+      "fromNode": "n_httpserver_deps",
+      "toNode": "n_internal_httpserver_server_go_balancerepository",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_deps_internal_httpserver_server_go_clientrepository",
+      "fromNode": "n_httpserver_deps",
+      "toNode": "n_internal_httpserver_server_go_clientrepository",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_deps_internal_httpserver_server_go_context",
+      "fromNode": "n_httpserver_deps",
+      "toNode": "n_internal_httpserver_server_go_context",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_deps_internal_httpserver_server_go_logger",
+      "fromNode": "n_httpserver_deps",
+      "toNode": "n_internal_httpserver_server_go_logger",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_deps_internal_httpserver_server_go_storerepository",
+      "fromNode": "n_httpserver_deps",
+      "toNode": "n_internal_httpserver_server_go_storerepository",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_deps_service_loyaltyservice",
+      "fromNode": "n_httpserver_deps",
+      "toNode": "n_service_loyaltyservice",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_deps_internal_httpserver_server_new",
+      "fromNode": "n_httpserver_deps",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_server_go_context_internal_httpserver_server_new",
+      "fromNode": "n_internal_httpserver_server_go_context",
+      "toNode": "n_internal_httpserver_server_new",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_server_new_internal_httpserver_server_go_server",
+      "fromNode": "n_internal_httpserver_server_new",
+      "toNode": "n_internal_httpserver_server_go_server",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_server_new_internal_httpserver_transactions_handleaccruetransaction",
+      "fromNode": "n_internal_httpserver_server_new",
+      "toNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_server_new_internal_httpserver_transactions_handleredeemtransaction",
+      "fromNode": "n_internal_httpserver_server_new",
+      "toNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_httpserver_accruerequestbody",
+      "fromNode": "n_internal_httpserver_transactions",
+      "toNode": "n_httpserver_accruerequestbody",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_httpserver_redeemrequestbody",
+      "fromNode": "n_internal_httpserver_transactions",
+      "toNode": "n_httpserver_redeemrequestbody",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_httpserver_redeemresponsebody",
+      "fromNode": "n_internal_httpserver_transactions",
+      "toNode": "n_httpserver_redeemresponsebody",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_httpserver_transactionresponsebody",
+      "fromNode": "n_internal_httpserver_transactions",
+      "toNode": "n_httpserver_transactionresponsebody",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_internal_httpserver_transactions_handleaccruetransaction",
+      "fromNode": "n_internal_httpserver_transactions",
+      "toNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_internal_httpserver_transactions_handleredeemtransaction",
+      "fromNode": "n_internal_httpserver_transactions",
+      "toNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_httpserver_accruerequestbody_internal_httpserver_transactions_go_decimal",
+      "fromNode": "n_httpserver_accruerequestbody",
+      "toNode": "n_internal_httpserver_transactions_go_decimal",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_go_decimal_httpserver_redeemrequestbody",
+      "fromNode": "n_internal_httpserver_transactions_go_decimal",
+      "toNode": "n_httpserver_redeemrequestbody",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_handleaccruetransaction_internal_httpserver_transactions_go_handlerfunc",
+      "fromNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "toNode": "n_internal_httpserver_transactions_go_handlerfunc",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_handleaccruetransaction_internal_httpserver_transactions_go_logger",
+      "fromNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "toNode": "n_internal_httpserver_transactions_go_logger",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_handleaccruetransaction_service_loyaltyservice",
+      "fromNode": "n_internal_httpserver_transactions_handleaccruetransaction",
+      "toNode": "n_service_loyaltyservice",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_go_logger_internal_httpserver_transactions_handleredeemtransaction",
+      "fromNode": "n_internal_httpserver_transactions_go_logger",
+      "toNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_go_handlerfunc_internal_httpserver_transactions_handleredeemtransaction",
+      "fromNode": "n_internal_httpserver_transactions_go_handlerfunc",
+      "toNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_httpserver_transactions_handleredeemtransaction_service_loyaltyservice",
+      "fromNode": "n_internal_httpserver_transactions_handleredeemtransaction",
+      "toNode": "n_service_loyaltyservice",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_logger_logger_internal_logger_logger_new",
+      "fromNode": "n_internal_logger_logger",
+      "toNode": "n_internal_logger_logger_new",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_logger_logger_internal_logger_logger_parselevel",
+      "fromNode": "n_internal_logger_logger",
+      "toNode": "n_internal_logger_logger_parselevel",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_logger_logger_new_internal_logger_logger_go_logger",
+      "fromNode": "n_internal_logger_logger_new",
+      "toNode": "n_internal_logger_logger_go_logger",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_logger_logger_new_internal_logger_logger_parselevel",
+      "fromNode": "n_internal_logger_logger_new",
+      "toNode": "n_internal_logger_logger_parselevel",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_logger_logger_parselevel_level",
+      "fromNode": "n_internal_logger_logger_parselevel",
+      "toNode": "n_level",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_internal_mechanic_points_points_new",
+      "fromNode": "n_internal_mechanic_points_points",
+      "toNode": "n_internal_mechanic_points_points_new",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_points_mechanic",
+      "fromNode": "n_internal_mechanic_points_points",
+      "toNode": "n_points_mechanic",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_points_mechanic_internal_mechanic_points_points_new",
+      "fromNode": "n_points_mechanic",
+      "toNode": "n_internal_mechanic_points_points_new",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_points_mechanic_points_mechanic_accrue",
+      "fromNode": "n_points_mechanic",
+      "toNode": "n_points_mechanic_accrue",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_points_mechanic_points_mechanic_name",
+      "fromNode": "n_points_mechanic",
+      "toNode": "n_points_mechanic_name",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_new_internal_mechanic_points_points_test_testmechanic_accrue",
+      "fromNode": "n_internal_mechanic_points_points_new",
+      "toNode": "n_internal_mechanic_points_points_test_testmechanic_accrue",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_new_internal_mechanic_points_points_test_testmechanic_name",
+      "fromNode": "n_internal_mechanic_points_points_new",
+      "toNode": "n_internal_mechanic_points_points_test_testmechanic_name",
+      "label": "calls [INFERRED]"
+    },
+    {
+      "id": "e_points_mechanic_accrue_internal_mechanic_points_points_go_context",
+      "fromNode": "n_points_mechanic_accrue",
+      "toNode": "n_internal_mechanic_points_points_go_context",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_test_internal_mechanic_points_points_test_testmechanic_accrue",
+      "fromNode": "n_internal_mechanic_points_points_test",
+      "toNode": "n_internal_mechanic_points_points_test_testmechanic_accrue",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_test_internal_mechanic_points_points_test_testmechanic_name",
+      "fromNode": "n_internal_mechanic_points_points_test",
+      "toNode": "n_internal_mechanic_points_points_test_testmechanic_name",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_test_testmechanic_accrue_internal_mechanic_points_points_test_go_t",
+      "fromNode": "n_internal_mechanic_points_points_test_testmechanic_accrue",
+      "toNode": "n_internal_mechanic_points_points_test_go_t",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanic_points_points_test_go_t_internal_mechanic_points_points_test_testmechanic_name",
+      "fromNode": "n_internal_mechanic_points_points_test_go_t",
+      "toNode": "n_internal_mechanic_points_points_test_testmechanic_name",
+      "label": "references [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanicbuild_mechanicbuild_internal_mechanicbuild_mechanicbuild_build",
+      "fromNode": "n_internal_mechanicbuild_mechanicbuild",
+      "toNode": "n_internal_mechanicbuild_mechanicbuild_build",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_internal_mechanicbuild_mechanicbuild_build_mechanic",
+      "fromNode": "n_internal_mechanicbuild_mechanicbuild_build",
+      "toNode": "n_mechanic",
+      "label": "references [EXTRACTED]"
+    }
+  ]
+}

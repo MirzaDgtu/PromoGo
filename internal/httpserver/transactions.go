@@ -12,6 +12,14 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/service"
 )
 
+// Field-length caps enforced on both transaction endpoints: generous enough
+// for any realistic 1C-assigned ID or phone number, tight enough to reject
+// pathological input at the boundary rather than storing it.
+const (
+	maxExternalTxIDLen = 255
+	maxPhoneLen        = 32
+)
+
 // accrueRequestBody is the 1C webhook payload (Idea.md's POST
 // /api/v1/transactions), trimmed to MVP scope: no items/category rules, no
 // tiers. Phone identifies the client at POS (Idea.md: QR/card/phone; MVP
@@ -28,6 +36,7 @@ type accrueRequestBody struct {
 // surfaces idempotent-replay detection for sandbox/integration debugging;
 // integrators may ignore it.
 type transactionResponseBody struct {
+	ClientID     int64 `json:"client_id"`
 	PointsEarned int64 `json:"points_earned"`
 	Balance      int64 `json:"balance"`
 	Replayed     bool  `json:"replayed,omitempty"`
@@ -44,13 +53,17 @@ func handleAccrueTransaction(loyalty *service.LoyaltyService, log *slog.Logger) 
 			return
 		}
 
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
 		var body accrueRequestBody
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := dec.Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
-		if body.ExternalTxID == "" || body.Phone == "" || body.Amount.IsNegative() {
-			writeError(w, http.StatusBadRequest, "transaction_id, phone, and a non-negative amount are required")
+		if body.ExternalTxID == "" || len(body.ExternalTxID) > maxExternalTxIDLen ||
+			body.Phone == "" || len(body.Phone) > maxPhoneLen ||
+			!body.Amount.IsPositive() {
+			writeError(w, http.StatusBadRequest, "transaction_id, phone, and a positive amount are required")
 			return
 		}
 
@@ -71,6 +84,7 @@ func handleAccrueTransaction(loyalty *service.LoyaltyService, log *slog.Logger) 
 		}
 
 		writeJSON(w, http.StatusOK, transactionResponseBody{
+			ClientID:     result.ClientID,
 			PointsEarned: result.PointsEarned,
 			Balance:      result.Balance,
 			Replayed:     result.Replayed,
@@ -107,13 +121,16 @@ func handleRedeemTransaction(loyalty *service.LoyaltyService, log *slog.Logger) 
 			return
 		}
 
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
 		var body redeemRequestBody
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := dec.Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid request body")
 			return
 		}
-		if body.ExternalTxID == "" || body.ClientID == 0 || body.Points <= 0 {
-			writeError(w, http.StatusBadRequest, "transaction_id, client_id, and a positive points value are required")
+		if body.ExternalTxID == "" || len(body.ExternalTxID) > maxExternalTxIDLen ||
+			body.ClientID <= 0 || body.Points <= 0 || !body.Amount.IsPositive() {
+			writeError(w, http.StatusBadRequest, "transaction_id, client_id, a positive points value, and a positive amount are required")
 			return
 		}
 

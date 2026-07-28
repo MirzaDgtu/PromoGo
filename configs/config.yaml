@@ -32,3 +32,31 @@ fcm:
   # (internal/notification/logchannel), so the loyalty flow works before
   # push is wired up.
   credentials_json: ""
+
+auth:
+  # HMAC signing secret for both customer and staff access tokens
+  # (internal/auth/tokens.go). REQUIRED outside app.env=development — set
+  # via PROMOGO_AUTH_ACCESS_TOKEN_SECRET, at least 32 random bytes, never
+  # committed here. internal/config.Load fails fast if this is missing/weak
+  # outside development.
+  access_token_secret: ""
+  access_token_ttl: 15m
+  refresh_token_ttl: 720h # 30 days
+  otp_ttl: 5m
+  otp_resend_cooldown: 60s
+  otp_max_attempts: 5
+  otp_rate_limit_window: 1h
+  otp_max_requests_per_phone: 5
+  otp_max_requests_per_ip: 20
+
+oidc:
+  # Staff/platform-admin OIDC identity provider (internal/auth/oidc.go).
+  # Any OIDC-compliant IdP works — Keycloak, Auth0, Azure AD, etc. Empty
+  # issuer_url disables staff OIDC login until configured. Typically
+  # overridden per environment via PROMOGO_OIDC_ISSUER_URL /
+  # PROMOGO_OIDC_AUDIENCE / PROMOGO_OIDC_JWKS_URL rather than hardcoded
+  # here, since it usually differs between local/stage/prod.
+  issuer_url: ""
+  audience: ""
+  jwks_url: ""
+  jwks_cache_ttl: 10m
