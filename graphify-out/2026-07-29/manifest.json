@@ -70,9 +70,9 @@
     "semantic_hash": "3047f87958cf6a107e2400dc175f32b1"
   },
   "internal/domain/transaction.go": {
-    "mtime": 1785265622.746879,
-    "ast_hash": "e6afd8dff36bd85fd7bfbcad5276335d",
-    "semantic_hash": "e6afd8dff36bd85fd7bfbcad5276335d"
+    "mtime": 1785283773.1329246,
+    "ast_hash": "91ea1f32d3838d131a4eda1a8ea6d37d",
+    "semantic_hash": "91ea1f32d3838d131a4eda1a8ea6d37d"
   },
   "internal/httpserver/clients.go": {
     "mtime": 1785277862.2091682,
@@ -170,9 +170,9 @@
     "semantic_hash": "9c5105eecdf70aacc852e39e19f9cbd3"
   },
   "internal/repository/postgres/transaction_repository.go": {
-    "mtime": 1785265640.1396675,
-    "ast_hash": "29dc969a13b9f11114613591a4be5e68",
-    "semantic_hash": "29dc969a13b9f11114613591a4be5e68"
+    "mtime": 1785283785.3818116,
+    "ast_hash": "b67663be57cd9267324d52ea7e225e5c",
+    "semantic_hash": "b67663be57cd9267324d52ea7e225e5c"
   },
   "internal/service/loyalty.go": {
     "mtime": 1785277838.3561828,
@@ -180,9 +180,9 @@
     "semantic_hash": "bff795205eff599b21211d6f6ce4d593"
   },
   "internal/service/loyalty_test.go": {
-    "mtime": 1785276842.5522108,
-    "ast_hash": "6475e532c1619627c2951e7df8f0fab2",
-    "semantic_hash": "6475e532c1619627c2951e7df8f0fab2"
+    "mtime": 1785283955.5644498,
+    "ast_hash": "f12e7097b036e9091dd76f550e44c447",
+    "semantic_hash": "f12e7097b036e9091dd76f550e44c447"
   },
   "migrations/embed.go": {
     "mtime": 1785265505.5364692,
@@ -455,9 +455,9 @@
     "semantic_hash": "f3fdc22a6fd1d68928e2e30078d3e43f"
   },
   "internal/httpserver/me.go": {
-    "mtime": 1785277322.1951458,
-    "ast_hash": "75cb3959a105404a8a297173624f14da",
-    "semantic_hash": "75cb3959a105404a8a297173624f14da"
+    "mtime": 1785283820.8101735,
+    "ast_hash": "553089c3cfbeb32df53a9bbbf6980e5a",
+    "semantic_hash": "553089c3cfbeb32df53a9bbbf6980e5a"
   },
   "internal/httpserver/middleware_customer.go": {
     "mtime": 1785277272.551367,
@@ -643,5 +643,10 @@
     "mtime": 1785282289.4976737,
     "ast_hash": "4964c2d161364b2633579b93a50691bc",
     "semantic_hash": "4964c2d161364b2633579b93a50691bc"
+  },
+  "internal/httpserver/me_test.go": {
+    "mtime": 1785283941.740261,
+    "ast_hash": "b296f28bac486bb1ef8e03073bae0372",
+    "semantic_hash": "b296f28bac486bb1ef8e03073bae0372"
   }
 }

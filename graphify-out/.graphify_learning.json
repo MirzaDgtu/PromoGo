@@ -1,6 +1,70 @@
 {
-  "generated_at": "2026-07-28T23:47:55.420811+00:00",
+  "generated_at": "2026-07-29T08:12:24.833918+00:00",
   "nodes": {
+    "claude_planned_architecture": {
+      "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
+      "label": "Planned PromoGo Architecture",
+      "last": "2026-07-28T23:50:12.729339+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-28T23:50:12.729339+00:00",
+          "outcome": "useful",
+          "q": "Создай для нашего проекта README.md"
+        }
+      ],
+      "score": 0.991974514,
+      "source_file": "CLAUDE.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "config_config": {
+      "code_fingerprint": "85298f0577d3a7f449902f22406120b260fb801e4985f23e553e72c12643a2de",
+      "label": "Config",
+      "last": "2026-07-28T23:50:12.729339+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-28T23:50:12.729339+00:00",
+          "outcome": "useful",
+          "q": "Создай для нашего проекта README.md"
+        }
+      ],
+      "score": 0.991974514,
+      "source_file": "internal/config/config.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "configs_config_runtime_configuration": {
+      "code_fingerprint": "0f966dca0f745e89f1485e80f91c2cfcfd700006ae408f331288b4a6f1d22abc",
+      "label": "PromoGo Runtime Configuration",
+      "last": "2026-07-28T23:50:12.729339+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-28T23:50:12.729339+00:00",
+          "outcome": "useful",
+          "q": "Создай для нашего проекта README.md"
+        }
+      ],
+      "score": 0.991974514,
+      "source_file": "configs/config.yaml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "deployments_docker_compose_local_stack": {
+      "code_fingerprint": "3c0c54d8185205a5c4cbcb889b697673b8d6e5f0c9e1afb35eb0f495d89da9cc",
+      "label": "Docker Compose Local Stack",
+      "last": "2026-07-28T23:50:12.729339+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-28T23:50:12.729339+00:00",
+          "outcome": "useful",
+          "q": "Создай для нашего проекта README.md"
+        }
+      ],
+      "score": 0.991974514,
+      "source_file": "deployments/docker-compose.yml",
+      "status": "tentative",
+      "uses": 1
+    },
     "full_scope_phase_2_multistore_product": {
       "code_fingerprint": "1b1eec672d61721317c29cfaabb70e7366db8a5cab5bf7be7bef8881405b5a87",
       "label": "Phase 2: Mechanics and Multistore Product",
@@ -12,7 +76,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.99815229,
+      "score": 0.990105276,
       "source_file": "Full-scope.md",
       "status": "tentative",
       "uses": 1
@@ -28,7 +92,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.996812183,
+      "score": 0.988775973,
       "source_file": "Full-scope.md",
       "status": "tentative",
       "uses": 1
@@ -49,13 +113,13 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.996195372,
+      "score": 1.980102225,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 2
     },
     "knowledge_project_questions_administration_configuration": {
-      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
+      "code_fingerprint": "30f1bc7a55a3dadeaa6b34e4b0180dd7eba048aec20c2bb5b8798dae2dfd58eb",
       "label": "Web Configuration and Administrative Management",
       "last": "2026-07-28T21:52:39.582489+00:00",
       "provenance": [
@@ -70,13 +134,13 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.996195372,
+      "score": 1.980102225,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
     },
     "knowledge_project_questions_customer_identity_channels": {
-      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
+      "code_fingerprint": "30f1bc7a55a3dadeaa6b34e4b0180dd7eba048aec20c2bb5b8798dae2dfd58eb",
       "label": "Customer Registration, Identity, Mobile, and Notifications",
       "last": "2026-07-28T21:52:39.582489+00:00",
       "provenance": [
@@ -91,13 +155,13 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.996195372,
+      "score": 1.980102225,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
     },
     "knowledge_project_questions_implementation_scope_gaps": {
-      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
+      "code_fingerprint": "30f1bc7a55a3dadeaa6b34e4b0180dd7eba048aec20c2bb5b8798dae2dfd58eb",
       "label": "Current Implementation and Scope Gaps",
       "last": "2026-07-28T20:28:55.649296+00:00",
       "provenance": [
@@ -107,13 +171,13 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.996812183,
+      "score": 0.988775973,
       "source_file": "knowledge/Project Questions.md",
       "status": "tentative",
       "uses": 1
     },
     "knowledge_project_questions_operational_release_readiness": {
-      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
+      "code_fingerprint": "30f1bc7a55a3dadeaa6b34e4b0180dd7eba048aec20c2bb5b8798dae2dfd58eb",
       "label": "Reliability, Operations, Quality, and Release Readiness",
       "last": "2026-07-28T20:28:55.649296+00:00",
       "provenance": [
@@ -123,7 +187,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.996812183,
+      "score": 0.988775973,
       "source_file": "knowledge/Project Questions.md",
       "status": "tentative",
       "uses": 1
