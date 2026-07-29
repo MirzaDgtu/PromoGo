@@ -4,3 +4,7 @@ graphify-out/cache/
 graphify-out/cost.json
 graphify-out/.graphify_python
 graphify-out/.graphify_root
+# Obsidian's own per-installation app state (view zoom/pan, regenerated
+# color groups, workspace layout) — not portable project data, and churns
+# on every vault open/graphify export, so it can't stay clean in git.
+graphify-out/obsidian/.obsidian/
