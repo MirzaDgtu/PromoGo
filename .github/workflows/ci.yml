@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # internal/httpserver route-level tests must never regress below this.
+  # See docs/openapi/openapi.yaml parity test and knowledge/Decisions.md.
+  HTTPSERVER_MIN_COVERAGE: "65.0"
+
+jobs:
+  verify:
+    name: build / vet / fmt / test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go mod verify
+        run: go mod verify
+
+      - name: gofmt
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "The following files are not gofmt'd:"
+            echo "$fmt_out"
+            exit 1
+          fi
+
+      - name: go build
+        run: go build ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -shuffle=on -count=1 ./...
+
+      - name: internal/httpserver coverage
+        run: |
+          go test -count=1 -covermode=atomic -coverprofile=httpserver.cover.out ./internal/httpserver/...
+          pct="$(go tool cover -func=httpserver.cover.out | awk '/^total:/ {gsub("%","",$3); print $3}')"
+          echo "internal/httpserver statement coverage: ${pct}%"
+          awk -v pct="$pct" -v min="$HTTPSERVER_MIN_COVERAGE" 'BEGIN { exit !(pct + 0 >= min + 0) }' \
+            || { echo "coverage ${pct}% is below required ${HTTPSERVER_MIN_COVERAGE}%"; exit 1; }
+
+      - name: OpenAPI lint (Redocly)
+        run: |
+          npx --yes @redocly/cli@1.25.5 lint docs/openapi/openapi.yaml
+
+      - name: Route / OpenAPI parity test
+        run: go test -count=1 -run TestRouteOpenAPIParity ./internal/httpserver/...
+
+  race:
+    name: test -race
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CGO_ENABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install C toolchain (race detector requires cgo)
+        run: sudo apt-get update && sudo apt-get install -y gcc
+
+      - name: go test -race
+        run: go test -race -count=1 ./...

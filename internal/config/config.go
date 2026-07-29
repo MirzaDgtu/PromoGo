@@ -15,14 +15,15 @@ import (
 // file and overridable via PROMOGO_-prefixed environment variables
 // (e.g. PROMOGO_POSTGRES_PASSWORD overrides postgres.password).
 type Config struct {
-	App      AppConfig      `mapstructure:"app"`
-	HTTP     HTTPConfig     `mapstructure:"http"`
-	Postgres PostgresConfig `mapstructure:"postgres"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Logger   LoggerConfig   `mapstructure:"logger"`
-	FCM      FCMConfig      `mapstructure:"fcm"`
-	Auth     AuthConfig     `mapstructure:"auth"`
-	OIDC     OIDCConfig     `mapstructure:"oidc"`
+	App       AppConfig       `mapstructure:"app"`
+	HTTP      HTTPConfig      `mapstructure:"http"`
+	Postgres  PostgresConfig  `mapstructure:"postgres"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	Logger    LoggerConfig    `mapstructure:"logger"`
+	FCM       FCMConfig       `mapstructure:"fcm"`
+	Auth      AuthConfig      `mapstructure:"auth"`
+	OIDC      OIDCConfig      `mapstructure:"oidc"`
+	RateLimit RateLimitConfig `mapstructure:"ratelimit"`
 }
 
 // AppConfig holds general application metadata.
@@ -35,6 +36,43 @@ type AppConfig struct {
 type HTTPConfig struct {
 	Host string `mapstructure:"host"`
 	Port int    `mapstructure:"port"`
+
+	// TrustedProxies lists CIDR ranges (e.g. "10.0.0.0/8") of reverse
+	// proxies/load balancers allowed to set X-Forwarded-For. Empty (the
+	// default) means no proxy is trusted: rate limiting's IP dimension uses
+	// the TCP connection's RemoteAddr only, matching clientIP's existing
+	// behavior for audit logging and OTP rate limiting — an arbitrary
+	// client must never be able to pick its own rate-limit bucket by
+	// spoofing this header.
+	TrustedProxies []string `mapstructure:"trusted_proxies"`
+}
+
+// RateLimitConfig bounds the distributed (Redis-backed) rate limiter's
+// profiles — see internal/ratelimit and httpserver's routes.go
+// RateLimitProfile. All limits are requests allowed per Window; defaults
+// are deliberately generous (especially for the 1C-facing accrual/lookup
+// profiles) so a legitimate integration is never throttled under normal
+// operation — they exist to bound abuse, not to shape steady-state traffic.
+type RateLimitConfig struct {
+	StaffLoginIPLimit  int           `mapstructure:"staff_login_ip_limit"`
+	StaffLoginIPWindow time.Duration `mapstructure:"staff_login_ip_window"`
+
+	AdminIPLimit     int           `mapstructure:"admin_ip_limit"`
+	AdminIPWindow    time.Duration `mapstructure:"admin_ip_window"`
+	AdminStaffLimit  int           `mapstructure:"admin_staff_limit"`
+	AdminStaffWindow time.Duration `mapstructure:"admin_staff_window"`
+
+	ClientLookupIPLimit         int           `mapstructure:"client_lookup_ip_limit"`
+	ClientLookupIPWindow        time.Duration `mapstructure:"client_lookup_ip_window"`
+	ClientLookupPrincipalLimit  int           `mapstructure:"client_lookup_principal_limit"`
+	ClientLookupPrincipalWindow time.Duration `mapstructure:"client_lookup_principal_window"`
+	ClientLookupPhoneLimit      int           `mapstructure:"client_lookup_phone_limit"`
+	ClientLookupPhoneWindow     time.Duration `mapstructure:"client_lookup_phone_window"`
+
+	AccrualIPLimit         int           `mapstructure:"accrual_ip_limit"`
+	AccrualIPWindow        time.Duration `mapstructure:"accrual_ip_window"`
+	AccrualPrincipalLimit  int           `mapstructure:"accrual_principal_limit"`
+	AccrualPrincipalWindow time.Duration `mapstructure:"accrual_principal_window"`
 }
 
 // Addr returns the host:port address the HTTP server should bind to.
@@ -227,4 +265,27 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("auth.otp_max_requests_per_ip", 20)
 
 	v.SetDefault("oidc.jwks_cache_ttl", 10*time.Minute)
+
+	// Rate limiting: generous, especially on the 1C-facing accrual/lookup
+	// profiles — these bound abuse, they must not throttle normal
+	// integration traffic. See RateLimitConfig's doc comment.
+	v.SetDefault("ratelimit.staff_login_ip_limit", 20)
+	v.SetDefault("ratelimit.staff_login_ip_window", 5*time.Minute)
+
+	v.SetDefault("ratelimit.admin_ip_limit", 120)
+	v.SetDefault("ratelimit.admin_ip_window", time.Minute)
+	v.SetDefault("ratelimit.admin_staff_limit", 300)
+	v.SetDefault("ratelimit.admin_staff_window", time.Minute)
+
+	v.SetDefault("ratelimit.client_lookup_ip_limit", 120)
+	v.SetDefault("ratelimit.client_lookup_ip_window", time.Minute)
+	v.SetDefault("ratelimit.client_lookup_principal_limit", 300)
+	v.SetDefault("ratelimit.client_lookup_principal_window", time.Minute)
+	v.SetDefault("ratelimit.client_lookup_phone_limit", 30)
+	v.SetDefault("ratelimit.client_lookup_phone_window", time.Minute)
+
+	v.SetDefault("ratelimit.accrual_ip_limit", 300)
+	v.SetDefault("ratelimit.accrual_ip_window", time.Minute)
+	v.SetDefault("ratelimit.accrual_principal_limit", 600)
+	v.SetDefault("ratelimit.accrual_principal_window", time.Minute)
 }

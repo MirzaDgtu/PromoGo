@@ -180,7 +180,7 @@ OTP request/verify, refresh и logout доступны без access token. Ме
 
 Вход сотрудников выполняется через `POST /api/v1/staff/auth/oidc`. Административные endpoints под `/api/v1/admin/...` используют staff access token и проверяют RBAC-права на организацию или магазин.
 
-Контракт customer/staff auth API находится в [`docs/openapi/auth.yaml`](docs/openapi/auth.yaml).
+Полный контракт API (health/readiness, 1C/POS, customer, staff/admin) находится в [`docs/openapi/openapi.yaml`](docs/openapi/openapi.yaml).
 
 ## Создание первого администратора
 

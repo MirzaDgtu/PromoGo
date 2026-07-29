@@ -1,0 +1,1137 @@
+openapi: 3.0.3
+info:
+  title: PromoGo API
+  version: "1.0"
+  description: >
+    PromoGo's canonical HTTP API contract: health/readiness, the store-scoped
+    1C/POS webhook API (accrual, redemption, client lookup, balance), the
+    mobile-customer OTP/session API, and the retailer-staff/platform-admin
+    OIDC + RBAC API. Every operation here corresponds 1:1 to a registered
+    route in internal/httpserver's route table (see
+    internal/httpserver/routes.go) — this parity is enforced by
+    TestRouteOpenAPIParity.
+  license:
+    name: Proprietary
+    url: https://github.com/MirzaDgtu/PromoGo
+servers:
+  - url: /
+    description: Relative to wherever the API is deployed; there is no fixed public host.
+
+security:
+  - {}
+
+tags:
+  - name: Health
+    description: Unauthenticated liveness/readiness probes.
+  - name: Store
+    description: 1C/POS webhook API, authenticated with a per-store API key.
+  - name: Customer
+    description: Mobile-app customer OTP authentication and profile.
+  - name: Staff Auth
+    description: Retailer-staff / platform-admin OIDC login.
+  - name: Admin - Organizations
+    description: Organization and store management.
+  - name: Admin - Staff
+    description: Staff membership (RBAC) management within an organization.
+  - name: Admin - Clients
+    description: Admin-facing client lookup and transaction history.
+  - name: Admin - Loyalty Config
+    description: Per-store loyalty mechanic configuration.
+  - name: Admin - API Keys
+    description: Store API key issuance and revocation.
+  - name: Admin - Audit
+    description: Organization audit trail.
+
+paths:
+  /healthz:
+    get:
+      operationId: getHealthz
+      tags: [Health]
+      summary: Liveness probe
+      description: Always 200 once the process is up; does not check dependencies (see /readyz).
+      security: []
+      responses:
+        "200":
+          description: The process is alive.
+
+  /readyz:
+    get:
+      operationId: getReadyz
+      tags: [Health]
+      summary: Readiness probe
+      description: 200 only once Postgres and Redis are both reachable.
+      security: []
+      responses:
+        "200":
+          description: All dependencies are reachable.
+        "503":
+          description: A dependency (Postgres or Redis) is unreachable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/transactions:
+    post:
+      operationId: createTransaction
+      tags: [Store]
+      summary: Accrue points for a completed sale (1C webhook)
+      description: >
+        Idempotent on (store, transaction_id): a retried request with the
+        same transaction_id and parameters returns the original result
+        (`replayed: true`) rather than crediting points twice. Requires the
+        `transactions.write` scope.
+      security:
+        - storeApiKey: [transactions.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccrueRequest" }
+            examples:
+              1c-webhook:
+                summary: Typical 1C webhook payload
+                value:
+                  transaction_id: "1C-000123456"
+                  phone: "+79261234567"
+                  amount: "1250.00"
+      responses:
+        "200":
+          description: Accrual processed (or replayed).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransactionResponse" }
+              examples:
+                accrued:
+                  value: { client_id: 42, points_earned: 125, balance: 640 }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/transactions/redeem:
+    post:
+      operationId: redeemTransaction
+      tags: [Store]
+      summary: Redeem points at checkout (1C webhook)
+      description: >
+        Idempotent on (store, transaction_id), like accrual. Requires the
+        `transactions.write` scope.
+      security:
+        - storeApiKey: [transactions.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RedeemRequest" }
+      responses:
+        "200":
+          description: Redemption processed (or replayed).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RedeemResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: client_id does not belong to this store.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422":
+          description: Insufficient balance to cover the requested redemption.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/clients/lookup:
+    get:
+      operationId: lookupClientByPhone
+      tags: [Store]
+      summary: Look up a client by phone (1C/POS)
+      description: >
+        Resolves a client_id and current balance for a phone already
+        registered under the requesting store. Requires the
+        `clients.lookup` scope.
+      security:
+        - storeApiKey: [clients.lookup]
+      parameters:
+        - name: phone
+          in: query
+          required: true
+          schema: { type: string }
+          example: "+79261234567"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientBalance" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/clients/{id}/balance:
+    get:
+      operationId: getClientBalance
+      tags: [Store]
+      summary: Get a client's point balance (1C/POS)
+      description: 404s if id doesn't belong to the requesting store. Requires the `balances.read` scope.
+      security:
+        - storeApiKey: [balances.read]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClientBalance" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/auth/otp/request:
+    post:
+      operationId: requestOTP
+      tags: [Customer]
+      summary: Request an OTP code for a phone number
+      description: >
+        Always 200 with the same body whether or not phone is already
+        registered — cannot be used to enumerate accounts.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string, example: "+79261234567" }
+      responses:
+        "200":
+          description: OTP sent (or would have been).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { status: { type: string, example: sent } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/auth/otp/verify:
+    post:
+      operationId: verifyOTP
+      tags: [Customer]
+      summary: Verify an OTP code and obtain a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, code]
+              properties:
+                phone: { type: string }
+                code: { type: string, example: "123456" }
+                consent_document_version:
+                  type: string
+                  description: Required on first registration; omit on a returning login.
+                consent_source: { type: string, example: mobile_app }
+            examples:
+              mobile-verify:
+                summary: Mobile app verifying a freshly-requested code
+                value: { phone: "+79261234567", code: "123456" }
+      responses:
+        "200":
+          description: Verified — access/refresh token pair issued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthTokens" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
+          description: Invalid or expired code.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Account blocked.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshCustomerSession
+      tags: [Customer]
+      summary: Rotate a refresh token
+      description: Presenting an already-rotated refresh token is treated as compromise — every session for that account is revoked.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties: { refresh_token: { type: string } }
+      responses:
+        "200":
+          description: New token pair issued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthTokens" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
+          description: Invalid, expired, or revoked session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/auth/logout:
+    post:
+      operationId: customerLogout
+      tags: [Customer]
+      summary: Revoke a single session
+      description: Idempotent — an unknown/already-revoked token still returns 204.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties: { refresh_token: { type: string } }
+      responses:
+        "204": { description: Logged out. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+
+  /api/v1/auth/logout-all:
+    post:
+      operationId: customerLogoutAll
+      tags: [Customer]
+      summary: Revoke every session for the caller's account
+      security:
+        - customerAccessToken: []
+      responses:
+        "204": { description: All sessions revoked. }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/me:
+    get:
+      operationId: getMe
+      tags: [Customer]
+      summary: Current customer profile
+      security:
+        - customerAccessToken: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CustomerProfile" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/balance:
+    get:
+      operationId: getMyBalance
+      tags: [Customer]
+      summary: Current customer's point balance, per linked store
+      security:
+        - customerAccessToken: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balances:
+                    type: array
+                    items: { $ref: "#/components/schemas/MeBalanceItem" }
+              examples:
+                mobile-balance:
+                  value: { balances: [{ store_id: 1, client_id: 42, balance: 640 }] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/me/transactions:
+    get:
+      operationId: getMyTransactions
+      tags: [Customer]
+      summary: Current customer's transaction history across all linked stores
+      description: Keyset-paginated, newest first.
+      security:
+        - customerAccessToken: []
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+          description: Opaque continuation token from a previous response's next_cursor.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeTransactionsPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/staff/auth/oidc:
+    post:
+      operationId: staffOIDCLogin
+      tags: [Staff Auth]
+      summary: Exchange a verified OIDC ID token for a PromoGo staff access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token]
+              properties: { id_token: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { access_token: { type: string } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
+          description: Invalid ID token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Account disabled or no active organization membership.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations:
+    post:
+      operationId: createOrganization
+      tags: [Admin - Organizations]
+      summary: Create an Organization
+      description: Requires the global `organizations.manage` permission (any organization) — a bootstrap operation.
+      security:
+        - staffAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string, maxLength: 255 } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores:
+    post:
+      operationId: createStore
+      tags: [Admin - Organizations]
+      summary: Create a Store within an Organization
+      description: Requires `stores.manage` in orgID.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties: { name: { type: string, maxLength: 255 } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}:
+    get:
+      operationId: getStore
+      tags: [Admin - Organizations]
+      summary: Get a Store
+      description: Requires `stores.read`. 404s if storeID doesn't belong to orgID.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/staff:
+    get:
+      operationId: listStaffMemberships
+      tags: [Admin - Staff]
+      summary: List staff memberships in an Organization
+      description: Requires `staff.manage`.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  memberships:
+                    type: array
+                    items: { $ref: "#/components/schemas/StaffMembership" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+    post:
+      operationId: createStaffMembership
+      tags: [Admin - Staff]
+      summary: Grant a staff membership
+      description: >
+        Requires `staff.manage`. Creates the target StaffUser row (by OIDC
+        subject) if it doesn't exist yet — the rest of their profile fills
+        in on their first real OIDC login.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [external_subject, role]
+              properties:
+                external_subject: { type: string, maxLength: 255 }
+                store_id: { type: integer, format: int64, nullable: true }
+                role: { $ref: "#/components/schemas/Role" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffMembership" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/staff/{membershipID}:
+    patch:
+      operationId: updateStaffMembership
+      tags: [Admin - Staff]
+      summary: Update a staff membership's role or status
+      description: Requires `staff.manage`.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - name: membershipID
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role: { $ref: "#/components/schemas/Role" }
+                status: { $ref: "#/components/schemas/StaffStatus" }
+      responses:
+        "204": { description: Updated }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients/lookup:
+    get:
+      operationId: adminLookupClient
+      tags: [Admin - Clients]
+      summary: Look up a client by phone (admin view)
+      description: >
+        Requires `clients.read`. Phone is masked (e.g. "********4567") for
+        a caller whose only membership in this scope is support_viewer.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+        - name: phone
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminClient" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients/{clientID}/transactions:
+    get:
+      operationId: adminListClientTransactions
+      tags: [Admin - Clients]
+      summary: List a client's transaction history (admin view)
+      description: Requires `transactions.read`. 404s if clientID doesn't belong to storeID.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+        - name: clientID
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminTransaction" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config:
+    get:
+      operationId: getLoyaltyConfig
+      tags: [Admin - Loyalty Config]
+      summary: Get a store's loyalty configuration
+      description: Requires `loyalty_config.read`.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoyaltyConfig" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Not configured yet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+    put:
+      operationId: putLoyaltyConfig
+      tags: [Admin - Loyalty Config]
+      summary: Set a store's loyalty configuration
+      description: Requires `loyalty_config.write`.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoyaltyConfig" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoyaltyConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys:
+    get:
+      operationId: listStoreAPIKeys
+      tags: [Admin - API Keys]
+      summary: List a store's API keys
+      description: Requires `api_keys.read`. Never returns the key hash or plaintext.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_keys:
+                    type: array
+                    items: { $ref: "#/components/schemas/StoreAPIKey" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+    post:
+      operationId: createStoreAPIKey
+      tags: [Admin - API Keys]
+      summary: Create a new store API key
+      description: >
+        Requires `api_keys.rotate`. Returns the plaintext key exactly
+        once — it is never persisted or logged again.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, scopes]
+              properties:
+                name: { type: string, maxLength: 255 }
+                scopes:
+                  type: array
+                  items: { $ref: "#/components/schemas/APIKeyScope" }
+                expires_at: { type: string, format: date-time, nullable: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StoreAPIKeyCreated" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys/{keyID}/revoke:
+    post:
+      operationId: revokeStoreAPIKey
+      tags: [Admin - API Keys]
+      summary: Revoke a store API key
+      description: Requires `api_keys.rotate`.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+        - name: keyID
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/audit:
+    get:
+      operationId: listAuditEvents
+      tags: [Admin - Audit]
+      summary: List recent audit events for an Organization
+      description: Requires `audit.read`.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+components:
+  parameters:
+    orgID:
+      name: orgID
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    storeID:
+      name: storeID
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+
+  headers:
+    RetryAfter:
+      description: Seconds until the caller may retry.
+      schema: { type: integer, minimum: 1 }
+
+  responses:
+    BadRequest:
+      description: Malformed request body, path, or query parameters.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: Missing, invalid, or expired credential.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Credential valid but lacks the required scope/permission, or targets a resource outside its tenant.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: No such resource, or it doesn't belong to the caller's store/organization.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: transaction_id already used with different parameters (idempotency conflict), or a duplicate resource.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limit exceeded.
+      headers:
+        Retry-After: { $ref: "#/components/headers/RetryAfter" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ServiceUnavailable:
+      description: A required backend (e.g. the rate limiter's Redis) is unreachable.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, description: Human-readable error message. }
+
+    AuthTokens:
+      type: object
+      properties:
+        access_token: { type: string }
+        access_token_expires_at: { type: string, format: date-time }
+        refresh_token: { type: string }
+        refresh_token_expires_at: { type: string, format: date-time }
+        customer_account_id: { type: integer, format: int64 }
+
+    CustomerProfile:
+      type: object
+      properties:
+        customer_account_id: { type: integer, format: int64 }
+        phone: { type: string }
+        status: { type: string, enum: [active, blocked, deleted] }
+        created_at: { type: string, format: date-time }
+
+    MeBalanceItem:
+      type: object
+      properties:
+        store_id: { type: integer, format: int64 }
+        client_id: { type: integer, format: int64 }
+        balance: { type: integer, format: int64 }
+
+    MeTransactionItem:
+      type: object
+      properties:
+        store_id: { type: integer, format: int64 }
+        client_id: { type: integer, format: int64 }
+        type: { type: string, enum: [accrual, redeem, refund] }
+        points_delta: { type: integer, format: int64 }
+        balance_after: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+
+    MeTransactionsPage:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items: { $ref: "#/components/schemas/MeTransactionItem" }
+        next_cursor:
+          type: string
+          description: Opaque; pass back as ?cursor= to fetch the next page. Omitted once history is exhausted.
+
+    AccrueRequest:
+      type: object
+      required: [transaction_id, phone, amount]
+      properties:
+        transaction_id:
+          type: string
+          maxLength: 255
+          description: 1C's unique transaction identifier — the idempotency key together with (store, "accrual").
+        phone: { type: string, maxLength: 32, example: "+79261234567" }
+        amount:
+          type: string
+          format: decimal
+          description: Purchase amount, as a decimal string (not a float, to avoid precision loss).
+          example: "1250.00"
+
+    TransactionResponse:
+      type: object
+      properties:
+        client_id: { type: integer, format: int64 }
+        points_earned: { type: integer, format: int64 }
+        balance: { type: integer, format: int64 }
+        replayed:
+          type: boolean
+          description: true if transaction_id was already processed and this is the original result, not a new accrual.
+
+    RedeemRequest:
+      type: object
+      required: [transaction_id, client_id, points, amount]
+      properties:
+        transaction_id: { type: string, maxLength: 255 }
+        client_id: { type: integer, format: int64 }
+        points: { type: integer, format: int64, minimum: 1 }
+        amount: { type: string, format: decimal, example: "300.00" }
+
+    RedeemResponse:
+      type: object
+      properties:
+        points_redeemed: { type: integer, format: int64 }
+        balance: { type: integer, format: int64 }
+        replayed: { type: boolean }
+
+    ClientBalance:
+      type: object
+      properties:
+        client_id: { type: integer, format: int64 }
+        balance: { type: integer, format: int64 }
+
+    Organization:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Store:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        organization_id: { type: integer, format: int64 }
+        name: { type: string }
+
+    Role:
+      type: string
+      enum: [platform_admin, retailer_admin, store_manager, support_viewer]
+
+    StaffStatus:
+      type: string
+      enum: [active, disabled]
+
+    StaffMembership:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        staff_user_id: { type: integer, format: int64 }
+        organization_id: { type: integer, format: int64 }
+        store_id: { type: integer, format: int64, nullable: true }
+        role: { $ref: "#/components/schemas/Role" }
+        status: { $ref: "#/components/schemas/StaffStatus" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AdminClient:
+      type: object
+      properties:
+        client_id: { type: integer, format: int64 }
+        phone:
+          type: string
+          description: Masked (e.g. "********4567") if the caller's only membership in this scope is support_viewer.
+        balance: { type: integer, format: int64 }
+
+    AdminTransaction:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        external_tx_id: { type: string }
+        type: { type: string, enum: [accrual, redeem, refund] }
+        points_delta: { type: integer, format: int64 }
+        balance_after: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+
+    LoyaltyConfig:
+      type: object
+      required: [mechanic, accrual_percent, min_purchase_amount, min_balance_to_redeem, max_redeem_percent, points_exchange_rate]
+      properties:
+        store_id: { type: integer, format: int64, readOnly: true }
+        mechanic:
+          type: string
+          example: points
+          description: Selects the domain.Mechanic implementation to run on accrual. MVP only wires up "points".
+        accrual_percent: { type: string, format: decimal, example: "10", description: "% of purchase amount credited as points." }
+        min_purchase_amount: { type: string, format: decimal, example: "0" }
+        min_balance_to_redeem: { type: integer, format: int64, example: 0 }
+        max_redeem_percent: { type: string, format: decimal, example: "100" }
+        points_exchange_rate: { type: string, format: decimal, example: "1" }
+
+    APIKeyScope:
+      type: string
+      enum: [transactions.write, clients.lookup, balances.read]
+
+    StoreAPIKey:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        key_id:
+          type: string
+          description: Non-secret, loggable prefix identifying the key — never the secret itself.
+        name: { type: string }
+        scopes:
+          type: array
+          items: { $ref: "#/components/schemas/APIKeyScope" }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        last_used_at: { type: string, format: date-time, nullable: true }
+
+    StoreAPIKeyCreated:
+      allOf:
+        - $ref: "#/components/schemas/StoreAPIKey"
+        - type: object
+          properties:
+            plaintext_key:
+              type: string
+              description: The actual API key. Returned exactly once, at creation — never persisted or logged, and never retrievable again.
+
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        occurred_at: { type: string, format: date-time }
+        actor_type: { type: string, enum: [customer, staff, store_api_key, system] }
+        actor_id: { type: integer, format: int64, nullable: true }
+        action: { type: string }
+        target_type: { type: string }
+        target_id: { type: integer, format: int64, nullable: true }
+        metadata: { type: object, additionalProperties: true }
+        ip: { type: string }
+
+  securitySchemes:
+    storeApiKey:
+      type: http
+      scheme: bearer
+      description: >
+        A per-store webhook API key (see Admin - API Keys), scoped to one
+        or more of transactions.write / clients.lookup / balances.read. A
+        store's legacy single-key credential (predating scopes) is treated
+        as implicitly holding every scope.
+    customerAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived customer access token from /auth/otp/verify or /auth/refresh.
+    staffAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Short-lived staff access token from /staff/auth/oidc. Every
+        operation under /admin also requires a specific RBAC permission —
+        see domain.Permission and each operation's description — checked
+        against the caller's active StaffMembership rows, resolved fresh on
+        every request (never trusted from token claims).

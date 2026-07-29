@@ -7,10 +7,12 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/MirzaDgtu/PromoGo/internal/config"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
+	"github.com/MirzaDgtu/PromoGo/internal/ratelimit"
 	"github.com/MirzaDgtu/PromoGo/internal/service"
 )
 
@@ -45,6 +47,15 @@ type Deps struct {
 	CustomerAccessTokenSecret []byte
 	StaffAccessTokenSecret    []byte
 
+	// RateLimiter backs the distributed rate-limit profiles applied per
+	// routeTable entry (see ratelimit_rules.go). Nil disables rate limiting
+	// entirely — a deployment that simply hasn't configured one, distinct
+	// from a configured limiter whose Redis backend is unreachable at
+	// request time (which fails closed with 503; see ratelimit.Middleware.Wrap).
+	RateLimiter    *ratelimit.Limiter
+	RateLimit      config.RateLimitConfig
+	TrustedProxies []netip.Prefix
+
 	// Ready is called on each /readyz request and should return an error if
 	// any dependency is unavailable.
 	Ready func(ctx context.Context) error
@@ -71,88 +82,47 @@ type Deps struct {
 func New(deps Deps) *http.Server {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		if err := deps.Ready(r.Context()); err != nil {
-			writeError(w, http.StatusServiceUnavailable, err.Error())
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-
-	// --- 1C / POS service principal (store API key) ---
-
 	requireStoreKey := RequireStoreAPIKey(deps.Stores, deps.StoreAPIKeys, deps.Log)
-
-	mux.HandleFunc("POST /api/v1/transactions",
-		requireStoreKey(requireScope(domain.ScopeTransactionsWrite)(handleAccrueTransaction(deps.Loyalty, deps.Log))))
-	mux.HandleFunc("POST /api/v1/transactions/redeem",
-		requireStoreKey(requireScope(domain.ScopeTransactionsWrite)(handleRedeemTransaction(deps.Loyalty, deps.Log))))
-	mux.HandleFunc("GET /api/v1/clients/lookup",
-		requireStoreKey(requireScope(domain.ScopeClientsLookup)(handleLookupClientByPhone(deps.Clients, deps.Balances, deps.Log))))
-	mux.HandleFunc("GET /api/v1/clients/{id}/balance",
-		requireStoreKey(requireScope(domain.ScopeBalancesRead)(handleGetClientBalance(deps.Clients, deps.Balances, deps.Log))))
-
-	// --- Mobile customer (OTP + sessions) ---
-
 	requireCustomer := RequireCustomerSession(deps.CustomerAccessTokenSecret)
+	rl := ratelimit.NewMiddleware(deps.RateLimiter, deps.Log)
 
-	mux.HandleFunc("POST /api/v1/auth/otp/request", handleRequestOTP(deps.CustomerAuth, deps.Log))
-	mux.HandleFunc("POST /api/v1/auth/otp/verify", handleVerifyOTP(deps.CustomerAuth, deps.Log))
-	mux.HandleFunc("POST /api/v1/auth/refresh", handleRefreshCustomerSession(deps.CustomerAuth, deps.Log))
-	mux.HandleFunc("POST /api/v1/auth/logout", handleCustomerLogout(deps.CustomerAuth, deps.Log))
-	mux.HandleFunc("POST /api/v1/auth/logout-all", requireCustomer(handleCustomerLogoutAll(deps.CustomerAuth, deps.Log)))
-	mux.HandleFunc("GET /api/v1/me", requireCustomer(handleGetMe(deps.CustomerAccounts, deps.Log)))
-	mux.HandleFunc("GET /api/v1/me/balance", requireCustomer(handleGetMyBalance(deps.Clients, deps.Balances, deps.Log)))
-	mux.HandleFunc("GET /api/v1/me/transactions", requireCustomer(handleGetMyTransactions(deps.Clients, deps.Transactions, deps.Log)))
+	for _, route := range routeTable {
+		h := handlerFor(route.OperationID, deps)
 
-	// --- Retailer staff / platform admin (OIDC + RBAC) ---
+		// Post-auth rate-limit rules (by staff user, store API key, ...)
+		// need the principal that auth middleware is about to set in the
+		// request context, so they wrap the handler *before* that
+		// middleware is applied below — see rateLimitRulesFor's doc comment
+		// on this ordering.
+		preAuth, postAuth := rateLimitRulesFor(route, deps.RateLimit, deps.TrustedProxies)
+		h = rl.Wrap(route.RateLimitProfile, postAuth...)(h)
 
-	mux.HandleFunc("POST /api/v1/staff/auth/oidc", handleStaffOIDCLogin(deps.StaffAuth, deps.Log))
+		switch route.Contour {
+		case contourPublic:
+			// No auth middleware.
+		case contourStoreKey:
+			h = requireStoreKey(requireScope(route.APIKeyScope)(h))
+		case contourCustomer:
+			h = requireCustomer(h)
+		case contourStaff:
+			if route.StaffGlobal {
+				h = RequireGlobalStaffPermission(deps.StaffAccessTokenSecret, deps.StaffAuth, route.StaffPermission)(h)
+			} else {
+				scopeFn := storeScopeFromPath
+				if route.StaffScope == staffScopeOrg {
+					scopeFn = orgScopeFromPath
+				}
+				h = RequireStaff(deps.StaffAccessTokenSecret, deps.StaffAuth, route.StaffPermission, scopeFn)(h)
+			}
+		}
 
-	requireStaff := func(perm domain.Permission, scope func(*http.Request) (staffScope, error)) func(http.HandlerFunc) http.HandlerFunc {
-		return RequireStaff(deps.StaffAccessTokenSecret, deps.StaffAuth, perm, scope)
+		// Pre-auth rate-limit rules (by caller IP) wrap outermost, so a
+		// flood of invalid credentials never even reaches the (comparatively
+		// expensive) token/JWKS verification or DB principal lookup below.
+		h = rl.Wrap(route.RateLimitProfile, preAuth...)(h)
+
+		mux.HandleFunc(route.Method+" "+route.Path, h)
 	}
-	scopeFromStaffMembershipPath := func(r *http.Request) (staffScope, error) { return orgScopeFromPath(r) }
-
-	mux.HandleFunc("POST /api/v1/admin/organizations",
-		RequireGlobalStaffPermission(deps.StaffAccessTokenSecret, deps.StaffAuth, domain.PermOrganizationsManage)(
-			handleCreateOrganization(deps.Organizations, deps.Log)))
-
-	mux.HandleFunc("GET /api/v1/admin/organizations/{orgID}/stores/{storeID}",
-		requireStaff(domain.PermStoresRead, storeScopeFromPath)(handleGetStore(deps.Stores, deps.Log)))
-	mux.HandleFunc("POST /api/v1/admin/organizations/{orgID}/stores",
-		requireStaff(domain.PermStoresManage, orgScopeFromPath)(handleCreateStore(deps.Stores, deps.Log)))
-
-	mux.HandleFunc("GET /api/v1/admin/organizations/{orgID}/staff",
-		requireStaff(domain.PermStaffManage, scopeFromStaffMembershipPath)(handleListStaffMemberships(deps.StaffMemberships, deps.Log)))
-	mux.HandleFunc("POST /api/v1/admin/organizations/{orgID}/staff",
-		requireStaff(domain.PermStaffManage, scopeFromStaffMembershipPath)(handleCreateStaffMembership(deps.StaffUsers, deps.StaffMemberships, deps.AuditEvents, deps.Log)))
-	mux.HandleFunc("PATCH /api/v1/admin/organizations/{orgID}/staff/{membershipID}",
-		requireStaff(domain.PermStaffManage, scopeFromStaffMembershipPath)(handleUpdateStaffMembership(deps.StaffMemberships, deps.AuditEvents, deps.Log)))
-
-	mux.HandleFunc("GET /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients/lookup",
-		requireStaff(domain.PermClientsRead, storeScopeFromPath)(handleAdminLookupClient(deps.Stores, deps.Clients, deps.Balances, deps.Log)))
-	mux.HandleFunc("GET /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients/{clientID}/transactions",
-		requireStaff(domain.PermTransactionsRead, storeScopeFromPath)(handleAdminListClientTransactions(deps.Stores, deps.Clients, deps.Transactions, deps.Log)))
-
-	mux.HandleFunc("GET /api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config",
-		requireStaff(domain.PermLoyaltyConfigRead, storeScopeFromPath)(handleGetLoyaltyConfig(deps.Stores, deps.LoyaltyConfigs, deps.Log)))
-	mux.HandleFunc("PUT /api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config",
-		requireStaff(domain.PermLoyaltyConfigWrite, storeScopeFromPath)(handlePutLoyaltyConfig(deps.Stores, deps.LoyaltyConfigs, deps.Log)))
-
-	mux.HandleFunc("GET /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys",
-		requireStaff(domain.PermAPIKeysRead, storeScopeFromPath)(handleListStoreAPIKeys(deps.Stores, deps.StoreAPIKeys, deps.Log)))
-	mux.HandleFunc("POST /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys",
-		requireStaff(domain.PermAPIKeysRotate, storeScopeFromPath)(handleCreateStoreAPIKey(deps.Stores, deps.StoreAPIKeys, deps.AuditEvents, deps.Log)))
-	mux.HandleFunc("POST /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys/{keyID}/revoke",
-		requireStaff(domain.PermAPIKeysRotate, storeScopeFromPath)(handleRevokeStoreAPIKey(deps.Stores, deps.StoreAPIKeys, deps.AuditEvents, deps.Log)))
-
-	mux.HandleFunc("GET /api/v1/admin/organizations/{orgID}/audit",
-		requireStaff(domain.PermAuditRead, orgScopeFromPath)(handleListAuditEvents(deps.AuditEvents, deps.Log)))
 
 	var handler http.Handler = mux
 	handler = loggingMW(deps.Log)(handler)

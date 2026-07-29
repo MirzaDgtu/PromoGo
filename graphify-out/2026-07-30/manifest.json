@@ -15,19 +15,19 @@
     "semantic_hash": "2f10c99baa92bd41e1cb2f3092cabf0a"
   },
   "go.mod": {
-    "mtime": 1785362203.5062923,
-    "ast_hash": "7fc4fa721bdb6d62fac20843c32d032b",
-    "semantic_hash": ""
+    "mtime": 1785280501.0883477,
+    "ast_hash": "3a35ceb0a7c4afd59cd1ade7ec038815",
+    "semantic_hash": "3a35ceb0a7c4afd59cd1ade7ec038815"
   },
   "internal/app/app.go": {
-    "mtime": 1785361282.175115,
-    "ast_hash": "f3c2e447388798a56c7257a82f75bc3e",
-    "semantic_hash": ""
+    "mtime": 1785279095.6537254,
+    "ast_hash": "c4b6b41bcea77b56cc9e5298769283b7",
+    "semantic_hash": "c4b6b41bcea77b56cc9e5298769283b7"
   },
   "internal/config/config.go": {
-    "mtime": 1785361145.3589363,
-    "ast_hash": "e8aba68c64eff299830176772aa48bcb",
-    "semantic_hash": ""
+    "mtime": 1785279068.1133487,
+    "ast_hash": "33c6cf7bd44373182530259b84094afb",
+    "semantic_hash": "33c6cf7bd44373182530259b84094afb"
   },
   "internal/domain/balance.go": {
     "mtime": 1785230515.9358363,
@@ -100,9 +100,9 @@
     "semantic_hash": "890e100d1c6654488a449be872be0e4f"
   },
   "internal/httpserver/server.go": {
-    "mtime": 1785361228.925146,
-    "ast_hash": "b76b013776c980f912206e968d88c3ba",
-    "semantic_hash": ""
+    "mtime": 1785277784.9735487,
+    "ast_hash": "36c576040c4fad088a3e1e14b69d32cc",
+    "semantic_hash": "36c576040c4fad088a3e1e14b69d32cc"
   },
   "internal/httpserver/transactions.go": {
     "mtime": 1785265817.1065352,
@@ -609,6 +609,11 @@
     "ast_hash": "778006c92a538b38dc69ddaa8a902c16",
     "semantic_hash": "778006c92a538b38dc69ddaa8a902c16"
   },
+  "docs/openapi/auth.yaml": {
+    "mtime": 1785280400.6294236,
+    "ast_hash": "d3b97205ee54a038a52e6fab268b68ab",
+    "semantic_hash": ""
+  },
   "graphify-out/memory/query_20260728_202855_\u0447\u0442\u043e_\u043d\u0430_\u0434\u0430\u043d\u043d\u044b\u0439_\u043c\u043e\u043c\u0435\u043d\u0442_\u043d\u0435_\u0445\u0432\u0430\u0442\u0430\u0435\u0442_\u0432_\u043d\u0430\u0448\u0435\u043c_\u043f\u0440\u043e\u0435\u043a\u0442\u0435.md": {
     "mtime": 1785270535.6490543,
     "ast_hash": "60e9a948f6d8a7df4a1094a11ce92a69",
@@ -645,98 +650,13 @@
     "semantic_hash": "b296f28bac486bb1ef8e03073bae0372"
   },
   "README.md": {
-    "mtime": 1785361880.3600397,
-    "ast_hash": "b50ff9d69a0cb4c9863aa8b579e8a151",
+    "mtime": 1785282597.772713,
+    "ast_hash": "48defc34941a635512edafe5ce174c5f",
     "semantic_hash": ""
   },
   "graphify-out/memory/query_20260728_235012_\u0441\u043e\u0437\u0434\u0430\u0439_\u0434\u043b\u044f_\u043d\u0430\u0448\u0435\u0433\u043e_\u043f\u0440\u043e\u0435\u043a\u0442\u0430_readme_md.md": {
     "mtime": 1785282612.7294362,
     "ast_hash": "6498a39d17adfbcfb008d00bf780542c",
-    "semantic_hash": ""
-  },
-  ".claude/settings.local.json": {
-    "mtime": 1785353512.2490718,
-    "ast_hash": "d6b78c36a8bdf328dce3f9728b3e32ac",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/admin_route_test.go": {
-    "mtime": 1785360829.2373376,
-    "ast_hash": "2b0a89dde7ad41f224cd3493fdfbe1dd",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/auth_customer_route_test.go": {
-    "mtime": 1785355420.734162,
-    "ast_hash": "cc3949ff4b53fb543f1f09c05ff77fab",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/auth_staff_route_test.go": {
-    "mtime": 1785360811.972029,
-    "ast_hash": "293cfcf034ba2609081c53a8dce8af7e",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/openapi_parity_test.go": {
-    "mtime": 1785362203.3660803,
-    "ast_hash": "7db929cdbebc254569a1a04c72d8ff93",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/ratelimit_route_test.go": {
-    "mtime": 1785361594.524505,
-    "ast_hash": "472b28736b8b47951cd6822c1dff30e6",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/ratelimit_rules.go": {
-    "mtime": 1785361276.2446215,
-    "ast_hash": "1a9050b1d8a8a6e427d1e09333a423c7",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/routes.go": {
-    "mtime": 1785353766.312688,
-    "ast_hash": "011eb8e1d73403f6710e139c05240ba8",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/server_test.go": {
-    "mtime": 1785354320.808878,
-    "ast_hash": "bd2a5a67f476797f1d2b2d9741c3efc3",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/testsupport_test.go": {
-    "mtime": 1785361617.033681,
-    "ast_hash": "1e0ccdec2936d4f75dfefe38f1738247",
-    "semantic_hash": ""
-  },
-  "internal/httpserver/transactions_route_test.go": {
-    "mtime": 1785354310.748842,
-    "ast_hash": "25385337dc885bb0a16840235bdba1e4",
-    "semantic_hash": ""
-  },
-  "internal/ratelimit/limiter.go": {
-    "mtime": 1785361101.798554,
-    "ast_hash": "c9a1c610873ff23554b742f900fbd63f",
-    "semantic_hash": ""
-  },
-  "internal/ratelimit/limiter_test.go": {
-    "mtime": 1785361389.0342915,
-    "ast_hash": "b239a55c11a65e3716e3b48f5a1f8315",
-    "semantic_hash": ""
-  },
-  "internal/ratelimit/middleware.go": {
-    "mtime": 1785361117.3981357,
-    "ast_hash": "d21b1020f2a8255f311f7d3745000419",
-    "semantic_hash": ""
-  },
-  "internal/ratelimit/middleware_test.go": {
-    "mtime": 1785361636.5659509,
-    "ast_hash": "36234687226b2871a4f4a722a3f325d0",
-    "semantic_hash": ""
-  },
-  ".github/workflows/ci.yml": {
-    "mtime": 1785353634.043626,
-    "ast_hash": "e4444ccef0dde48df4353508e8aecd04",
-    "semantic_hash": ""
-  },
-  "docs/openapi/openapi.yaml": {
-    "mtime": 1785361982.5640328,
-    "ast_hash": "f4663865dbdca09cc510df121574ad6b",
     "semantic_hash": ""
   }
 }

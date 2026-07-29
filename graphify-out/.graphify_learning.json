@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T08:13:31.780357+00:00",
+  "generated_at": "2026-07-29T18:11:49.241056+00:00",
   "nodes": {
     "claude_planned_architecture": {
       "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
@@ -12,7 +12,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.991956755,
+      "score": 0.982479903,
       "source_file": "CLAUDE.md",
       "status": "tentative",
       "uses": 1
@@ -28,7 +28,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.991956755,
+      "score": 0.982479903,
       "source_file": "internal/config/config.go",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.991956755,
+      "score": 0.982479903,
       "source_file": "configs/config.yaml",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.991956755,
+      "score": 0.982479903,
       "source_file": "deployments/docker-compose.yml",
       "status": "tentative",
       "uses": 1
@@ -76,7 +76,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.990087551,
+      "score": 0.980628558,
       "source_file": "Full-scope.md",
       "status": "tentative",
       "uses": 1
@@ -92,7 +92,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.988758272,
+      "score": 0.979311978,
       "source_file": "Full-scope.md",
       "status": "tentative",
       "uses": 1
@@ -113,7 +113,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.980066776,
+      "score": 1.961149824,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 2
@@ -134,7 +134,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.980066776,
+      "score": 1.961149824,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -155,7 +155,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.980066776,
+      "score": 1.961149824,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -171,7 +171,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.988758272,
+      "score": 0.979311978,
       "source_file": "knowledge/Project Questions.md",
       "status": "tentative",
       "uses": 1
@@ -187,7 +187,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.988758272,
+      "score": 0.979311978,
       "source_file": "knowledge/Project Questions.md",
       "status": "tentative",
       "uses": 1

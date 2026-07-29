@@ -1,66 +1,66 @@
-# Graph Report - PromoGo  (2026-07-30)
+# Graph Report - PromoGo  (2026-07-29)
 
 ## Corpus Check
-- 144 files · ~67,494 words
+- 129 files · ~51,254 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1276 nodes · 3030 edges · 73 communities (45 shown, 28 thin omitted)
-- Extraction: 78% EXTRACTED · 22% INFERRED · 0% AMBIGUOUS · INFERRED: 667 edges (avg confidence: 0.8)
+- 1032 nodes · 1955 edges · 84 communities (38 shown, 46 thin omitted)
+- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 225 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `323363d9`
+- Built from commit: `2b44991e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - customerauth_test.go
 - okHandler
-- Transaction
+- loyalty_test.go
 - staffauth_test.go
 - IssueStaffAccessToken
 - StaffAuthService
 - CustomerAuthService
-- New
-- Organization
+- Deps
+- BootstrapPlatformAdmin
 - LoyaltyService
 - New
 - handleGetMyTransactions
 - Loyalty Platform Product Concept
-- New
+- LoyaltyConfig
 - Local Development Stack Skill
 - Confirmed Decision Registry
-- handlerFor
+- clientIP
 - StaffMembership
-- doRequest
+- OrganizationRepository
 - handleCreateStoreAPIKey
 - handleLookupClientByPhone
 - Loyalty Mechanic Contract
-- writeError
+- New
 - handleAdminLookupClient
 - handleGetLoyaltyConfig
-- newTestLimiter
-- rateLimitRulesFor
+- CustomerSessionRepository
+- statusWriter
 - handleListAuditEvents
 - Channel
-- Client
+- Transaction
 - handleStaffOIDCLogin
 - Q: Что на данный момент не хватает в нашем проекте?
 - Q: Есть ли на данный момент регистрация и авторизация? Роли пользователей?
 - Q: Давай обсудим данные дополнения. На мой взгляд это необходимо сделать
 - PromoGo
-- handleCreateStaffMembership
-- testsupport_test.go
+- writeError
+- NewPool
 - must
-- Context
+- Build
 - Run
 - graphify
 - 00006_client_store_composite_fk.sql
 - 00018_create_staff_and_org_rbac.sql
 - LedgerRepository
 - Mechanic
-- ClientRepository
+- NotificationChannel
 - Graphified Code, Schema, Configuration, and Documentation
 - 00001_create_stores.sql
 - 00002_create_clients.sql
@@ -80,24 +80,35 @@
 - 00019_create_store_api_keys.sql
 - 00020_create_audit_events.sql
 - 00021_stores_api_key_hash_nullable.sql
-- AuditEvent
-- transactions.go
-- handleGetMyBalance
-- Q: Создай для нашего проекта README.md
-- fakeNotifier
+- Decimal
+- ResponseWriter
+- BalanceRepository
+- ClientRepository
+- CustomerAccountRepository
+- HandlerFunc
+- Logger
+- TransactionRepository
+- StaffMembershipRepository
+- Balance
+- LoyaltyConfig
 - github.com/MirzaDgtu/PromoGo
+- Transaction
+- TransactionType
+- StaffUserRepository
+- Mutex
+- Pool
 
 ## God Nodes (most connected - your core abstractions)
-1. `doRequest()` - 79 edges
-2. `newTestServer()` - 71 edges
-3. `writeError()` - 37 edges
-4. `Client` - 36 edges
-5. `issueStaffToken()` - 36 edges
-6. `handlerFor()` - 33 edges
-7. `itoa()` - 33 edges
-8. `seedOrganization()` - 31 edges
-9. `adminReq()` - 30 edges
-10. `CustomerAuthService` - 28 edges
+1. `New()` - 37 edges
+2. `CustomerAuthService` - 28 edges
+3. `newCustomerAuthTestDeps()` - 22 edges
+4. `okHandler()` - 20 edges
+5. `Deps` - 20 edges
+6. `Transaction` - 19 edges
+7. `New()` - 19 edges
+8. `RequireStoreAPIKey()` - 17 edges
+9. `LoyaltyService` - 17 edges
+10. `BootstrapPlatformAdmin()` - 16 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Loyalty Mechanics Discovery` --semantically_similar_to--> `Loyalty Backend and Configurable Mechanics`  [INFERRED] [semantically similar]
@@ -124,63 +135,63 @@
 - **Local PromoGo Runtime Stack** — _claude_skills_dev_stack_skill_local_development_stack, configs_config_runtime_configuration, deployments_docker_compose_local_stack, deployments_docker_compose_app_service [INFERRED 0.95]
 - **PromoGo Extension Workflows** — _claude_skills_add_mechanic_skill_add_mechanic, _claude_skills_add_notification_channel_skill_add_notification_channel, _claude_skills_db_migrate_skill_database_migrations [INFERRED 0.75]
 
-## Communities (73 total, 28 thin omitted)
+## Communities (84 total, 46 thin omitted)
 
 ### Community 0 - "customerauth_test.go"
-Cohesion: 0.05
-Nodes (50): CustomerAccount, CustomerAccountRepository, CustomerAccountStatus, CustomerConsent, CustomerConsentRepository, CustomerSession, CustomerSessionRepository, fakeCustomerAccountRepo (+42 more)
+Cohesion: 0.06
+Nodes (53): AuditActorType, AuditEvent, AuditEventRepository, CustomerAccount, CustomerAccountRepository, CustomerAccountStatus, CustomerConsent, CustomerConsentRepository (+45 more)
 
 ### Community 1 - "okHandler"
 Cohesion: 0.07
 Nodes (47): Store, StoreAPIKey, StoreAPIKeyRepository, StoreRepository, fakeStoreAPIKeyRepo, fakeStoreRepo, storeAPIKeyContextKey, Time (+39 more)
 
-### Community 2 - "Transaction"
-Cohesion: 0.05
-Nodes (45): Balance, BalanceRepository, LoyaltyConfig, LoyaltyConfigRepository, Transaction, TransactionCursor, TransactionRepository, TransactionType (+37 more)
+### Community 2 - "loyalty_test.go"
+Cohesion: 0.15
+Nodes (23): Balance, Client, Context, T, newFakeBalanceRepo(), newFakeClientRepo(), newTestService(), pointsConfig() (+15 more)
 
 ### Community 3 - "staffauth_test.go"
-Cohesion: 0.15
-Nodes (20): fakeAuditEventRepo, Context, MapClaims, Mutex, PrivateKey, Server, T, newStaffAuthTestDeps() (+12 more)
+Cohesion: 0.10
+Nodes (29): StaffUser, Time, Context, Pool, Row, NewStaffUserRepository(), scanStaffUser(), Context (+21 more)
 
 ### Community 4 - "IssueStaffAccessToken"
-Cohesion: 0.12
-Nodes (40): accessClaims, tokenType, staffPrincipalResolver, staffScope, GenerateAPIKey(), GenerateRefreshToken(), Duration, RegisteredClaims (+32 more)
+Cohesion: 0.08
+Nodes (49): accessClaims, tokenType, Permission, staffPrincipalResolver, staffScope, GenerateAPIKey(), GenerateRefreshToken(), Duration (+41 more)
 
 ### Community 5 - "StaffAuthService"
-Cohesion: 0.08
+Cohesion: 0.09
 Nodes (36): jwksDocument, OIDCClaims, oidcIDTokenClaims, OIDCVerifier, fakeStaffResolver, Context, Duration, Mutex (+28 more)
 
 ### Community 6 - "CustomerAuthService"
 Cohesion: 0.09
 Nodes (29): CustomerConsentRepository, CustomerSessionRepository, SMSSender, GenerateOTPCode(), HashOTP(), T, TestGenerateOTPCodeIsSixDigits(), TestVerifyOTP() (+21 more)
 
-### Community 7 - "New"
-Cohesion: 0.06
-Nodes (55): AppConfig, AuthConfig, Config, FCMConfig, HTTPConfig, LoggerConfig, OIDCConfig, PostgresConfig (+47 more)
+### Community 7 - "Deps"
+Cohesion: 0.07
+Nodes (32): AppConfig, AuthConfig, Config, FCMConfig, HTTPConfig, LoggerConfig, OIDCConfig, PostgresConfig (+24 more)
 
-### Community 8 - "Organization"
+### Community 8 - "BootstrapPlatformAdmin"
 Cohesion: 0.09
-Nodes (34): runBootstrapAdmin(), main(), resolveConfigPath(), runServer(), Organization, OrganizationRepository, fakeOrganizationRepo, Time (+26 more)
+Nodes (33): runBootstrapAdmin(), main(), resolveConfigPath(), runServer(), Organization, OrganizationRepository, Time, Context (+25 more)
 
 ### Community 9 - "LoyaltyService"
-Cohesion: 0.09
-Nodes (30): NotificationChannel, MaskPhone(), NormalizePhone(), T, TestMaskPhone(), TestNormalizePhone(), TestNormalizePhoneIdempotent(), maskPhoneIf() (+22 more)
+Cohesion: 0.12
+Nodes (26): accrueRequestBody, redeemRequestBody, redeemResponseBody, transactionResponseBody, Decimal, HandlerFunc, Logger, handleAccrueTransaction() (+18 more)
 
 ### Community 10 - "New"
-Cohesion: 0.06
-Nodes (29): App, Context, Logger, Pool, Server, New(), Context, Pool (+21 more)
+Cohesion: 0.11
+Nodes (19): App, Client, ClientRepository, Context, Logger, Pool, Server, New() (+11 more)
 
 ### Community 11 - "handleGetMyTransactions"
 Cohesion: 0.13
-Nodes (30): meBalanceItem, meResponseBody, meTransactionItem, meTransactionsResponse, decodeTransactionCursor(), encodeTransactionCursor(), Time, TransactionRepository (+22 more)
+Nodes (30): BalanceRepository, ClientRepository, CustomerAccountRepository, HandlerFunc, meBalanceItem, meResponseBody, meTransactionItem, meTransactionsResponse (+22 more)
 
 ### Community 12 - "Loyalty Platform Product Concept"
 Cohesion: 0.10
 Nodes (31): Analytics and Customer Communications, Business Scale Discovery, Client Discovery Checklist, Customer Identity and Channels, Loyalty Mechanics Discovery, 1C and POS Integration Discovery, Security, Launch, and Governance, Cross-Cutting Product Requirements (+23 more)
 
-### Community 13 - "New"
-Cohesion: 0.36
-Nodes (5): New(), T, TestMechanic_Accrue(), TestMechanic_Name(), Mechanic
+### Community 13 - "LoyaltyConfig"
+Cohesion: 0.09
+Nodes (19): Balance, BalanceRepository, LoyaltyConfig, LoyaltyConfigRepository, Decimal, Context, New(), T (+11 more)
 
 ### Community 14 - "Local Development Stack Skill"
 Cohesion: 0.12
@@ -190,49 +201,45 @@ Nodes (21): Add Notification Channel Skill, Best-Effort Notification Delivery, N
 Cohesion: 0.12
 Nodes (21): Question-to-Decision Lifecycle, Post-Change Tests and Graph Update, Query-First Graphify Investigation, Source Verification of Graph Relationships, Shared Codex and Claude Knowledge Graph, Confirmed Decision Registry, DEC-001: 1C Is an Event Source, Not the Loyalty Core, DEC-002: Phase 1 Uses One Store and Points (+13 more)
 
-### Community 16 - "handlerFor"
-Cohesion: 0.20
-Nodes (16): authTokensResponseBody, otpRequestBody, otpVerifyBody, refreshTokenBody, HandlerFunc, Logger, Time, handleCustomerLogout() (+8 more)
+### Community 16 - "clientIP"
+Cohesion: 0.21
+Nodes (14): authTokensResponseBody, otpRequestBody, otpVerifyBody, refreshTokenBody, HandlerFunc, Logger, Time, handleCustomerLogout() (+6 more)
 
 ### Community 17 - "StaffMembership"
-Cohesion: 0.15
-Nodes (13): StaffMembership, StaffMembershipRepository, StaffStatus, StaffUserRepository, fakeStaffMembershipRepo, samePtr(), Context, Pool (+5 more)
-
-### Community 18 - "doRequest"
-Cohesion: 0.09
-Nodes (98): adminReq(), Request, T, TestHandleAdminListClientTransactions_NotFoundWrongStore(), TestHandleAdminListClientTransactions_Success(), TestHandleAdminLookupClient_MaskedForSupportViewer(), TestHandleAdminLookupClient_NotFound(), TestHandleAdminLookupClient_UnmaskedForRetailerAdmin() (+90 more)
+Cohesion: 0.10
+Nodes (31): Role, StaffMembership, StaffMembershipRepository, StaffStatus, StaffUserRepository, createStaffMembershipBody, staffMembershipResponseBody, updateStaffMembershipBody (+23 more)
 
 ### Community 19 - "handleCreateStoreAPIKey"
-Cohesion: 0.19
-Nodes (19): createAPIKeyBody, storeAPIKeyResponseBody, apiKeyToBody(), AuditEventRepository, HandlerFunc, Logger, Request, ResponseWriter (+11 more)
+Cohesion: 0.28
+Nodes (15): createAPIKeyBody, storeAPIKeyResponseBody, apiKeyToBody(), AuditEventRepository, HandlerFunc, Logger, Request, StoreAPIKeyRepository (+7 more)
 
 ### Community 20 - "handleLookupClientByPhone"
-Cohesion: 0.39
-Nodes (7): balanceResponseBody, BalanceRepository, ClientRepository, HandlerFunc, Logger, handleGetClientBalance(), handleLookupClientByPhone()
+Cohesion: 0.09
+Nodes (24): balanceResponseBody, customerContextKey, staffContextKey, storeContextKey, MaskPhone(), NormalizePhone(), T, TestMaskPhone() (+16 more)
 
 ### Community 21 - "Loyalty Mechanic Contract"
 Cohesion: 0.14
 Nodes (14): Graphify Skill Trigger, Graphify Workflow for Claude Code, Add Mechanic Skill, Decimal Point Calculation, Loyalty Mechanic Contract, Pure Mechanic Decision Logic, Graphify Rules for Codex, Scoped Graph Queries (+6 more)
 
-### Community 22 - "writeError"
-Cohesion: 0.16
-Nodes (20): createOrganizationBody, createStoreBody, organizationResponseBody, storeResponseBody, HandlerFunc, Logger, OrganizationRepository, StoreRepository (+12 more)
+### Community 22 - "New"
+Cohesion: 0.20
+Nodes (14): createOrganizationBody, createStoreBody, organizationResponseBody, storeResponseBody, HandlerFunc, Logger, OrganizationRepository, StoreRepository (+6 more)
 
 ### Community 23 - "handleAdminLookupClient"
 Cohesion: 0.23
 Nodes (11): adminClientResponseBody, adminTransactionResponseBody, BalanceRepository, ClientRepository, HandlerFunc, Logger, StoreRepository, Time (+3 more)
 
 ### Community 24 - "handleGetLoyaltyConfig"
-Cohesion: 0.31
-Nodes (10): loyaltyConfigResponseBody, putLoyaltyConfigBody, Decimal, HandlerFunc, Logger, LoyaltyConfigRepository, StoreRepository, handleGetLoyaltyConfig() (+2 more)
+Cohesion: 0.27
+Nodes (11): loyaltyConfigResponseBody, putLoyaltyConfigBody, Decimal, HandlerFunc, Logger, LoyaltyConfig, LoyaltyConfigRepository, StoreRepository (+3 more)
 
-### Community 25 - "newTestLimiter"
-Cohesion: 0.11
-Nodes (34): Context, Duration, New(), Miniredis, T, newTestLimiter(), TestLimiter_AllowsUpToLimit(), TestLimiter_BackendErrorPropagates() (+26 more)
+### Community 25 - "CustomerSessionRepository"
+Cohesion: 0.27
+Nodes (6): Context, Pool, Row, NewCustomerSessionRepository(), scanCustomerSession(), CustomerSessionRepository
 
-### Community 26 - "rateLimitRulesFor"
-Cohesion: 0.14
-Nodes (26): contour, openAPIDoc, openAPIOperation, openAPIOperationEntry, routeMeta, staffScopeKind, flattenOpenAPIDoc(), T (+18 more)
+### Community 26 - "statusWriter"
+Cohesion: 0.29
+Nodes (5): Handler, statusWriter, Logger, ResponseWriter, loggingMW()
 
 ### Community 27 - "handleListAuditEvents"
 Cohesion: 0.29
@@ -242,9 +249,9 @@ Nodes (6): auditEventResponseBody, AuditEventRepository, HandlerFunc, Logger, Ti
 Cohesion: 0.38
 Nodes (4): Context, Logger, New(), Channel
 
-### Community 29 - "Client"
-Cohesion: 0.20
-Nodes (6): Client, ClientRepository, fakeFullClientRepo, fakeMeClientRepo, Time, Context
+### Community 29 - "Transaction"
+Cohesion: 0.10
+Nodes (20): Decimal, Transaction, TransactionCursor, TransactionRepository, TransactionType, fakeMeClientRepo, fakeMeTransactionRepo, Time (+12 more)
 
 ### Community 30 - "handleStaffOIDCLogin"
 Cohesion: 0.33
@@ -266,64 +273,40 @@ Nodes (4): Answer, Outcome, Q: Давай обсудим данные допол
 Cohesion: 0.10
 Nodes (19): 1С / POS, API, PromoGo, Staff / admin, Архитектура, Быстрый запуск через Docker Compose, Возможности, Конфигурация (+11 more)
 
-### Community 35 - "handleCreateStaffMembership"
-Cohesion: 0.18
-Nodes (18): Permission, Role, createStaffMembershipBody, staffMembershipResponseBody, updateStaffMembershipBody, HasPermission(), AuditEventRepository, HandlerFunc (+10 more)
+### Community 35 - "writeError"
+Cohesion: 0.83
+Nodes (3): ResponseWriter, writeError(), writeJSON()
 
-### Community 36 - "testsupport_test.go"
-Cohesion: 0.23
-Nodes (18): fakeBalanceRepo, fakeCustomerConsentRepo, fakeFullTransactionRepo, fakeLedgerRepo, fakeLoyaltyConfigRepo, fakeSMSSender, testFakes, Mutex (+10 more)
-
-### Community 38 - "Context"
-Cohesion: 0.20
-Nodes (5): StaffUser, fakeCustomerSessionRepo, fakeStaffUserRepo, Time, Context
-
-### Community 45 - "ClientRepository"
-Cohesion: 0.29
-Nodes (6): Context, Pool, Row, NewClientRepository(), scanClient(), ClientRepository
-
-### Community 66 - "AuditEvent"
-Cohesion: 0.31
-Nodes (5): AuditActorType, AuditEvent, AuditEventRepository, fakeAuditEventRepo, Time
-
-### Community 67 - "transactions.go"
-Cohesion: 0.40
-Nodes (5): accrueRequestBody, redeemRequestBody, redeemResponseBody, transactionResponseBody, Decimal
-
-### Community 68 - "handleGetMyBalance"
-Cohesion: 0.18
-Nodes (12): customerContextKey, staffContextKey, storeContextKey, customerFromContext(), Context, BalanceRepository, ClientRepository, CustomerAccountRepository (+4 more)
-
-### Community 69 - "Q: Создай для нашего проекта README.md"
-Cohesion: 0.40
-Nodes (4): Answer, Outcome, Q: Создай для нашего проекта README.md, Source Nodes
+### Community 36 - "NewPool"
+Cohesion: 0.50
+Nodes (3): Context, Pool, NewPool()
 
 ## Knowledge Gaps
-- **97 isolated node(s):** `python`, `github.com/MirzaDgtu/PromoGo`, `jwksDocument`, `StoreAPIKeyRepository`, `AuditEventRepository` (+92 more)
+- **95 isolated node(s):** `Возможности`, `Стек`, `Архитектура`, `Быстрый запуск через Docker Compose`, `Локальная разработка` (+90 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **46 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Work-memory lessons
 
 **Preferred sources** — corroborated by past sessions; start here.
-- `RequireStoreAPIKey()` (2× useful, score=1.961149824)
-- `Web Configuration and Administrative Management` (2× useful, score=1.961149824)
-- `Customer Registration, Identity, Mobile, and Notifications` (2× useful, score=1.961149824)
+- `RequireStoreAPIKey()` (2× useful, score=1.980102225)
+- `Web Configuration and Administrative Management` (2× useful, score=1.980102225)
+- `Customer Registration, Identity, Mobile, and Notifications` (2× useful, score=1.980102225)
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `handlerFor()` connect `handlerFor` to `handleCreateStaffMembership`, `handleGetMyBalance`, `New`, `handleGetMyTransactions`, `handleCreateStoreAPIKey`, `handleLookupClientByPhone`, `writeError`, `handleAdminLookupClient`, `handleGetLoyaltyConfig`, `newTestLimiter`, `rateLimitRulesFor`, `handleListAuditEvents`, `handleStaffOIDCLogin`?**
-  _High betweenness centrality (0.104) - this node is a cross-community bridge._
-- **Why does `New()` connect `New` to `customerauth_test.go`, `okHandler`, `Transaction`, `StaffAuthService`, `CustomerAuthService`, `New`, `Organization`, `ClientRepository`, `StaffMembership`, `rateLimitRulesFor`?**
-  _High betweenness centrality (0.095) - this node is a cross-community bridge._
-- **Why does `New()` connect `New` to `okHandler`, `IssueStaffAccessToken`, `testsupport_test.go`, `handleGetMyTransactions`, `handlerFor`, `doRequest`, `newTestLimiter`, `rateLimitRulesFor`?**
-  _High betweenness centrality (0.094) - this node is a cross-community bridge._
-- **Are the 68 inferred relationships involving `doRequest()` (e.g. with `TestHandleAdminListClientTransactions_NotFoundWrongStore()` and `TestHandleAdminListClientTransactions_Success()`) actually correct?**
-  _`doRequest()` has 68 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 66 inferred relationships involving `newTestServer()` (e.g. with `TestHandleAdminListClientTransactions_NotFoundWrongStore()` and `TestHandleAdminListClientTransactions_Success()`) actually correct?**
-  _`newTestServer()` has 66 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 34 inferred relationships involving `writeError()` (e.g. with `handleCreateStoreAPIKey()` and `handleListStoreAPIKeys()`) actually correct?**
-  _`writeError()` has 34 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `python`, `github.com/MirzaDgtu/PromoGo`, `jwksDocument` to the rest of the system?**
-  _97 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `New()` connect `New` to `okHandler`, `IssueStaffAccessToken`, `Deps`, `handleGetMyTransactions`, `clientIP`, `StaffMembership`, `handleCreateStoreAPIKey`, `handleLookupClientByPhone`, `handleAdminLookupClient`, `handleGetLoyaltyConfig`, `handleListAuditEvents`, `handleStaffOIDCLogin`?**
+  _High betweenness centrality (0.279) - this node is a cross-community bridge._
+- **Why does `New()` connect `New` to `customerauth_test.go`, `okHandler`, `staffauth_test.go`, `StaffAuthService`, `CustomerAuthService`, `Deps`, `BootstrapPlatformAdmin`, `StaffMembership`, `CustomerSessionRepository`?**
+  _High betweenness centrality (0.132) - this node is a cross-community bridge._
+- **Why does `CustomerAuthService` connect `CustomerAuthService` to `clientIP`, `customerauth_test.go`, `Deps`?**
+  _High betweenness centrality (0.126) - this node is a cross-community bridge._
+- **Are the 33 inferred relationships involving `New()` (e.g. with `orgScopeFromPath()` and `storeScopeFromPath()`) actually correct?**
+  _`New()` has 33 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 2 inferred relationships involving `newCustomerAuthTestDeps()` (e.g. with `NewCustomerAuthService()` and `newFakeClientRepo()`) actually correct?**
+  _`newCustomerAuthTestDeps()` has 2 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 10 inferred relationships involving `okHandler()` (e.g. with `TestRequireCustomerSession_ExpiredTokenRejected()` and `TestRequireCustomerSession_MissingTokenRejected()`) actually correct?**
+  _`okHandler()` has 10 INFERRED edges - model-reasoned connections that need verification._
+- **What connects `Возможности`, `Стек`, `Архитектура` to the rest of the system?**
+  _95 weakly-connected nodes found - possible documentation gaps or missing edges._

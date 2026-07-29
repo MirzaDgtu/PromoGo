@@ -20,6 +20,7 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/migrate"
 	"github.com/MirzaDgtu/PromoGo/internal/notification/logchannel"
 	"github.com/MirzaDgtu/PromoGo/internal/notification/logsms"
+	"github.com/MirzaDgtu/PromoGo/internal/ratelimit"
 	"github.com/MirzaDgtu/PromoGo/internal/repository/postgres"
 	"github.com/MirzaDgtu/PromoGo/internal/service"
 )
@@ -131,6 +132,10 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 		CustomerAccessTokenSecret: accessTokenSecret,
 		StaffAccessTokenSecret:    accessTokenSecret,
+
+		RateLimiter:    ratelimit.New(redisClient),
+		RateLimit:      cfg.RateLimit,
+		TrustedProxies: httpserver.ParseTrustedProxies(cfg.HTTP.TrustedProxies),
 
 		Ready: func(ctx context.Context) error {
 			if err := pgPool.Ping(ctx); err != nil {
