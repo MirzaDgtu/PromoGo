@@ -66,3 +66,41 @@ func (r *TransactionRepository) ListByClient(ctx context.Context, clientID int64
 
 	return txs, rows.Err()
 }
+
+const listByClientIDsColumns = `id, store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at`
+
+func (r *TransactionRepository) ListByClientIDs(ctx context.Context, clientIDs []int64, limit int, before *domain.TransactionCursor) ([]*domain.Transaction, error) {
+	var rows pgx.Rows
+	var err error
+
+	if before != nil {
+		query := `SELECT ` + listByClientIDsColumns + `
+			FROM transactions
+			WHERE client_id = ANY($1) AND (created_at, id) < ($2, $3)
+			ORDER BY created_at DESC, id DESC
+			LIMIT $4`
+		rows, err = r.pool.Query(ctx, query, clientIDs, before.CreatedAt, before.ID, limit)
+	} else {
+		query := `SELECT ` + listByClientIDsColumns + `
+			FROM transactions
+			WHERE client_id = ANY($1)
+			ORDER BY created_at DESC, id DESC
+			LIMIT $2`
+		rows, err = r.pool.Query(ctx, query, clientIDs, limit)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("list transactions for clients: %w", err)
+	}
+	defer rows.Close()
+
+	var txs []*domain.Transaction
+	for rows.Next() {
+		tx := &domain.Transaction{}
+		if err := rows.Scan(&tx.ID, &tx.StoreID, &tx.ClientID, &tx.ExternalTxID, &tx.Amount, &tx.Type, &tx.PointsDelta, &tx.BalanceAfter, &tx.RequestFingerprint, &tx.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan transaction: %w", err)
+		}
+		txs = append(txs, tx)
+	}
+
+	return txs, rows.Err()
+}

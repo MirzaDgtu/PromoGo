@@ -107,6 +107,10 @@ func (f *fakeTxRepo) ListByClient(context.Context, int64) ([]*domain.Transaction
 	return nil, nil
 }
 
+func (f *fakeTxRepo) ListByClientIDs(context.Context, []int64, int, *domain.TransactionCursor) ([]*domain.Transaction, error) {
+	return nil, nil
+}
+
 // fakeBalanceRepo is an in-memory domain.BalanceRepository.
 type fakeBalanceRepo struct {
 	points map[int64]int64

@@ -45,6 +45,15 @@ type Transaction struct {
 	CreatedAt          time.Time
 }
 
+// TransactionCursor is a keyset-pagination continuation point: the
+// (CreatedAt, ID) of the last transaction returned on the previous page.
+// Using both fields (not just CreatedAt) breaks ties when multiple
+// transactions share a timestamp.
+type TransactionCursor struct {
+	CreatedAt time.Time
+	ID        int64
+}
+
 // TransactionRepository reads Transaction rows. Writes go through
 // LedgerRepository, which posts a transaction and its balance effect
 // atomically — see its doc comment for why a plain Create here would be
@@ -55,4 +64,12 @@ type TransactionRepository interface {
 	// replayed webhook and skip re-running the accrual/redemption logic.
 	GetByExternalID(ctx context.Context, storeID int64, txType TransactionType, externalTxID string) (*Transaction, error)
 	ListByClient(ctx context.Context, clientID int64) ([]*Transaction, error)
+	// ListByClientIDs returns up to limit transactions across every client
+	// in clientIDs, newest first (created_at DESC, id DESC as tiebreaker).
+	// If before is non-nil, only rows strictly older than that cursor are
+	// returned — the continuation point from a prior page's last item. Used
+	// by the customer-facing /me/transactions endpoint to merge a
+	// customer's history across every store they have a linked Client in,
+	// in one query instead of one query per store plus an in-memory merge.
+	ListByClientIDs(ctx context.Context, clientIDs []int64, limit int, before *TransactionCursor) ([]*Transaction, error)
 }

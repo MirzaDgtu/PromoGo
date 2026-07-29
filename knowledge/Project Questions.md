@@ -88,8 +88,12 @@ tags:
   должен ли одинаковый ключ с другим payload всегда возвращать `409`?
 - [ ] **Q-P0-031:** Должен ли повтор возвращать исторический `balance_after` или
   текущий баланс вместе с признаком replay?
-- [ ] **Q-P0-032:** Нужна ли пагинация и стабильная сортировка истории
-  транзакций, и какой максимальный период запроса?
+- [ ] **Q-P0-032:** ~~Нужна ли пагинация и стабильная сортировка истории
+  транзакций~~, и какой максимальный период запроса? — пагинация и
+  сортировка закрыты, см. [[Decisions#DEC-010]]
+  (`GET /api/v1/me/transactions?limit=&cursor=`, keyset по
+  `(created_at, id)`); максимальный период запроса (date-range) остаётся
+  открытым.
 - [ ] **Q-P1-033:** Нужны ли публичные request/correlation IDs и сквозной trace ID
   между 1С, API и уведомлениями?
 - [ ] **Q-P1-034:** Как версионируются правила лояльности, чтобы транзакция
@@ -193,12 +197,11 @@ tags:
   [[Decisions#DEC-005]]: `platform_admin`, `retailer_admin`,
   `store_manager`, `support_viewer` — зафиксированы как
   `internal/domain.Role` с explicit permission-картой.
-- [ ] **Q-P0-067:** Кто создаёт магазин, выдаёт/ротирует API-ключ и настраивает
-  начальную механику до появления self-service? — **частично закрыто**: admin
-  API теперь позволяет это (`POST .../stores`, `POST .../api-keys`, см.
-  [[Decisions#DEC-008]]), но требует уже существующего `platform_admin` —
-  bootstrap самого первого сотрудника платформы остаётся ручной операцией
-  (прямая запись в БД), см. итоговый отчёт реализации.
+- [x] **Q-P0-067:** Кто создаёт магазин, выдаёт/ротирует API-ключ и настраивает
+  начальную механику до появления self-service? — см.
+  [[Decisions#DEC-008]] (admin API: `POST .../stores`, `POST .../api-keys`)
+  и [[Decisions#DEC-009]] (`promogo bootstrap-admin` создаёт самого первого
+  `platform_admin`, снимая последнее ручное условие).
 - [ ] **Q-P0-068:** Изменения правил применяются немедленно или по effective date;
   нужны ли draft, preview, approval и rollback?
 - [ ] **Q-P0-069:** Какие изменения конфигурации, ключей, ролей и балансов должны
@@ -293,8 +296,10 @@ tags:
   задаче — Redis проверялся и раньше).
 - [ ] **Q-P0-103:** Реальная FCM/SMS доставка ещё не подключена. Какой канал
   реализовать первым и нужен ли transactional outbox?
-- [ ] **Q-P0-104:** Endpoint истории транзакций заявлен для mobile, но HTTP route
-  отсутствует. Каков его contract и auth model?
+- [x] **Q-P0-104:** ~~Endpoint истории транзакций заявлен для mobile, но HTTP
+  route отсутствует~~ — запись устарела: `GET /api/v1/me/transactions` уже
+  реализован (`internal/httpserver/me.go`), за `RequireCustomerSession`;
+  контракт и пагинация — см. [[Decisions#DEC-010]].
 - [x] **Q-P0-105:** Нет endpoint управления `loyalty_configs`. Кто и как
   настраивает пилот до React-конфигуратора? — теперь есть
   `GET/PUT /api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config`
@@ -311,13 +316,13 @@ tags:
   интервал QR) не реализован. Какие точные пороги и поведение при превышении?
 - [ ] **Q-P0-108:** `refund` разрешён DB constraint, но сервис/route отсутствуют.
   Как связать возврат с исходной операцией и вычислять delta?
-- [ ] **Q-P0-109:** Каким способом создаётся и безопасно передаётся первый store
-  API key, если административного API/CLI пока нет? — **частично закрыто**:
-  административный API теперь существует
-  (`POST /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys`,
-  см. [[Decisions#DEC-008]]), но требует уже существующего `platform_admin`
-  с активным membership — bootstrap самого первого сотрудника платформы
-  остаётся ручной операцией (см. Q-P0-067 и итоговый отчёт реализации).
+- [x] **Q-P0-109:** Каким способом создаётся и безопасно передаётся первый store
+  API key, если административного API/CLI пока нет? — см.
+  [[Decisions#DEC-008]] (`POST
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys`) и
+  [[Decisions#DEC-009]] (`promogo bootstrap-admin` создаёт самого первого
+  `platform_admin`, который затем может выпустить этот ключ через admin
+  API — см. Q-P0-067).
 - [ ] **Q-P1-110:** Нужна ли отдельная таблица ledger entries вместо
   `transactions`, если появятся expiration, adjustments, reservations и
   несколько типов баланса?

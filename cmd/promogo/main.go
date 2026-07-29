@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -13,12 +14,21 @@ import (
 )
 
 func main() {
-	configPath := "configs/config.yaml"
-	if v := os.Getenv("PROMOGO_CONFIG_FILE"); v != "" {
-		configPath = v
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "bootstrap-admin":
+			runBootstrapAdmin(os.Args[2:])
+			return
+		default:
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  promogo                  run the HTTP server\n  promogo bootstrap-admin  create the first platform_admin (see -h)\n", os.Args[1])
+			os.Exit(2)
+		}
 	}
+	runServer()
+}
 
-	cfg, err := config.Load(configPath)
+func runServer() {
+	cfg, err := config.Load(resolveConfigPath())
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
@@ -35,4 +45,12 @@ func main() {
 	if err := application.Run(ctx); err != nil {
 		log.Fatalf("run app: %v", err)
 	}
+}
+
+func resolveConfigPath() string {
+	path := "configs/config.yaml"
+	if v := os.Getenv("PROMOGO_CONFIG_FILE"); v != "" {
+		path = v
+	}
+	return path
 }

@@ -1,13 +1,21 @@
 package httpserver
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
-	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
+)
+
+const (
+	defaultTransactionsLimit = 20
+	maxTransactionsLimit     = 100
 )
 
 type meResponseBody struct {
@@ -98,13 +106,21 @@ type meTransactionItem struct {
 
 // handleGetMyTransactions returns a handler for GET
 // /api/v1/me/transactions. Merges transaction history across every store
-// the customer has a linked Client in, newest first. Must run behind
-// RequireCustomerSession.
+// the customer has a linked Client in, newest first, keyset-paginated via
+// ?limit=&cursor= (see encodeTransactionCursor/decodeTransactionCursor).
+// Must run behind RequireCustomerSession.
 func handleGetMyTransactions(clients domain.ClientRepository, txs domain.TransactionRepository, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		customerAccountID, ok := customerFromContext(r.Context())
 		if !ok {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		limit := parseTransactionsLimit(r.URL.Query().Get("limit"))
+		cursor, err := decodeTransactionCursor(r.URL.Query().Get("cursor"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid cursor")
 			return
 		}
 
@@ -114,25 +130,96 @@ func handleGetMyTransactions(clients domain.ClientRepository, txs domain.Transac
 			writeError(w, http.StatusInternalServerError, "load transactions")
 			return
 		}
-
-		var items []meTransactionItem
-		for _, c := range myClients {
-			clientTxs, err := txs.ListByClient(r.Context(), c.ID)
-			if err != nil {
-				log.ErrorContext(r.Context(), "list transactions", "client_id", c.ID, "error", err)
-				writeError(w, http.StatusInternalServerError, "load transactions")
-				return
-			}
-			for _, tx := range clientTxs {
-				items = append(items, meTransactionItem{
-					StoreID: tx.StoreID, ClientID: tx.ClientID, Type: string(tx.Type),
-					PointsDelta: tx.PointsDelta, BalanceAfter: tx.BalanceAfter, CreatedAt: tx.CreatedAt,
-				})
-			}
+		if len(myClients) == 0 {
+			writeJSON(w, http.StatusOK, map[string]any{"transactions": []meTransactionItem{}})
+			return
 		}
 
-		sort.Slice(items, func(i, j int) bool { return items[i].CreatedAt.After(items[j].CreatedAt) })
+		clientIDs := make([]int64, len(myClients))
+		for i, c := range myClients {
+			clientIDs[i] = c.ID
+		}
 
-		writeJSON(w, http.StatusOK, map[string]any{"transactions": items})
+		// Fetch one extra row to detect whether a next page exists.
+		clientTxs, err := txs.ListByClientIDs(r.Context(), clientIDs, limit+1, cursor)
+		if err != nil {
+			log.ErrorContext(r.Context(), "list transactions", "customer_account_id", customerAccountID, "error", err)
+			writeError(w, http.StatusInternalServerError, "load transactions")
+			return
+		}
+
+		var nextCursor string
+		if len(clientTxs) > limit {
+			last := clientTxs[limit-1]
+			nextCursor = encodeTransactionCursor(last.CreatedAt, last.ID)
+			clientTxs = clientTxs[:limit]
+		}
+
+		items := make([]meTransactionItem, 0, len(clientTxs))
+		for _, tx := range clientTxs {
+			items = append(items, meTransactionItem{
+				StoreID: tx.StoreID, ClientID: tx.ClientID, Type: string(tx.Type),
+				PointsDelta: tx.PointsDelta, BalanceAfter: tx.BalanceAfter, CreatedAt: tx.CreatedAt,
+			})
+		}
+
+		resp := map[string]any{"transactions": items}
+		if nextCursor != "" {
+			resp["next_cursor"] = nextCursor
+		}
+		writeJSON(w, http.StatusOK, resp)
 	}
+}
+
+// parseTransactionsLimit parses the ?limit= query param, defaulting and
+// clamping rather than rejecting — it's a display knob, not input that can
+// corrupt state, so a malformed or out-of-range value just falls back to a
+// sane bound instead of failing the request.
+func parseTransactionsLimit(raw string) int {
+	if raw == "" {
+		return defaultTransactionsLimit
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return defaultTransactionsLimit
+	}
+	if n > maxTransactionsLimit {
+		return maxTransactionsLimit
+	}
+	return n
+}
+
+// encodeTransactionCursor and decodeTransactionCursor turn a
+// domain.TransactionCursor into an opaque base64 string safe to hand to
+// mobile clients and back, in the form "<created_at_unix_nano>_<id>".
+func encodeTransactionCursor(createdAt time.Time, id int64) string {
+	raw := fmt.Sprintf("%d_%d", createdAt.UnixNano(), id)
+	return base64.RawURLEncoding.EncodeToString([]byte(raw))
+}
+
+// decodeTransactionCursor returns (nil, nil) for an empty raw cursor (the
+// first page), or an error if raw is non-empty but malformed — a bad
+// cursor must fail loudly rather than silently restart from the top or
+// skip data.
+func decodeTransactionCursor(raw string) (*domain.TransactionCursor, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("decode cursor: %w", err)
+	}
+	parts := strings.SplitN(string(decoded), "_", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("malformed cursor")
+	}
+	nanos, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("malformed cursor timestamp: %w", err)
+	}
+	id, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("malformed cursor id: %w", err)
+	}
+	return &domain.TransactionCursor{CreatedAt: time.Unix(0, nanos), ID: id}, nil
 }

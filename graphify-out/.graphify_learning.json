@@ -1,6 +1,22 @@
 {
-  "generated_at": "2026-07-28T21:51:55.252600+00:00",
+  "generated_at": "2026-07-28T23:47:55.420811+00:00",
   "nodes": {
+    "full_scope_phase_2_multistore_product": {
+      "code_fingerprint": "1b1eec672d61721317c29cfaabb70e7366db8a5cab5bf7be7bef8881405b5a87",
+      "label": "Phase 2: Mechanics and Multistore Product",
+      "last": "2026-07-28T21:52:39.582489+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-28T21:52:39.582489+00:00",
+          "outcome": "useful",
+          "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
+        }
+      ],
+      "score": 0.99815229,
+      "source_file": "Full-scope.md",
+      "status": "tentative",
+      "uses": 1
+    },
     "full_scope_product_roadmap": {
       "code_fingerprint": "1b1eec672d61721317c29cfaabb70e7366db8a5cab5bf7be7bef8881405b5a87",
       "label": "Phased Product Roadmap",
@@ -12,61 +28,76 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.998669251,
+      "score": 0.996812183,
       "source_file": "Full-scope.md",
       "status": "tentative",
       "uses": 1
     },
     "internal_httpserver_middleware_requirestoreapikey": {
-      "code_fingerprint": "2754ee9dd7d96aed9866942d505b9e87ee0abb08e9e67bfd7520db45c843d3ac",
+      "code_fingerprint": "5555d3de97931d5f4b3aa0a519b191c7dbf1c2a2b0db9063ac8a8c3ad4820d2f",
       "label": "RequireStoreAPIKey()",
-      "last": "2026-07-28T21:45:50.422602+00:00",
+      "last": "2026-07-28T21:52:39.582489+00:00",
       "provenance": [
+        {
+          "date": "2026-07-28T21:52:39.582489+00:00",
+          "outcome": "useful",
+          "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
+        },
         {
           "date": "2026-07-28T21:45:50.422602+00:00",
           "outcome": "useful",
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.999902443,
+      "score": 1.996195372,
       "source_file": "internal/httpserver/middleware.go",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "knowledge_project_questions_administration_configuration": {
-      "code_fingerprint": "94cd1e984d3a150111df8e34f3352028c3fb784b98694a0bdc3b240ada00e683",
+      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
       "label": "Web Configuration and Administrative Management",
-      "last": "2026-07-28T21:45:50.422602+00:00",
+      "last": "2026-07-28T21:52:39.582489+00:00",
       "provenance": [
+        {
+          "date": "2026-07-28T21:52:39.582489+00:00",
+          "outcome": "useful",
+          "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
+        },
         {
           "date": "2026-07-28T21:45:50.422602+00:00",
           "outcome": "useful",
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.999902443,
+      "score": 1.996195372,
       "source_file": "knowledge/Project Questions.md",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "knowledge_project_questions_customer_identity_channels": {
-      "code_fingerprint": "94cd1e984d3a150111df8e34f3352028c3fb784b98694a0bdc3b240ada00e683",
+      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
       "label": "Customer Registration, Identity, Mobile, and Notifications",
-      "last": "2026-07-28T21:45:50.422602+00:00",
+      "last": "2026-07-28T21:52:39.582489+00:00",
       "provenance": [
+        {
+          "date": "2026-07-28T21:52:39.582489+00:00",
+          "outcome": "useful",
+          "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
+        },
         {
           "date": "2026-07-28T21:45:50.422602+00:00",
           "outcome": "useful",
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.999902443,
+      "score": 1.996195372,
       "source_file": "knowledge/Project Questions.md",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "knowledge_project_questions_implementation_scope_gaps": {
-      "code_fingerprint": "94cd1e984d3a150111df8e34f3352028c3fb784b98694a0bdc3b240ada00e683",
+      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
       "label": "Current Implementation and Scope Gaps",
       "last": "2026-07-28T20:28:55.649296+00:00",
       "provenance": [
@@ -76,13 +107,13 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.998669251,
+      "score": 0.996812183,
       "source_file": "knowledge/Project Questions.md",
       "status": "tentative",
       "uses": 1
     },
     "knowledge_project_questions_operational_release_readiness": {
-      "code_fingerprint": "94cd1e984d3a150111df8e34f3352028c3fb784b98694a0bdc3b240ada00e683",
+      "code_fingerprint": "137532c8bc622f545183120e455b88d69996b929e0e403c96eef66f9ea57f0c4",
       "label": "Reliability, Operations, Quality, and Release Readiness",
       "last": "2026-07-28T20:28:55.649296+00:00",
       "provenance": [
@@ -92,7 +123,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.998669251,
+      "score": 0.996812183,
       "source_file": "knowledge/Project Questions.md",
       "status": "tentative",
       "uses": 1
