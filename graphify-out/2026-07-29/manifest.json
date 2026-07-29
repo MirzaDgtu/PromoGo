@@ -315,8 +315,8 @@
     "semantic_hash": "75d7f6ec473cb694a2ad8f850ee08356"
   },
   "knowledge/Decisions.md": {
-    "mtime": 1785280230.0191128,
-    "ast_hash": "f6dbec09f717135e0c0d4fe814977eab",
+    "mtime": 1785283984.949123,
+    "ast_hash": "a447a87832feb3b30cd0c3c7a64bfa4c",
     "semantic_hash": ""
   },
   "knowledge/Home.md": {
@@ -325,8 +325,8 @@
     "semantic_hash": "69920c279f415195bc8dcc0ad6bfd30c"
   },
   "knowledge/Project Questions.md": {
-    "mtime": 1785280339.5927005,
-    "ast_hash": "c69860d6dddeff0a952e8f8f460bb8cf",
+    "mtime": 1785284017.0373087,
+    "ast_hash": "e112af36a7f99cde76ae9cf56615d6eb",
     "semantic_hash": ""
   },
   "internal/auth/oidc.go": {
@@ -648,5 +648,15 @@
     "mtime": 1785283941.740261,
     "ast_hash": "b296f28bac486bb1ef8e03073bae0372",
     "semantic_hash": "b296f28bac486bb1ef8e03073bae0372"
+  },
+  "README.md": {
+    "mtime": 1785282597.772713,
+    "ast_hash": "48defc34941a635512edafe5ce174c5f",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20260728_235012_\u0441\u043e\u0437\u0434\u0430\u0439_\u0434\u043b\u044f_\u043d\u0430\u0448\u0435\u0433\u043e_\u043f\u0440\u043e\u0435\u043a\u0442\u0430_readme_md.md": {
+    "mtime": 1785282612.7294362,
+    "ast_hash": "6498a39d17adfbcfb008d00bf780542c",
+    "semantic_hash": ""
   }
 }
