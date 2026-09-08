@@ -75,9 +75,9 @@
     "semantic_hash": ""
   },
   "internal/httpserver/clients.go": {
-    "mtime": 1785277862.2091682,
-    "ast_hash": "2e6c1629f5eba79210a91a8560c749bc",
-    "semantic_hash": "2e6c1629f5eba79210a91a8560c749bc"
+    "mtime": 1788906432.2349422,
+    "ast_hash": "8f7a837d7b4320d5d60ac1636e3eda8d",
+    "semantic_hash": ""
   },
   "internal/httpserver/context.go": {
     "mtime": 1785277208.9232175,
@@ -145,9 +145,9 @@
     "semantic_hash": "2fc565c93ac1dc8bfba1027e78752614"
   },
   "internal/repository/postgres/client_repository.go": {
-    "mtime": 1785276748.0366948,
-    "ast_hash": "1d53556a043660477156033c827ab7a6",
-    "semantic_hash": "1d53556a043660477156033c827ab7a6"
+    "mtime": 1788906402.4028294,
+    "ast_hash": "42127ae4a30ceb59e4ce3414db75ed8b",
+    "semantic_hash": ""
   },
   "internal/repository/postgres/ledger_repository.go": {
     "mtime": 1785403066.1897726,
@@ -415,9 +415,9 @@
     "semantic_hash": "98d7e5d402f8eb9b6cd3419fd39a3296"
   },
   "internal/httpserver/admin_clients.go": {
-    "mtime": 1785277588.9338055,
-    "ast_hash": "35b58b9bb735d5ea2037381105ddc856",
-    "semantic_hash": "35b58b9bb735d5ea2037381105ddc856"
+    "mtime": 1788906443.8031473,
+    "ast_hash": "cd7c4e7aea164068b9a77bd5b2c3ed79",
+    "semantic_hash": ""
   },
   "internal/httpserver/admin_loyaltyconfig.go": {
     "mtime": 1785277605.2013538,
@@ -500,9 +500,9 @@
     "semantic_hash": "9440e55ae81d156c012ad936677b40d2"
   },
   "internal/repository/postgres/customer_account_repository.go": {
-    "mtime": 1785276873.4348934,
-    "ast_hash": "915a44519ace500f630808faf6641a4c",
-    "semantic_hash": "915a44519ace500f630808faf6641a4c"
+    "mtime": 1788906420.6517878,
+    "ast_hash": "83779d8da4ab391fcc74c576c6bae0bb",
+    "semantic_hash": ""
   },
   "internal/repository/postgres/customer_consent_repository.go": {
     "mtime": 1785276893.4984112,
@@ -842,6 +842,11 @@
   "internal/httpserver/remoteaddr_test.go": {
     "mtime": 1788906101.8936222,
     "ast_hash": "d696b68b1c46b07dbac95faf8c6d0814",
+    "semantic_hash": ""
+  },
+  "migrations/sql/00024_audit_events_append_only_and_index.sql": {
+    "mtime": 1788906553.9636843,
+    "ast_hash": "d0c180e1a0ca145a216619f03b6c5c4f",
     "semantic_hash": ""
   }
 }

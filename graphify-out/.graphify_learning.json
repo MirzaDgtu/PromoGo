@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-08T22:25:38.597793+00:00",
+  "generated_at": "2026-09-08T22:30:36.048534+00:00",
   "nodes": {
     "claude_planned_architecture": {
       "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
@@ -12,7 +12,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.379443665,
+      "score": 0.379413484,
       "source_file": "CLAUDE.md",
       "status": "tentative",
       "uses": 1
@@ -38,7 +38,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 2.375603184,
+      "score": 2.375414227,
       "source_file": "internal/config/config.go",
       "status": "preferred",
       "uses": 3
@@ -54,7 +54,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.379443665,
+      "score": 0.379413484,
       "source_file": "configs/config.yaml",
       "status": "tentative",
       "uses": 1
@@ -75,7 +75,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 1.377672177,
+      "score": 1.377562596,
       "source_file": "deployments/docker-compose.yml",
       "status": "preferred",
       "uses": 2
@@ -96,7 +96,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.766578272,
+      "score": 0.766517298,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -117,7 +117,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.766069796,
+      "score": 0.766008862,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -133,7 +133,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.387849616,
+      "score": 0.387818766,
       "source_file": "Idea.md",
       "status": "tentative",
       "uses": 1
@@ -149,7 +149,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.998228512,
+      "score": 0.998149112,
       "source_file": "internal/domain/rbac.go",
       "status": "tentative",
       "uses": 1
@@ -175,7 +175,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.755346883,
+      "score": 1.755207262,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 3
@@ -191,7 +191,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.998228512,
+      "score": 0.998149112,
       "source_file": "internal/httpserver/openapi_parity_test.go",
       "status": "tentative",
       "uses": 1
@@ -212,7 +212,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.757415876,
+      "score": 0.75735563,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -233,7 +233,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.757415876,
+      "score": 0.75735563,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -254,7 +254,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.766069796,
+      "score": 0.766008862,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -275,7 +275,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 1.376448692,
+      "score": 1.376339208,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -291,7 +291,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.387849616,
+      "score": 0.387818766,
       "source_file": "README.md",
       "status": "tentative",
       "uses": 1
@@ -312,7 +312,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 1.385780623,
+      "score": 1.385670398,
       "source_file": "README.md",
       "status": "preferred",
       "uses": 2
