@@ -173,7 +173,11 @@ func handleRevokeStoreAPIKey(stores domain.StoreRepository, keys domain.StoreAPI
 			return
 		}
 
-		if err := keys.Revoke(r.Context(), keyID); err != nil {
+		if err := keys.Revoke(r.Context(), store.ID, keyID); err != nil {
+			if errors.Is(err, domain.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "api key not found")
+				return
+			}
 			log.ErrorContext(r.Context(), "revoke store api key", "key_id", keyID, "error", err)
 			writeError(w, http.StatusInternalServerError, "revoke api key")
 			return

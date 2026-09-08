@@ -15,9 +15,12 @@ import (
 
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/config"
+	"github.com/MirzaDgtu/PromoGo/internal/domain"
 	"github.com/MirzaDgtu/PromoGo/internal/httpserver"
 	"github.com/MirzaDgtu/PromoGo/internal/logger"
 	"github.com/MirzaDgtu/PromoGo/internal/migrate"
+	"github.com/MirzaDgtu/PromoGo/internal/notification/fcmchannel"
+	"github.com/MirzaDgtu/PromoGo/internal/notification/httpsms"
 	"github.com/MirzaDgtu/PromoGo/internal/notification/logchannel"
 	"github.com/MirzaDgtu/PromoGo/internal/notification/logsms"
 	"github.com/MirzaDgtu/PromoGo/internal/ratelimit"
@@ -74,15 +77,45 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	staffMembershipRepo := postgres.NewStaffMembershipRepository(pgPool)
 	storeAPIKeyRepo := postgres.NewStoreAPIKeyRepository(pgPool)
 	auditEventRepo := postgres.NewAuditEventRepository(pgPool)
+	customerDeviceRepo := postgres.NewCustomerDeviceRepository(pgPool)
 
-	// TODO(add-notification-channel): swap for a real FCM/SMS channel once
-	// cfg.FCM.CredentialsJSON is set; logchannel/logsms just log in the
-	// meantime, so device-facing flows are fully testable before push/SMS
-	// is wired up.
-	notifier := logchannel.New(log)
-	smsSender := logsms.New(log)
+	// SMS: config.validateSMS already enforced (outside development) that
+	// Provider isn't "log" and that "http" has endpoint/token set, so this
+	// switch never silently falls back to the dev stub in production — see
+	// DEC-014.
+	var smsSender domain.SMSSender
+	if cfg.SMS.Provider == "http" {
+		smsSender = httpsms.New(cfg.SMS, log)
+	} else {
+		smsSender = logsms.New(log)
+	}
 
-	loyaltyService := service.New(log, clientRepo, txRepo, balanceRepo, ledgerRepo, configRepo, notifier)
+	// FCM: config.validateFCM already enforced (outside development) that
+	// CredentialsJSON is set, so a construction failure here is always a
+	// genuine startup error, never a silent fallback to logchannel in
+	// production — see DEC-014.
+	var notifier domain.NotificationChannel
+	if cfg.FCM.CredentialsJSON != "" {
+		fcmNotifier, err := fcmchannel.New(ctx, cfg.FCM.CredentialsJSON, clientRepo, customerDeviceRepo, log)
+		if err != nil {
+			pgPool.Close()
+			return nil, fmt.Errorf("init fcm channel: %w", err)
+		}
+		notifier = fcmNotifier
+	} else {
+		notifier = logchannel.New(log)
+	}
+
+	loyaltyService := service.New(log, clientRepo, txRepo, balanceRepo, ledgerRepo, configRepo, notifier, service.AntiFraudConfig{
+		DailyRedeemPointsLimit: cfg.AntiFraud.DailyRedeemPointsLimit,
+		DailyRedeemWindow:      cfg.AntiFraud.DailyRedeemWindow,
+	})
+
+	qrService := service.NewQRService(log, redisClient, service.QRConfig{
+		TTL:             cfg.AntiFraud.QRTTL,
+		IssueCooldown:   cfg.AntiFraud.QRIssueCooldown,
+		ConsumeCooldown: cfg.AntiFraud.QRConsumeCooldown,
+	}, clientRepo, customerAccountRepo, balanceRepo, auditEventRepo)
 
 	accessTokenSecret := []byte(cfg.Auth.AccessTokenSecret)
 	customerAuthService := service.NewCustomerAuthService(
@@ -122,6 +155,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 		Organizations:    orgRepo,
 		CustomerAccounts: customerAccountRepo,
+		CustomerDevices:  customerDeviceRepo,
 		StaffUsers:       staffUserRepo,
 		StaffMemberships: staffMembershipRepo,
 		AuditEvents:      auditEventRepo,
@@ -129,6 +163,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		Loyalty:      loyaltyService,
 		CustomerAuth: customerAuthService,
 		StaffAuth:    staffAuthService,
+		QR:           qrService,
 
 		CustomerAccessTokenSecret: accessTokenSecret,
 		StaffAccessTokenSecret:    accessTokenSecret,

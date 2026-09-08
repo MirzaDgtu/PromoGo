@@ -26,12 +26,29 @@ logger:
 
 fcm:
   # Firebase Cloud Messaging service-account key (raw JSON), used to push
-  # "points accrued" notifications to the mobile app. Set via
+  # accrual/redeem/refund notifications to the mobile app. Set via
   # PROMOGO_FCM_CREDENTIALS_JSON — never commit the real key here. Empty =
-  # accrual notifications fall back to the log-based channel
+  # notifications fall back to the log-based channel
   # (internal/notification/logchannel), so the loyalty flow works before
-  # push is wired up.
+  # push is wired up. REQUIRED outside app.env=development — internal/config.Load
+  # fails fast if this is empty outside development (see DEC-014).
   credentials_json: ""
+
+sms:
+  # SMS delivery for OTP codes and (optionally) transaction notifications.
+  # "log" (internal/notification/logsms) only logs — development/test only.
+  # "http" (internal/notification/httpsms) posts to a generic HTTPS SMS
+  # gateway (no specific vendor is chosen yet — see
+  # .claude/skills/add-notification-channel/SKILL.md); set endpoint/token
+  # via PROMOGO_SMS_ENDPOINT / PROMOGO_SMS_TOKEN, never commit the token
+  # here. REQUIRED outside app.env=development (provider must be "http"
+  # with endpoint/token set) — internal/config.Load fails fast otherwise
+  # (see DEC-014).
+  provider: log
+  endpoint: ""
+  token: ""
+  sender: PromoGo
+  timeout: 5s
 
 auth:
   # HMAC signing secret for both customer and staff access tokens
@@ -48,6 +65,19 @@ auth:
   otp_rate_limit_window: 1h
   otp_max_requests_per_phone: 5
   otp_max_requests_per_ip: 20
+
+antifraud:
+  # Daily redeem limit (DEC-013): caps the sum of points actually redeemed
+  # by a single Client over a rolling window (not calendar days — Store has
+  # no timezone yet). 1000/24h is a documented development-only default;
+  # REQUIRED (> 0) outside app.env=development — internal/config.Load fails
+  # fast otherwise. Set via PROMOGO_ANTIFRAUD_DAILY_REDEEM_POINTS_LIMIT.
+  daily_redeem_points_limit: 1000
+  daily_redeem_window: 24h
+  # QR TTL and cooldowns (DEC-011). Defaults apply in every environment.
+  qr_ttl: 2m
+  qr_issue_cooldown: 30s
+  qr_consume_cooldown: 1s
 
 oidc:
   # Staff/platform-admin OIDC identity provider (internal/auth/oidc.go).

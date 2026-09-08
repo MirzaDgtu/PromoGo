@@ -21,3 +21,24 @@ var ErrInsufficientBalance = errors.New("insufficient balance")
 // with different parameters (client or amount) — so it can't be treated as
 // a replay of that prior request.
 var ErrIdempotencyConflict = errors.New("idempotency conflict")
+
+// ErrCannotRefundRefund is returned when a refund's original transaction
+// reference itself points at a refund — refunds may only reverse an
+// accrual or a redeem, never chain off another refund.
+var ErrCannotRefundRefund = errors.New("cannot refund a refund")
+
+// ErrOverRefund is returned when a refund's amount, alone or combined with
+// previously posted partial refunds against the same original transaction,
+// would exceed that transaction's original amount.
+var ErrOverRefund = errors.New("refund exceeds original transaction amount")
+
+// ErrAmbiguousOriginalTransaction is returned when a refund omits the
+// original transaction's type and external_tx_id matches both an accrual
+// and a redeem under the same store — external_tx_id uniqueness is scoped
+// per type, so both can legitimately exist and the caller must disambiguate.
+var ErrAmbiguousOriginalTransaction = errors.New("ambiguous original transaction: specify original_transaction_type")
+
+// ErrDailyRedeemLimitExceeded is returned when posting a redemption would
+// push the client's rolling-window redeemed-points total past the
+// configured anti-fraud daily limit (see AntiFraudConfig).
+var ErrDailyRedeemLimitExceeded = errors.New("daily redeem limit exceeded")

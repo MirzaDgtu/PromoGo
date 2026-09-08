@@ -89,3 +89,67 @@ jobs:
 
       - name: go test -race
         run: go test -race -count=1 ./...
+
+  static-analysis:
+    name: staticcheck / govulncheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@2026.1 ./...
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+
+  migrations:
+    name: migrate up / down-to-0 / re-up against real Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: promogo
+          POSTGRES_PASSWORD: promogo
+          POSTGRES_DB: promogo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U promogo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MIGRATIONS_DIR: migrations/sql
+      DATABASE_URL: postgres://promogo:promogo@localhost:5432/promogo?sslmode=disable
+      GOOSE_VERSION: v3.27.3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: goose validate
+        run: go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR validate
+
+      - name: migrate up from zero
+        run: go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR postgres "$DATABASE_URL" up
+
+      - name: migrate down to zero
+        run: go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR postgres "$DATABASE_URL" down-to 0
+
+      - name: re-apply migrations
+        run: go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR postgres "$DATABASE_URL" up

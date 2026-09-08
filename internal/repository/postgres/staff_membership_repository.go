@@ -41,6 +41,20 @@ func (r *StaffMembershipRepository) ListByOrganization(ctx context.Context, orga
 	return queryStaffMemberships(ctx, r.pool, query, organizationID)
 }
 
+func (r *StaffMembershipRepository) GetByID(ctx context.Context, id int64) (*domain.StaffMembership, error) {
+	query := `SELECT ` + staffMembershipColumns + ` FROM staff_memberships WHERE id = $1`
+
+	m, err := scanStaffMembership(r.pool.QueryRow(ctx, query, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("staff membership: %w", domain.ErrNotFound)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get staff membership: %w", err)
+	}
+
+	return m, nil
+}
+
 func queryStaffMemberships(ctx context.Context, pool *pgxpool.Pool, query string, arg int64) ([]*domain.StaffMembership, error) {
 	rows, err := pool.Query(ctx, query, arg)
 	if err != nil {

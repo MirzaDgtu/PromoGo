@@ -44,6 +44,7 @@ const (
 	rlProfileAdmin        = "admin"
 	rlProfileClientLookup = "client_lookup"
 	rlProfileAccrual      = "accrual"
+	rlProfileQRResolve    = "qr_resolve"
 )
 
 // routeMeta declares one HTTP operation's method, path, security contour,
@@ -87,10 +88,14 @@ var routeTable = []routeMeta{
 		Contour: contourStoreKey, APIKeyScope: domain.ScopeTransactionsWrite, RateLimitProfile: rlProfileAccrual},
 	{Method: http.MethodPost, Path: "/api/v1/transactions/redeem", OperationID: "redeemTransaction",
 		Contour: contourStoreKey, APIKeyScope: domain.ScopeTransactionsWrite, RateLimitProfile: rlProfileAccrual},
+	{Method: http.MethodPost, Path: "/api/v1/transactions/refund", OperationID: "refundTransaction",
+		Contour: contourStoreKey, APIKeyScope: domain.ScopeTransactionsWrite, RateLimitProfile: rlProfileAccrual},
 	{Method: http.MethodGet, Path: "/api/v1/clients/lookup", OperationID: "lookupClientByPhone",
 		Contour: contourStoreKey, APIKeyScope: domain.ScopeClientsLookup, RateLimitProfile: rlProfileClientLookup},
 	{Method: http.MethodGet, Path: "/api/v1/clients/{id}/balance", OperationID: "getClientBalance",
 		Contour: contourStoreKey, APIKeyScope: domain.ScopeBalancesRead, RateLimitProfile: rlProfileClientLookup},
+	{Method: http.MethodPost, Path: "/api/v1/clients/resolve-qr", OperationID: "resolveQR",
+		Contour: contourStoreKey, APIKeyScope: domain.ScopeClientsLookup, RateLimitProfile: rlProfileQRResolve},
 
 	// --- Mobile customer (OTP + sessions) ---
 	{Method: http.MethodPost, Path: "/api/v1/auth/otp/request", OperationID: "requestOTP", Contour: contourPublic},
@@ -102,6 +107,9 @@ var routeTable = []routeMeta{
 	{Method: http.MethodGet, Path: "/api/v1/me/balance", OperationID: "getMyBalance",
 		Contour: contourCustomer, RateLimitProfile: rlProfileClientLookup},
 	{Method: http.MethodGet, Path: "/api/v1/me/transactions", OperationID: "getMyTransactions", Contour: contourCustomer},
+	{Method: http.MethodPost, Path: "/api/v1/me/qr", OperationID: "issueQR", Contour: contourCustomer},
+	{Method: http.MethodPost, Path: "/api/v1/me/devices", OperationID: "registerDevice", Contour: contourCustomer},
+	{Method: http.MethodDelete, Path: "/api/v1/me/devices/{deviceID}", OperationID: "revokeDevice", Contour: contourCustomer},
 
 	// --- Retailer staff / platform admin (OIDC + RBAC) ---
 	{Method: http.MethodPost, Path: "/api/v1/staff/auth/oidc", OperationID: "staffOIDCLogin",
@@ -163,10 +171,14 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 		return handleAccrueTransaction(deps.Loyalty, deps.Log)
 	case "redeemTransaction":
 		return handleRedeemTransaction(deps.Loyalty, deps.Log)
+	case "refundTransaction":
+		return handleRefundTransaction(deps.Loyalty, deps.Log)
 	case "lookupClientByPhone":
 		return handleLookupClientByPhone(deps.Clients, deps.Balances, deps.Log)
 	case "getClientBalance":
 		return handleGetClientBalance(deps.Clients, deps.Balances, deps.Log)
+	case "resolveQR":
+		return handleResolveQR(deps.QR, deps.Log)
 
 	case "requestOTP":
 		return handleRequestOTP(deps.CustomerAuth, deps.Log)
@@ -184,6 +196,12 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 		return handleGetMyBalance(deps.Clients, deps.Balances, deps.Log)
 	case "getMyTransactions":
 		return handleGetMyTransactions(deps.Clients, deps.Transactions, deps.Log)
+	case "issueQR":
+		return handleIssueQR(deps.QR, deps.Log)
+	case "registerDevice":
+		return handleRegisterDevice(deps.CustomerDevices, deps.Log)
+	case "revokeDevice":
+		return handleRevokeDevice(deps.CustomerDevices, deps.Log)
 
 	case "staffOIDCLogin":
 		return handleStaffOIDCLogin(deps.StaffAuth, deps.Log)

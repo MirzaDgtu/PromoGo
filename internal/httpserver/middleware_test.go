@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -66,15 +67,16 @@ func sha256Hex(s string) string {
 
 // fakeStoreAPIKeyRepo is a minimal in-memory domain.StoreAPIKeyRepository.
 type fakeStoreAPIKeyRepo struct {
-	byHash map[string]*domain.StoreAPIKey
+	byKeyID map[string]*domain.StoreAPIKey
+	nextID  int64
 }
 
 func newFakeStoreAPIKeyRepo() *fakeStoreAPIKeyRepo {
-	return &fakeStoreAPIKeyRepo{byHash: map[string]*domain.StoreAPIKey{}}
+	return &fakeStoreAPIKeyRepo{byKeyID: map[string]*domain.StoreAPIKey{}}
 }
 
-func (f *fakeStoreAPIKeyRepo) GetByHash(_ context.Context, hash string) (*domain.StoreAPIKey, error) {
-	k, ok := f.byHash[hash]
+func (f *fakeStoreAPIKeyRepo) GetByKeyID(_ context.Context, keyID string) (*domain.StoreAPIKey, error) {
+	k, ok := f.byKeyID[keyID]
 	if !ok {
 		return nil, domain.ErrNotFound
 	}
@@ -83,7 +85,7 @@ func (f *fakeStoreAPIKeyRepo) GetByHash(_ context.Context, hash string) (*domain
 
 func (f *fakeStoreAPIKeyRepo) ListByStore(_ context.Context, storeID int64) ([]*domain.StoreAPIKey, error) {
 	var out []*domain.StoreAPIKey
-	for _, k := range f.byHash {
+	for _, k := range f.byKeyID {
 		if k.StoreID == storeID {
 			out = append(out, k)
 		}
@@ -92,22 +94,28 @@ func (f *fakeStoreAPIKeyRepo) ListByStore(_ context.Context, storeID int64) ([]*
 }
 
 func (f *fakeStoreAPIKeyRepo) Create(_ context.Context, k *domain.StoreAPIKey) error {
-	f.byHash[k.KeyHash] = k
+	if k.ID == 0 {
+		f.nextID++
+		k.ID = f.nextID
+	}
+	k.CreatedAt = time.Now()
+	f.byKeyID[k.KeyID] = k
 	return nil
 }
 
-func (f *fakeStoreAPIKeyRepo) Revoke(_ context.Context, id int64) error {
-	for _, k := range f.byHash {
-		if k.ID == id {
+func (f *fakeStoreAPIKeyRepo) Revoke(_ context.Context, storeID, id int64) error {
+	for _, k := range f.byKeyID {
+		if k.ID == id && k.StoreID == storeID {
 			now := time.Now()
 			k.RevokedAt = &now
+			return nil
 		}
 	}
-	return nil
+	return domain.ErrNotFound
 }
 
 func (f *fakeStoreAPIKeyRepo) TouchLastUsed(_ context.Context, id int64, at time.Time) error {
-	for _, k := range f.byHash {
+	for _, k := range f.byKeyID {
 		if k.ID == id {
 			k.LastUsedAt = &at
 		}
@@ -115,9 +123,16 @@ func (f *fakeStoreAPIKeyRepo) TouchLastUsed(_ context.Context, id int64, at time
 	return nil
 }
 
-func (f *fakeStoreAPIKeyRepo) add(k *domain.StoreAPIKey, plaintextSecret string) {
+// add stores k under a generated KeyID and hashes plaintextSecret into
+// KeyHash, mirroring auth.GenerateAPIKey's "<keyID>.<secret>" split. It
+// returns the full bearer-token plaintext a client would send.
+func (f *fakeStoreAPIKeyRepo) add(k *domain.StoreAPIKey, plaintextSecret string) string {
+	if k.KeyID == "" {
+		k.KeyID = fmt.Sprintf("key-%d", k.ID)
+	}
 	k.KeyHash = sha256Hex(plaintextSecret)
-	f.byHash[k.KeyHash] = k
+	f.byKeyID[k.KeyID] = k
+	return k.KeyID + "." + plaintextSecret
 }
 
 func okHandler() http.HandlerFunc {
@@ -155,12 +170,12 @@ func TestRequireStoreAPIKey_MultiKeyTakesPrecedenceOverLegacy(t *testing.T) {
 	apiKeys := newFakeStoreAPIKeyRepo()
 	store := &domain.Store{ID: 2, OrganizationID: 1, Name: "Store"}
 	stores.byID[2] = store
-	apiKeys.add(&domain.StoreAPIKey{ID: 10, StoreID: 2, Scopes: []string{domain.ScopeTransactionsWrite}}, "new-plaintext-key")
+	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 10, StoreID: 2, Scopes: []string{domain.ScopeTransactionsWrite}}, "new-plaintext-key")
 
 	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
-	req.Header.Set("Authorization", "Bearer new-plaintext-key")
+	req.Header.Set("Authorization", "Bearer "+bearer)
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 
@@ -174,12 +189,12 @@ func TestRequireStoreAPIKey_RevokedKeyRejected(t *testing.T) {
 	apiKeys := newFakeStoreAPIKeyRepo()
 	stores.byID[3] = &domain.Store{ID: 3, OrganizationID: 1, Name: "Store"}
 	now := time.Now()
-	apiKeys.add(&domain.StoreAPIKey{ID: 11, StoreID: 3, RevokedAt: &now}, "revoked-key")
+	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 11, StoreID: 3, RevokedAt: &now}, "revoked-key")
 
 	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
-	req.Header.Set("Authorization", "Bearer revoked-key")
+	req.Header.Set("Authorization", "Bearer "+bearer)
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 
@@ -193,12 +208,12 @@ func TestRequireStoreAPIKey_ExpiredKeyRejected(t *testing.T) {
 	apiKeys := newFakeStoreAPIKeyRepo()
 	stores.byID[4] = &domain.Store{ID: 4, OrganizationID: 1, Name: "Store"}
 	past := time.Now().Add(-time.Hour)
-	apiKeys.add(&domain.StoreAPIKey{ID: 12, StoreID: 4, ExpiresAt: &past}, "expired-key")
+	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 12, StoreID: 4, ExpiresAt: &past}, "expired-key")
 
 	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
-	req.Header.Set("Authorization", "Bearer expired-key")
+	req.Header.Set("Authorization", "Bearer "+bearer)
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 
@@ -254,13 +269,13 @@ func TestRequireScope_MissingScopeRejected(t *testing.T) {
 	stores := newFakeStoreRepo()
 	apiKeys := newFakeStoreAPIKeyRepo()
 	stores.byID[6] = &domain.Store{ID: 6, OrganizationID: 1, Name: "Store"}
-	apiKeys.add(&domain.StoreAPIKey{ID: 13, StoreID: 6, Scopes: []string{domain.ScopeClientsLookup}}, "scoped-key")
+	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 13, StoreID: 6, Scopes: []string{domain.ScopeClientsLookup}}, "scoped-key")
 
 	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(
 		requireScope(domain.ScopeTransactionsWrite)(okHandler()))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
-	req.Header.Set("Authorization", "Bearer scoped-key")
+	req.Header.Set("Authorization", "Bearer "+bearer)
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 
@@ -273,13 +288,13 @@ func TestRequireScope_WithScopeAllowed(t *testing.T) {
 	stores := newFakeStoreRepo()
 	apiKeys := newFakeStoreAPIKeyRepo()
 	stores.byID[7] = &domain.Store{ID: 7, OrganizationID: 1, Name: "Store"}
-	apiKeys.add(&domain.StoreAPIKey{ID: 14, StoreID: 7, Scopes: []string{domain.ScopeTransactionsWrite}}, "correctly-scoped-key")
+	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 14, StoreID: 7, Scopes: []string{domain.ScopeTransactionsWrite}}, "correctly-scoped-key")
 
 	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(
 		requireScope(domain.ScopeTransactionsWrite)(okHandler()))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
-	req.Header.Set("Authorization", "Bearer correctly-scoped-key")
+	req.Header.Set("Authorization", "Bearer "+bearer)
 	rec := httptest.NewRecorder()
 	handler(rec, req)
 

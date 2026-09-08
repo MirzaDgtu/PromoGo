@@ -121,7 +121,7 @@ func TestStoreKeySecurityMatrix(t *testing.T) {
 		fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, RevokedAt: &now, Scopes: []string{domain.ScopeClientsLookup}}, "revoked-key")
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/lookup?phone=+79261234567", nil)
-		req.Header.Set("Authorization", "Bearer revoked-key")
+		req.Header.Set("Authorization", "Bearer key-1.revoked-key")
 		rec := doRequest(handler, req)
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d, want 401", rec.Code)
@@ -135,7 +135,7 @@ func TestStoreKeySecurityMatrix(t *testing.T) {
 		fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, ExpiresAt: &past, Scopes: []string{domain.ScopeClientsLookup}}, "expired-key")
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/lookup?phone=+79261234567", nil)
-		req.Header.Set("Authorization", "Bearer expired-key")
+		req.Header.Set("Authorization", "Bearer key-1.expired-key")
 		rec := doRequest(handler, req)
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d, want 401", rec.Code)
@@ -148,7 +148,7 @@ func TestStoreKeySecurityMatrix(t *testing.T) {
 		fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeBalancesRead}}, "wrong-scope-key")
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/lookup?phone=+79261234567", nil)
-		req.Header.Set("Authorization", "Bearer wrong-scope-key")
+		req.Header.Set("Authorization", "Bearer key-1.wrong-scope-key")
 		rec := doRequest(handler, req)
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want 403 (key lacks clients.lookup scope)", rec.Code)
@@ -162,7 +162,7 @@ func TestStoreKeySecurityMatrix(t *testing.T) {
 		fakes.Clients.seed(&domain.Client{StoreID: 1, Phone: "+79261234567"})
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/lookup?phone=+79261234567", nil)
-		req.Header.Set("Authorization", "Bearer correct-key")
+		req.Header.Set("Authorization", "Bearer key-1.correct-key")
 		rec := doRequest(handler, req)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
@@ -178,7 +178,7 @@ func TestStoreKeySecurityMatrix(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/"+itoa(otherStoreClient.ID)+"/balance", nil)
 		req.SetPathValue("id", itoa(otherStoreClient.ID))
-		req.Header.Set("Authorization", "Bearer store-a-key")
+		req.Header.Set("Authorization", "Bearer key-1.store-a-key")
 		rec := doRequest(handler, req)
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("status = %d, want 404 (store A must not see store B's client)", rec.Code)
@@ -308,7 +308,7 @@ func TestCredentialsAreNotInterchangeable(t *testing.T) {
 
 	t.Run("store api key rejected on customer route", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
-		req.Header.Set("Authorization", "Bearer a-store-api-key")
+		req.Header.Set("Authorization", "Bearer key-1.a-store-api-key")
 		rec := doRequest(handler, req)
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d, want 401", rec.Code)

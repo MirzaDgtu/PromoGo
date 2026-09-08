@@ -155,13 +155,6 @@ func (f *fakeCustomerSessionRepo) RevokeAllForAccount(_ context.Context, account
 	return nil
 }
 
-func (f *fakeCustomerSessionRepo) get(id int64) *domain.CustomerSession {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	cp := *f.byID[id]
-	return &cp
-}
-
 func (f *fakeCustomerSessionRepo) countNonRevoked(accountID int64) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()

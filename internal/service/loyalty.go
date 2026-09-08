@@ -16,18 +16,33 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/mechanicbuild"
 )
 
+// AntiFraudConfig bounds LoyaltyService's redemption-side anti-fraud check
+// (see DEC-013). It is a deliberately narrow view of the application-wide
+// config.AntiFraudConfig — internal/service doesn't import internal/config,
+// matching how CustomerAuthConfig/OTPConfig are defined locally in this
+// package rather than imported; internal/app/app.go maps the loaded config
+// into this type when constructing LoyaltyService.
+type AntiFraudConfig struct {
+	// DailyRedeemPointsLimit caps the sum of points actually redeemed by a
+	// single Client over DailyRedeemWindow. Zero disables the check
+	// entirely (only valid in development — see config.validateAntiFraud).
+	DailyRedeemPointsLimit int64
+	DailyRedeemWindow      time.Duration
+}
+
 // LoyaltyService is the core loyalty-engine use case: it loads state, runs
 // the store's configured domain.Mechanic, posts the transaction and balance
 // change atomically via LedgerRepository, and best-effort notifies the
 // client.
 type LoyaltyService struct {
-	log      *slog.Logger
-	clients  domain.ClientRepository
-	txs      domain.TransactionRepository
-	balances domain.BalanceRepository
-	ledger   domain.LedgerRepository
-	configs  domain.LoyaltyConfigRepository
-	notifier domain.NotificationChannel
+	log       *slog.Logger
+	clients   domain.ClientRepository
+	txs       domain.TransactionRepository
+	balances  domain.BalanceRepository
+	ledger    domain.LedgerRepository
+	configs   domain.LoyaltyConfigRepository
+	notifier  domain.NotificationChannel
+	antiFraud AntiFraudConfig
 }
 
 // New constructs a LoyaltyService.
@@ -39,15 +54,17 @@ func New(
 	ledger domain.LedgerRepository,
 	configs domain.LoyaltyConfigRepository,
 	notifier domain.NotificationChannel,
+	antiFraud AntiFraudConfig,
 ) *LoyaltyService {
 	return &LoyaltyService{
-		log:      log,
-		clients:  clients,
-		txs:      txs,
-		balances: balances,
-		ledger:   ledger,
-		configs:  configs,
-		notifier: notifier,
+		log:       log,
+		clients:   clients,
+		txs:       txs,
+		balances:  balances,
+		ledger:    ledger,
+		configs:   configs,
+		notifier:  notifier,
+		antiFraud: antiFraud,
 	}
 }
 
@@ -289,12 +306,19 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 		RequestFingerprint: redeemFingerprint(req.ClientID, req.Amount, req.Points),
 	}
 
-	posted, newBalance, err := s.ledger.Post(ctx, tx)
+	posted, newBalance, err := s.ledger.PostRedeemChecked(ctx, tx, s.antiFraud.DailyRedeemPointsLimit, s.antiFraud.DailyRedeemWindow)
 	if errors.Is(err, domain.ErrConflict) {
 		return s.replayedRedeem(ctx, req.StoreID, req.ExternalTxID, req.ClientID, req.Amount, req.Points)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("redeem: post transaction: %w", err)
+	}
+
+	if s.notifier != nil {
+		msg := fmt.Sprintf("Списано %d баллов", -posted.PointsDelta)
+		if err := s.notifier.Send(ctx, req.ClientID, msg); err != nil {
+			s.log.WarnContext(ctx, "send redeem notification", "client_id", req.ClientID, "error", err)
+		}
 	}
 
 	return &RedeemResult{PointsRedeemed: -posted.PointsDelta, Balance: newBalance.Points}, nil
@@ -325,4 +349,158 @@ func (s *LoyaltyService) replayedRedeem(ctx context.Context, storeID int64, exte
 	}
 
 	return &RedeemResult{PointsRedeemed: -existing.PointsDelta, Balance: existing.BalanceAfter, Replayed: true}, nil
+}
+
+// RefundRequest mirrors POST /api/v1/transactions/refund's payload.
+// OriginalType is optional: external_tx_id uniqueness is scoped per type
+// (see transaction.go), so if a store legitimately reused the same receipt
+// number for both an accrual and a redeem, Refund can't tell which one
+// OriginalExternalTxID refers to without it — see domain.ErrAmbiguousOriginalTransaction.
+type RefundRequest struct {
+	StoreID              int64
+	ExternalTxID         string
+	OriginalExternalTxID string
+	OriginalType         domain.TransactionType
+	Amount               decimal.Decimal
+}
+
+// RefundResult is the response to a refund request.
+type RefundResult struct {
+	ClientID            int64
+	PointsReversed      int64
+	Balance             int64
+	RefundedAmountTotal decimal.Decimal
+	FullyRefunded       bool
+	Replayed            bool
+}
+
+// refundFingerprint canonically encodes the parameters of a refund request.
+// Unlike accrual/redeem, a refund's identity includes the original
+// transaction's ID (not just the requested amount) — two refunds against
+// different originals must never be treated as replays of each other even
+// if they happen to share an external_tx_id under different Type scoping
+// (they can't, since Type is part of the idempotency key, but the
+// fingerprint still encodes it for clarity and defense in depth).
+func refundFingerprint(originalTransactionID int64, amount decimal.Decimal) string {
+	return fmt.Sprintf("original=%d;amount=%s", originalTransactionID, amount.StringFixed(2))
+}
+
+// Refund implements the refund use case (DEC-012): it locates the original
+// accrual/redeem transaction, then delegates the proportional point-delta
+// computation, over-refund check, and atomic posting to
+// LedgerRepository.PostRefund — see its doc comment for why that math can't
+// safely live here. Like Accrue/Redeem, it is idempotent on
+// (StoreID, TransactionRefund, ExternalTxID).
+func (s *LoyaltyService) Refund(ctx context.Context, req RefundRequest) (*RefundResult, error) {
+	original, err := s.resolveOriginalTransaction(ctx, req.StoreID, req.OriginalExternalTxID, req.OriginalType)
+	if err != nil {
+		return nil, err
+	}
+
+	if result, err := s.replayedRefund(ctx, req.StoreID, req.ExternalTxID, original.ID, req.Amount); result != nil || err != nil {
+		return result, err
+	}
+
+	refundTx := &domain.Transaction{
+		StoreID:               req.StoreID,
+		ExternalTxID:          req.ExternalTxID,
+		Amount:                req.Amount,
+		Type:                  domain.TransactionRefund,
+		RequestFingerprint:    refundFingerprint(original.ID, req.Amount),
+		OriginalTransactionID: &original.ID,
+	}
+
+	posted, updatedOriginal, balance, err := s.ledger.PostRefund(ctx, refundTx)
+	if errors.Is(err, domain.ErrConflict) {
+		return s.replayedRefund(ctx, req.StoreID, req.ExternalTxID, original.ID, req.Amount)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("refund: post transaction: %w", err)
+	}
+
+	if s.notifier != nil {
+		msg := fmt.Sprintf("Возврат: скорректировано %d баллов", posted.PointsDelta)
+		if err := s.notifier.Send(ctx, posted.ClientID, msg); err != nil {
+			s.log.WarnContext(ctx, "send refund notification", "client_id", posted.ClientID, "error", err)
+		}
+	}
+
+	return &RefundResult{
+		ClientID:            posted.ClientID,
+		PointsReversed:      posted.PointsDelta,
+		Balance:             balance.Points,
+		RefundedAmountTotal: updatedOriginal.RefundedAmount,
+		FullyRefunded:       updatedOriginal.RefundedAmount.Equal(updatedOriginal.Amount),
+	}, nil
+}
+
+// resolveOriginalTransaction finds the accrual/redeem RefundRequest.OriginalExternalTxID
+// refers to under req.StoreID. If originalType is empty it tries both
+// accrual and redeem — exactly one match proceeds, zero is
+// domain.ErrNotFound, and two (the same external_tx_id legitimately reused
+// across an accrual and a redeem) is domain.ErrAmbiguousOriginalTransaction.
+func (s *LoyaltyService) resolveOriginalTransaction(ctx context.Context, storeID int64, originalExternalTxID string, originalType domain.TransactionType) (*domain.Transaction, error) {
+	if originalType != "" {
+		tx, err := s.txs.GetByExternalID(ctx, storeID, originalType, originalExternalTxID)
+		if errors.Is(err, domain.ErrNotFound) {
+			return nil, domain.ErrNotFound
+		}
+		if err != nil {
+			return nil, fmt.Errorf("refund: resolve original transaction: %w", err)
+		}
+		return tx, nil
+	}
+
+	accrual, err := s.txs.GetByExternalID(ctx, storeID, domain.TransactionAccrual, originalExternalTxID)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, fmt.Errorf("refund: resolve original transaction: %w", err)
+	}
+	redeem, err := s.txs.GetByExternalID(ctx, storeID, domain.TransactionRedeem, originalExternalTxID)
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return nil, fmt.Errorf("refund: resolve original transaction: %w", err)
+	}
+
+	switch {
+	case accrual != nil && redeem != nil:
+		return nil, domain.ErrAmbiguousOriginalTransaction
+	case accrual != nil:
+		return accrual, nil
+	case redeem != nil:
+		return redeem, nil
+	default:
+		return nil, domain.ErrNotFound
+	}
+}
+
+// replayedRefund mirrors replayedAccrue/replayedRedeem: a non-nil result
+// means (storeID, TransactionRefund, externalTxID) was already processed,
+// nil/nil means it wasn't yet, and domain.ErrIdempotencyConflict means the
+// ID was reused against a different original transaction or amount.
+func (s *LoyaltyService) replayedRefund(ctx context.Context, storeID int64, externalTxID string, originalTransactionID int64, amount decimal.Decimal) (*RefundResult, error) {
+	existing, err := s.txs.GetByExternalID(ctx, storeID, domain.TransactionRefund, externalTxID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("refund: check idempotency: %w", err)
+	}
+	if existing.RequestFingerprint != refundFingerprint(originalTransactionID, amount) {
+		return nil, domain.ErrIdempotencyConflict
+	}
+
+	fullyRefunded := false
+	if existing.OriginalTransactionID != nil {
+		if o, oerr := s.txs.GetByID(ctx, *existing.OriginalTransactionID); oerr == nil {
+			fullyRefunded = o.RefundedAmount.Equal(o.Amount)
+		}
+	}
+
+	return &RefundResult{
+		ClientID:            existing.ClientID,
+		PointsReversed:      existing.PointsDelta,
+		Balance:             existing.BalanceAfter,
+		RefundedAmountTotal: existing.Amount,
+		FullyRefunded:       fullyRefunded,
+		Replayed:            true,
+	}, nil
 }

@@ -201,6 +201,132 @@ func TestHandleUpdateStaffMembership_MissingRoleAndStatus(t *testing.T) {
 	}
 }
 
+// TestHandleCreateStaffMembership_RetailerAdminCannotGrantPlatformAdmin: a
+// retailer_admin holds staff.manage (same as platform_admin), but must
+// never be able to mint a platform_admin membership for anyone, including
+// themselves — that would be a privilege escalation out of their own
+// organization scope.
+func TestHandleCreateStaffMembership_RetailerAdminCannotGrantPlatformAdmin(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff", token, map[string]any{
+		"external_subject": "oidc|wannabe-admin", "role": "platform_admin",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 (retailer_admin must not grant platform_admin)", rec.Code)
+	}
+}
+
+func TestHandleCreateStaffMembership_PlatformAdminCanGrantPlatformAdmin(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RolePlatformAdmin)
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff", token, map[string]any{
+		"external_subject": "oidc|new-admin", "role": "platform_admin",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (platform_admin may grant platform_admin, body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+// TestHandleUpdateStaffMembership_RetailerAdminCannotEscalateToPlatformAdmin
+// covers the same escalation via the update path, not just create.
+func TestHandleUpdateStaffMembership_RetailerAdminCannotEscalateToPlatformAdmin(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	target := fakes.StaffMemberships.seed(&domain.StaffMembership{
+		StaffUserID: 2, OrganizationID: org.ID, Role: domain.RoleStoreManager, Status: domain.StaffActive,
+	})
+
+	req := adminReq(http.MethodPatch, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff/"+itoa(target.ID), token, map[string]string{
+		"role": "platform_admin",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("membershipID", itoa(target.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 (retailer_admin must not escalate to platform_admin)", rec.Code)
+	}
+}
+
+// TestHandleUpdateStaffMembership_RetailerAdminCannotDemoteOrDisablePlatformAdmin
+// covers revocation: a retailer_admin with staff.manage in the same
+// organization must not be able to demote or disable an existing
+// platform_admin membership.
+func TestHandleUpdateStaffMembership_RetailerAdminCannotDemoteOrDisablePlatformAdmin(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	target := fakes.StaffMemberships.seed(&domain.StaffMembership{
+		StaffUserID: 2, OrganizationID: org.ID, Role: domain.RolePlatformAdmin, Status: domain.StaffActive,
+	})
+
+	req := adminReq(http.MethodPatch, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff/"+itoa(target.ID), token, map[string]string{
+		"status": "disabled",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("membershipID", itoa(target.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 (retailer_admin must not disable a platform_admin)", rec.Code)
+	}
+}
+
+// TestHandleUpdateStaffMembership_CrossOrgIDORRejected: a membership id
+// from a different organization must 404, not apply, even though the
+// caller has staff.manage for the org named in the path — the path's orgID
+// is not a proof that membershipID belongs to it.
+func TestHandleUpdateStaffMembership_CrossOrgIDORRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	orgA := seedOrganization(fakes, "Org A")
+	orgB := seedOrganization(fakes, "Org B")
+	token := issueStaffToken(t, fakes, 1, orgA.ID, nil, domain.RoleRetailerAdmin)
+	targetInB := fakes.StaffMemberships.seed(&domain.StaffMembership{
+		StaffUserID: 2, OrganizationID: orgB.ID, Role: domain.RoleStoreManager, Status: domain.StaffActive,
+	})
+
+	req := adminReq(http.MethodPatch, "/api/v1/admin/organizations/"+itoa(orgA.ID)+"/staff/"+itoa(targetInB.ID), token, map[string]string{
+		"status": "disabled",
+	})
+	req.SetPathValue("orgID", itoa(orgA.ID))
+	req.SetPathValue("membershipID", itoa(targetInB.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 (org A must not touch org B's membership by id)", rec.Code)
+	}
+	if targetInB.Status != domain.StaffActive {
+		t.Errorf("org B's membership status = %q, want unchanged active", targetInB.Status)
+	}
+}
+
+// TestHandleUpdateStaffMembership_CannotModifyOwnMembership guards against
+// self-escalation/self-disable: a caller must not be able to change their
+// own membership's role or status through this endpoint.
+func TestHandleUpdateStaffMembership_CannotModifyOwnMembership(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	own := fakes.StaffMemberships.byID[fakes.StaffMemberships.nextID] // the membership issueStaffToken just seeded for staff user 1
+
+	req := adminReq(http.MethodPatch, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff/"+itoa(own.ID), token, map[string]string{
+		"status": "disabled",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("membershipID", itoa(own.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (cannot modify own membership)", rec.Code)
+	}
+}
+
 // --- admin_apikeys.go ---
 
 func TestHandleListStoreAPIKeys_Success(t *testing.T) {
@@ -243,6 +369,99 @@ func TestHandleCreateStoreAPIKey_Success(t *testing.T) {
 	}
 }
 
+// TestHandleCreateStoreAPIKey_PlaintextAuthenticatesRealRequest is the
+// create-then-use regression test for the key_id/key_hash mismatch that
+// once made every freshly created store API key permanently unable to
+// authenticate (GenerateAPIKey hashed only the secret half; the middleware
+// hashed "<keyID>.<secret>" whole and could never find a match). It drives
+// the real admin HTTP handler to create a key, then sends the exact
+// plaintext_key it returns through RequireStoreAPIKey/requireScope on a
+// real store-scoped route.
+func TestHandleCreateStoreAPIKey_PlaintextAuthenticatesRealRequest(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	adminToken := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	seedPointsConfig(fakes, store.ID)
+
+	createReq := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/api-keys", adminToken, map[string]any{
+		"name": "1C webhook", "scopes": []string{domain.ScopeTransactionsWrite},
+	})
+	createReq.SetPathValue("orgID", itoa(org.ID))
+	createReq.SetPathValue("storeID", itoa(store.ID))
+	createRec := doRequest(handler, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, want 201 (body=%s)", createRec.Code, createRec.Body.String())
+	}
+	var created struct {
+		ID           int64  `json:"id"`
+		PlaintextKey string `json:"plaintext_key"`
+	}
+	decodeJSON(t, createRec, &created)
+	if created.PlaintextKey == "" {
+		t.Fatal("expected a non-empty plaintext_key")
+	}
+
+	// Permitted request: the plaintext key returned at creation must
+	// authenticate a real transactions.write-scoped webhook call.
+	rec := doRequest(handler, accrueReq(created.PlaintextKey, map[string]any{
+		"transaction_id": "tx-created-key", "phone": "+79261234567", "amount": "50.00",
+	}))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("accrual with freshly created key: status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+
+	// Missing scope: same store, a key without transactions.write must be
+	// rejected for the accrual route.
+	unscopedReq := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/api-keys", adminToken, map[string]any{
+		"name": "read-only", "scopes": []string{domain.ScopeBalancesRead},
+	})
+	unscopedReq.SetPathValue("orgID", itoa(org.ID))
+	unscopedReq.SetPathValue("storeID", itoa(store.ID))
+	unscopedRec := doRequest(handler, unscopedReq)
+	var unscoped struct {
+		PlaintextKey string `json:"plaintext_key"`
+	}
+	decodeJSON(t, unscopedRec, &unscoped)
+	rec = doRequest(handler, accrueReq(unscoped.PlaintextKey, map[string]any{
+		"transaction_id": "tx-unscoped", "phone": "+79261234567", "amount": "50.00",
+	}))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("accrual with balances.read-only key: status = %d, want 403", rec.Code)
+	}
+
+	// Modified secret: flipping the last character of a real, valid key
+	// must be rejected, not silently accepted or 500.
+	tampered := created.PlaintextKey[:len(created.PlaintextKey)-1] + "x"
+	if tampered == created.PlaintextKey {
+		tampered = created.PlaintextKey[:len(created.PlaintextKey)-1] + "y"
+	}
+	rec = doRequest(handler, accrueReq(tampered, map[string]any{
+		"transaction_id": "tx-tampered", "phone": "+79261234567", "amount": "50.00",
+	}))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("accrual with tampered key: status = %d, want 401", rec.Code)
+	}
+
+	// Revoked: revoke the originally created key via the admin API, then
+	// confirm it can no longer authenticate.
+	revokeReq := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/api-keys/"+itoa(created.ID)+"/revoke", adminToken, nil)
+	revokeReq.SetPathValue("orgID", itoa(org.ID))
+	revokeReq.SetPathValue("storeID", itoa(store.ID))
+	revokeReq.SetPathValue("keyID", itoa(created.ID))
+	revokeRec := doRequest(handler, revokeReq)
+	if revokeRec.Code != http.StatusNoContent {
+		t.Fatalf("revoke status = %d, want 204 (body=%s)", revokeRec.Code, revokeRec.Body.String())
+	}
+
+	rec = doRequest(handler, accrueReq(created.PlaintextKey, map[string]any{
+		"transaction_id": "tx-after-revoke", "phone": "+79261234567", "amount": "50.00",
+	}))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("accrual with revoked key: status = %d, want 401", rec.Code)
+	}
+}
+
 func TestHandleCreateStoreAPIKey_InvalidScope(t *testing.T) {
 	handler, fakes := newTestServer(t)
 	org := seedOrganization(fakes, "Acme")
@@ -274,6 +493,28 @@ func TestHandleRevokeStoreAPIKey_Success(t *testing.T) {
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204 (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+// TestHandleRevokeStoreAPIKey_CrossStoreRejected: a key belonging to store B
+// must not be revocable through store A's path, even though both stores
+// are in the same organization and the caller's org-scoped role would pass
+// resolveScopedStore for store A. Guards the storeID-scoped Revoke query.
+func TestHandleRevokeStoreAPIKey_CrossStoreRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	storeA := seedStore(fakes, org.ID, "Store A")
+	storeB := seedStore(fakes, org.ID, "Store B")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 9, StoreID: storeB.ID, Name: "store-b-key"}, "store-b-secret")
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(storeA.ID)+"/api-keys/9/revoke", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(storeA.ID))
+	req.SetPathValue("keyID", "9")
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 (store A must not revoke store B's key)", rec.Code)
 	}
 }
 

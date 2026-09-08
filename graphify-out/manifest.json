@@ -15,18 +15,18 @@
     "semantic_hash": "2f10c99baa92bd41e1cb2f3092cabf0a"
   },
   "go.mod": {
-    "mtime": 1785362203.5062923,
-    "ast_hash": "7fc4fa721bdb6d62fac20843c32d032b",
+    "mtime": 1788899502.117007,
+    "ast_hash": "bf9fffff95f02c45c104bd5c37a3b147",
     "semantic_hash": ""
   },
   "internal/app/app.go": {
-    "mtime": 1785361282.175115,
-    "ast_hash": "f3c2e447388798a56c7257a82f75bc3e",
+    "mtime": 1785408344.4675858,
+    "ast_hash": "5563041fbe58c1225723fcd0babbfb6a",
     "semantic_hash": ""
   },
   "internal/config/config.go": {
-    "mtime": 1785361145.3589363,
-    "ast_hash": "e8aba68c64eff299830176772aa48bcb",
+    "mtime": 1785404095.552107,
+    "ast_hash": "f7f8e45929d9e67099799ef9ce7ef889",
     "semantic_hash": ""
   },
   "internal/domain/balance.go": {
@@ -40,14 +40,14 @@
     "semantic_hash": "234bb8ee76433a68967394ee106a2c41"
   },
   "internal/domain/errors.go": {
-    "mtime": 1785232324.9123037,
-    "ast_hash": "51b614f5a0a6900f808311e1a493b7b5",
-    "semantic_hash": "51b614f5a0a6900f808311e1a493b7b5"
+    "mtime": 1785402928.1953492,
+    "ast_hash": "e01a488060a00b9c23866137c673e3ef",
+    "semantic_hash": ""
   },
   "internal/domain/ledger.go": {
-    "mtime": 1785230461.2272496,
-    "ast_hash": "ff591bde0d3eff091769206824161ddc",
-    "semantic_hash": "ff591bde0d3eff091769206824161ddc"
+    "mtime": 1785403009.2244275,
+    "ast_hash": "1b6af358446510345c3fd8eae8e8067f",
+    "semantic_hash": ""
   },
   "internal/domain/loyalty_config.go": {
     "mtime": 1785228076.4587836,
@@ -70,9 +70,9 @@
     "semantic_hash": "3047f87958cf6a107e2400dc175f32b1"
   },
   "internal/domain/transaction.go": {
-    "mtime": 1785283773.1329246,
-    "ast_hash": "91ea1f32d3838d131a4eda1a8ea6d37d",
-    "semantic_hash": "91ea1f32d3838d131a4eda1a8ea6d37d"
+    "mtime": 1785403827.3512235,
+    "ast_hash": "488540bbd33737b3372aaa51ba5d5e4e",
+    "semantic_hash": ""
   },
   "internal/httpserver/clients.go": {
     "mtime": 1785277862.2091682,
@@ -95,19 +95,19 @@
     "semantic_hash": "6c6e5eef85cfe9ec9579e12bca500065"
   },
   "internal/httpserver/respond.go": {
-    "mtime": 1785228382.078793,
-    "ast_hash": "890e100d1c6654488a449be872be0e4f",
-    "semantic_hash": "890e100d1c6654488a449be872be0e4f"
+    "mtime": 1785406866.764404,
+    "ast_hash": "dcccd9f9c1e4f39a9d6538ff9fe0d277",
+    "semantic_hash": ""
   },
   "internal/httpserver/server.go": {
-    "mtime": 1785361228.925146,
-    "ast_hash": "b76b013776c980f912206e968d88c3ba",
+    "mtime": 1785408288.7680302,
+    "ast_hash": "6a09e7fd2c9a3868a5694d19e6c92060",
     "semantic_hash": ""
   },
   "internal/httpserver/transactions.go": {
-    "mtime": 1785265817.1065352,
-    "ast_hash": "431c9c883c93c0f57a6c44ce7ecf7a1d",
-    "semantic_hash": "431c9c883c93c0f57a6c44ce7ecf7a1d"
+    "mtime": 1785406876.8203099,
+    "ast_hash": "e95df1866e7bc7b64d2b8bd3786eb4c6",
+    "semantic_hash": ""
   },
   "internal/logger/logger.go": {
     "mtime": 1785228234.3811214,
@@ -150,9 +150,9 @@
     "semantic_hash": "1d53556a043660477156033c827ab7a6"
   },
   "internal/repository/postgres/ledger_repository.go": {
-    "mtime": 1785265651.0086632,
-    "ast_hash": "3631450407e2503c94fe9a7bfbcf1058",
-    "semantic_hash": "3631450407e2503c94fe9a7bfbcf1058"
+    "mtime": 1785403066.1897726,
+    "ast_hash": "bdd8cac15a6364f42d3f6778aa82e624",
+    "semantic_hash": ""
   },
   "internal/repository/postgres/loyalty_config_repository.go": {
     "mtime": 1785228217.714832,
@@ -170,19 +170,19 @@
     "semantic_hash": "9c5105eecdf70aacc852e39e19f9cbd3"
   },
   "internal/repository/postgres/transaction_repository.go": {
-    "mtime": 1785283785.3818116,
-    "ast_hash": "b67663be57cd9267324d52ea7e225e5c",
-    "semantic_hash": "b67663be57cd9267324d52ea7e225e5c"
+    "mtime": 1785403834.0389693,
+    "ast_hash": "049ecba1cc31904e404fb6f80d6a85df",
+    "semantic_hash": ""
   },
   "internal/service/loyalty.go": {
-    "mtime": 1785277838.3561828,
-    "ast_hash": "bff795205eff599b21211d6f6ce4d593",
-    "semantic_hash": "bff795205eff599b21211d6f6ce4d593"
+    "mtime": 1785404026.7075555,
+    "ast_hash": "baec3d680af731a1060bbf7771ac48b0",
+    "semantic_hash": ""
   },
   "internal/service/loyalty_test.go": {
-    "mtime": 1785283955.5644498,
-    "ast_hash": "f12e7097b036e9091dd76f550e44c447",
-    "semantic_hash": "f12e7097b036e9091dd76f550e44c447"
+    "mtime": 1785408641.835306,
+    "ast_hash": "c34f47d804de8ac49c5c89c53890a548",
+    "semantic_hash": ""
   },
   "migrations/embed.go": {
     "mtime": 1785265505.5364692,
@@ -300,8 +300,8 @@
     "semantic_hash": "4f6fc77a237ae3cf321b58f3b4123537"
   },
   "configs/config.yaml": {
-    "mtime": 1785280363.4152732,
-    "ast_hash": "d1ef28717716f559085494eaaeedd567",
+    "mtime": 1785408396.7226639,
+    "ast_hash": "cd86578cb17b04b7f4ea5c8f92f2d7b5",
     "semantic_hash": ""
   },
   "deployments/docker-compose.yml": {
@@ -315,8 +315,8 @@
     "semantic_hash": "75d7f6ec473cb694a2ad8f850ee08356"
   },
   "knowledge/Decisions.md": {
-    "mtime": 1785283984.949123,
-    "ast_hash": "a447a87832feb3b30cd0c3c7a64bfa4c",
+    "mtime": 1785402884.9225762,
+    "ast_hash": "6911f380bb1aa7831c27c1b93ba1fe75",
     "semantic_hash": ""
   },
   "knowledge/Home.md": {
@@ -325,8 +325,8 @@
     "semantic_hash": "69920c279f415195bc8dcc0ad6bfd30c"
   },
   "knowledge/Project Questions.md": {
-    "mtime": 1785284017.0373087,
-    "ast_hash": "e112af36a7f99cde76ae9cf56615d6eb",
+    "mtime": 1785409249.2004883,
+    "ast_hash": "9b583c277a6671db6e9f3ffca0fd7082",
     "semantic_hash": ""
   },
   "internal/auth/oidc.go": {
@@ -375,9 +375,9 @@
     "semantic_hash": "dff7235003ab963041a9667ff1e6ab68"
   },
   "internal/domain/audit.go": {
-    "mtime": 1785276508.7391665,
-    "ast_hash": "1f2b0840d7610f89239e6ae50095be15",
-    "semantic_hash": "1f2b0840d7610f89239e6ae50095be15"
+    "mtime": 1785407729.7253335,
+    "ast_hash": "b7c7f0de10d87781d2b748bcab5e4864",
+    "semantic_hash": ""
   },
   "internal/domain/customer.go": {
     "mtime": 1785276424.60393,
@@ -640,13 +640,13 @@
     "semantic_hash": "4964c2d161364b2633579b93a50691bc"
   },
   "internal/httpserver/me_test.go": {
-    "mtime": 1785283941.740261,
-    "ast_hash": "b296f28bac486bb1ef8e03073bae0372",
-    "semantic_hash": "b296f28bac486bb1ef8e03073bae0372"
+    "mtime": 1785404245.7990355,
+    "ast_hash": "8c26d73c15319f077fc5672d25d5af4f",
+    "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1785361880.3600397,
-    "ast_hash": "b50ff9d69a0cb4c9863aa8b579e8a151",
+    "mtime": 1788899502.1180682,
+    "ast_hash": "4a6f3f5dc4c1ebdb019479939c7f8574",
     "semantic_hash": ""
   },
   "graphify-out/memory/query_20260728_235012_\u0441\u043e\u0437\u0434\u0430\u0439_\u0434\u043b\u044f_\u043d\u0430\u0448\u0435\u0433\u043e_\u043f\u0440\u043e\u0435\u043a\u0442\u0430_readme_md.md": {
@@ -685,13 +685,13 @@
     "semantic_hash": ""
   },
   "internal/httpserver/ratelimit_rules.go": {
-    "mtime": 1785361276.2446215,
-    "ast_hash": "1a9050b1d8a8a6e427d1e09333a423c7",
+    "mtime": 1785407834.1842022,
+    "ast_hash": "3b4b580e1f1ee9a5bd04b358ad89f485",
     "semantic_hash": ""
   },
   "internal/httpserver/routes.go": {
-    "mtime": 1785353766.312688,
-    "ast_hash": "011eb8e1d73403f6710e139c05240ba8",
+    "mtime": 1785408282.611406,
+    "ast_hash": "9989621b6d7512054ea7212fcd1dabbd",
     "semantic_hash": ""
   },
   "internal/httpserver/server_test.go": {
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/testsupport_test.go": {
-    "mtime": 1785361617.033681,
-    "ast_hash": "1e0ccdec2936d4f75dfefe38f1738247",
+    "mtime": 1785408918.7715237,
+    "ast_hash": "cb43155f50c300ad8f138ead23a26067",
     "semantic_hash": ""
   },
   "internal/httpserver/transactions_route_test.go": {
@@ -735,8 +735,98 @@
     "semantic_hash": ""
   },
   "docs/openapi/openapi.yaml": {
-    "mtime": 1785361982.5640328,
-    "ast_hash": "f4663865dbdca09cc510df121574ad6b",
+    "mtime": 1785408465.5859284,
+    "ast_hash": "571e347b2aac00818096410a42082b79",
+    "semantic_hash": ""
+  },
+  "internal/domain/customer_device.go": {
+    "mtime": 1785407936.91056,
+    "ast_hash": "eca62bd459f4c23359a477d19380fb4b",
+    "semantic_hash": ""
+  },
+  "internal/httpserver/devices.go": {
+    "mtime": 1785408270.0432608,
+    "ast_hash": "d0e33604f1cba45bff5fc7b4f28999b1",
+    "semantic_hash": ""
+  },
+  "internal/httpserver/qr.go": {
+    "mtime": 1785407758.2260978,
+    "ast_hash": "3a58be8dbcc8934b791193ec9a94819e",
+    "semantic_hash": ""
+  },
+  "internal/httpserver/refund.go": {
+    "mtime": 1785406894.651153,
+    "ast_hash": "8b824fcf9a1049f3fa501065f3cf1df3",
+    "semantic_hash": ""
+  },
+  "internal/httpserver/refund_qr_devices_route_test.go": {
+    "mtime": 1785409056.6410222,
+    "ast_hash": "e5c548c13a13ad25467477c90a31fead",
+    "semantic_hash": ""
+  },
+  "internal/notification/fcmchannel/fcmchannel.go": {
+    "mtime": 1785409969.447882,
+    "ast_hash": "ef7c885a0327e9c32cb44d1e49a7211e",
+    "semantic_hash": ""
+  },
+  "internal/notification/httpsms/httpsms.go": {
+    "mtime": 1785408028.7636104,
+    "ast_hash": "b3352d49b3e888eec392c15d0fb45efd",
+    "semantic_hash": ""
+  },
+  "internal/notification/httpsms/httpsms_test.go": {
+    "mtime": 1785408831.3659213,
+    "ast_hash": "33eda0724d5ba9dab1b102b0f1fb67c3",
+    "semantic_hash": ""
+  },
+  "internal/repository/postgres/customer_device_repository.go": {
+    "mtime": 1785407992.5672915,
+    "ast_hash": "7fd68d10ab8d282596cbbcb088131d8e",
+    "semantic_hash": ""
+  },
+  "internal/service/qr.go": {
+    "mtime": 1785407723.475464,
+    "ast_hash": "1576ef10e13acde60aa87f696b537f92",
+    "semantic_hash": ""
+  },
+  "internal/service/qr_store.go": {
+    "mtime": 1785407688.4731724,
+    "ast_hash": "a8974e37f26c8b50880ffee7c5b044b4",
+    "semantic_hash": ""
+  },
+  "internal/service/qr_test.go": {
+    "mtime": 1785408780.485727,
+    "ast_hash": "98cb535a5035d10572ae1afc10d68345",
+    "semantic_hash": ""
+  },
+  "migrations/sql/00022_transaction_refunds.sql": {
+    "mtime": 1785402905.0312414,
+    "ast_hash": "f9b4941add65edfc38c3e321adf514c3",
+    "semantic_hash": ""
+  },
+  "migrations/sql/00023_create_customer_devices.sql": {
+    "mtime": 1785407917.9417946,
+    "ast_hash": "cf8a82a914b1aa65e5a1f6f31352ab64",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20260729_223550_\u0440\u0430\u0441\u0441\u043a\u0430\u0436\u0438_\u043f\u0440\u043e_\u043d\u0430\u0448_\u043f\u0440\u043e\u0435\u043a\u0442_\u0434\u043b\u044f_\u0438\u043d\u0432\u0435\u0441\u0442\u043e\u0440\u043e\u0432__\u043f\u043e\u043f\u0440\u043e\u0431\u0443\u0439_\u0434.md": {
+    "mtime": 1785364550.1656475,
+    "ast_hash": "c66a90678f6375c5509f488e93044a02",
+    "semantic_hash": ""
+  },
+  "internal/notification/fcmchannel/fcmchannel_test.go": {
+    "mtime": 1785410010.2966788,
+    "ast_hash": "695e79794c4b1063c6cbedde4c370ccd",
+    "semantic_hash": ""
+  },
+  "docs/audit-remediation-prompt.md": {
+    "mtime": 1788899598.7427394,
+    "ast_hash": "b15bcd1ba59f3c8c02250e42d16086aa",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20260908_201633_\u043e\u0437\u043d\u0430\u043a\u043e\u043c\u044c\u0441\u044f_\u0441_\u043f\u0440\u043e\u0435\u043a\u0442\u043e\u043c__\u0435\u0433\u043e_\u0438\u0434\u0435\u0435\u0439_\u0438_\u0446\u0435\u043b\u044c\u044e__\u0435\u0441\u043b\u0438_\u0432\u0438\u0434.md": {
+    "mtime": 1788898593.6572714,
+    "ast_hash": "26bdeb993b19513c08b299a33eae63df",
     "semantic_hash": ""
   }
 }

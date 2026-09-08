@@ -43,6 +43,18 @@ type Transaction struct {
 	// ID was reused for a materially different request.
 	RequestFingerprint string
 	CreatedAt          time.Time
+
+	// OriginalTransactionID is set only when Type is TransactionRefund: the
+	// ID of the accrual/redeem transaction this refund reverses. nil for
+	// every other type (see transactions_refund_reference_check).
+	OriginalTransactionID *int64
+	// RefundedAmount and RefundedPoints are cumulative totals kept on an
+	// accrual/redeem row as partial refunds are posted against it (see
+	// LedgerRepository.PostRefund) — always zero on accrual/redeem rows
+	// that haven't been refunded, and meaningless (left at zero) on refund
+	// rows themselves.
+	RefundedAmount decimal.Decimal
+	RefundedPoints int64
 }
 
 // TransactionCursor is a keyset-pagination continuation point: the
@@ -63,6 +75,11 @@ type TransactionRepository interface {
 	// for (storeID, txType, externalTxID) yet. Callers use this to detect a
 	// replayed webhook and skip re-running the accrual/redemption logic.
 	GetByExternalID(ctx context.Context, storeID int64, txType TransactionType, externalTxID string) (*Transaction, error)
+	// GetByID returns domain.ErrNotFound if no transaction exists with this
+	// ID. Used to re-read a refund's original transaction (by
+	// Transaction.OriginalTransactionID) when reporting a replayed refund's
+	// FullyRefunded status.
+	GetByID(ctx context.Context, id int64) (*Transaction, error)
 	ListByClient(ctx context.Context, clientID int64) ([]*Transaction, error)
 	// ListByClientIDs returns up to limit transactions across every client
 	// in clientIDs, newest first (created_at DESC, id DESC as tiebreaker).

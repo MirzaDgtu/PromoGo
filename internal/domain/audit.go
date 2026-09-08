@@ -34,6 +34,11 @@ const (
 	AuditActionAPIKeyCreated = "api_key.created"
 	AuditActionAPIKeyRotated = "api_key.rotated"
 	AuditActionAPIKeyRevoked = "api_key.revoked"
+
+	// AuditActionQRResolved is recorded on a successful QR resolve
+	// (DEC-011) — TargetType "client", TargetID the resolved Client's ID.
+	// No QR token material or CustomerAccount PII is recorded.
+	AuditActionQRResolved = "qr.resolved"
 )
 
 // AuditEvent is one append-only record in the security audit trail. Never

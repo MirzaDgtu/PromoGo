@@ -57,13 +57,19 @@ func (k *StoreAPIKey) Active(now time.Time) bool {
 
 // StoreAPIKeyRepository persists and retrieves StoreAPIKey rows.
 type StoreAPIKeyRepository interface {
-	// GetByHash returns domain.ErrNotFound if no key hashes to keyHash,
-	// active or not — callers must check Active themselves so a revoked/
-	// expired key produces the same 401 as an unrecognized one.
-	GetByHash(ctx context.Context, keyHash string) (*StoreAPIKey, error)
+	// GetByKeyID returns domain.ErrNotFound if no key has this KeyID, active
+	// or not — callers must check Active themselves so a revoked/expired key
+	// produces the same 401 as an unrecognized one, and must compare the
+	// request secret against KeyHash themselves (in constant time) since
+	// KeyID alone does not authenticate the request.
+	GetByKeyID(ctx context.Context, keyID string) (*StoreAPIKey, error)
 	ListByStore(ctx context.Context, storeID int64) ([]*StoreAPIKey, error)
 	Create(ctx context.Context, key *StoreAPIKey) error
-	Revoke(ctx context.Context, id int64) error
+	// Revoke marks key id revoked, scoped to storeID so a caller can never
+	// revoke another store's key by guessing/enumerating ids. Returns
+	// domain.ErrNotFound if id doesn't belong to storeID or is already
+	// revoked.
+	Revoke(ctx context.Context, storeID, id int64) error
 	// TouchLastUsed best-effort updates LastUsedAt; callers must not fail a
 	// request if this errors.
 	TouchLastUsed(ctx context.Context, id int64, at time.Time) error

@@ -16,3 +16,11 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeError(w http.ResponseWriter, status int, message string) {
 	writeJSON(w, status, map[string]string{"error": message})
 }
+
+// writeErrorCode writes a JSON error response of the form
+// {"error": message, "code": code} — additive to writeError's shape, for
+// error conditions callers need to branch on programmatically (e.g.
+// "daily_redeem_limit_exceeded" vs a generic insufficient-balance message).
+func writeErrorCode(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, map[string]string{"error": message, "code": code})
+}

@@ -21,9 +21,11 @@ type Config struct {
 	Redis     RedisConfig     `mapstructure:"redis"`
 	Logger    LoggerConfig    `mapstructure:"logger"`
 	FCM       FCMConfig       `mapstructure:"fcm"`
+	SMS       SMSConfig       `mapstructure:"sms"`
 	Auth      AuthConfig      `mapstructure:"auth"`
 	OIDC      OIDCConfig      `mapstructure:"oidc"`
 	RateLimit RateLimitConfig `mapstructure:"ratelimit"`
+	AntiFraud AntiFraudConfig `mapstructure:"antifraud"`
 }
 
 // AppConfig holds general application metadata.
@@ -119,6 +121,34 @@ type FCMConfig struct {
 	CredentialsJSON string `mapstructure:"credentials_json"`
 }
 
+// SMSConfig configures OTP/notification SMS delivery. No specific vendor is
+// hardcoded (none has been chosen for the project yet — see
+// .claude/skills/add-notification-channel/SKILL.md): Provider "log" uses
+// internal/notification/logsms (development/test only); Provider "http"
+// posts to Endpoint via internal/notification/httpsms, a generic HTTPS
+// gateway contract. Token is set via PROMOGO_SMS_TOKEN, never committed to
+// configs/config.yaml. See Load's validateSMS for the production fail-fast
+// rule.
+type SMSConfig struct {
+	Provider string        `mapstructure:"provider"`
+	Endpoint string        `mapstructure:"endpoint"`
+	Token    string        `mapstructure:"token"`
+	Sender   string        `mapstructure:"sender"`
+	Timeout  time.Duration `mapstructure:"timeout"`
+}
+
+// AntiFraudConfig bounds the redemption daily limit and QR TTL/cooldowns
+// (see DEC-011, DEC-013). DailyRedeemPointsLimit has no default outside
+// development — see Load's validateAntiFraud.
+type AntiFraudConfig struct {
+	DailyRedeemPointsLimit int64         `mapstructure:"daily_redeem_points_limit"`
+	DailyRedeemWindow      time.Duration `mapstructure:"daily_redeem_window"`
+
+	QRTTL             time.Duration `mapstructure:"qr_ttl"`
+	QRIssueCooldown   time.Duration `mapstructure:"qr_issue_cooldown"`
+	QRConsumeCooldown time.Duration `mapstructure:"qr_consume_cooldown"`
+}
+
 // AuthConfig configures customer OTP/session auth and staff access-token
 // issuance. AccessTokenSecret is the only field with no default — set via
 // PROMOGO_AUTH_ACCESS_TOKEN_SECRET, never committed to configs/config.yaml
@@ -176,6 +206,15 @@ func Load(path string) (*Config, error) {
 	if err := cfg.validateAuth(); err != nil {
 		return nil, err
 	}
+	if err := cfg.validateAntiFraud(); err != nil {
+		return nil, err
+	}
+	if err := cfg.validateSMS(); err != nil {
+		return nil, err
+	}
+	if err := cfg.validateFCM(); err != nil {
+		return nil, err
+	}
 
 	return &cfg, nil
 }
@@ -190,6 +229,48 @@ func (c *Config) validateAuth() error {
 	}
 	if len(c.Auth.AccessTokenSecret) < 32 {
 		return fmt.Errorf("auth.access_token_secret must be set (>= 32 bytes) via PROMOGO_AUTH_ACCESS_TOKEN_SECRET outside development")
+	}
+	return nil
+}
+
+// validateAntiFraud fails fast if the daily redemption limit is unset
+// outside development — an anti-fraud limit that silently defaults to "no
+// limit" in production would defeat DEC-013 without any visible error.
+func (c *Config) validateAntiFraud() error {
+	if c.App.Env == "development" {
+		return nil
+	}
+	if c.AntiFraud.DailyRedeemPointsLimit <= 0 {
+		return fmt.Errorf("antifraud.daily_redeem_points_limit must be set (> 0) via PROMOGO_ANTIFRAUD_DAILY_REDEEM_POINTS_LIMIT outside development")
+	}
+	return nil
+}
+
+// validateSMS fails fast outside development if the SMS provider is still
+// the dev-only "log" stub, or if provider "http" is missing the endpoint/
+// token it needs — see DEC-014.
+func (c *Config) validateSMS() error {
+	if c.App.Env == "development" {
+		return nil
+	}
+	if c.SMS.Provider == "" || c.SMS.Provider == "log" {
+		return fmt.Errorf("sms.provider must not be \"log\" outside development (set PROMOGO_SMS_PROVIDER=http and configure sms.endpoint/sms.token)")
+	}
+	if c.SMS.Provider == "http" && (c.SMS.Endpoint == "" || c.SMS.Token == "") {
+		return fmt.Errorf("sms.endpoint and sms.token must be set via PROMOGO_SMS_ENDPOINT/PROMOGO_SMS_TOKEN when sms.provider=http")
+	}
+	return nil
+}
+
+// validateFCM fails fast outside development if FCM credentials aren't
+// configured — production must not silently fall back to the log-based
+// notification channel (see DEC-014).
+func (c *Config) validateFCM() error {
+	if c.App.Env == "development" {
+		return nil
+	}
+	if c.FCM.CredentialsJSON == "" {
+		return fmt.Errorf("fcm.credentials_json must be set via PROMOGO_FCM_CREDENTIALS_JSON outside development")
 	}
 	return nil
 }
@@ -288,4 +369,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("ratelimit.accrual_ip_window", time.Minute)
 	v.SetDefault("ratelimit.accrual_principal_limit", 600)
 	v.SetDefault("ratelimit.accrual_principal_window", time.Minute)
+
+	v.SetDefault("sms.provider", "log")
+	v.SetDefault("sms.timeout", 5*time.Second)
+
+	// Anti-fraud: daily_redeem_points_limit has a documented development-only
+	// default (1000) — validateAntiFraud requires it to be explicitly set
+	// outside development. QR TTL/cooldowns default in every environment
+	// (see DEC-011).
+	v.SetDefault("antifraud.daily_redeem_points_limit", 1000)
+	v.SetDefault("antifraud.daily_redeem_window", 24*time.Hour)
+	v.SetDefault("antifraud.qr_ttl", 2*time.Minute)
+	v.SetDefault("antifraud.qr_issue_cooldown", 30*time.Second)
+	v.SetDefault("antifraud.qr_consume_cooldown", time.Second)
 }

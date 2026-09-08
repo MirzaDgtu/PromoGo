@@ -31,6 +31,7 @@ type Deps struct {
 
 	Organizations    domain.OrganizationRepository
 	CustomerAccounts domain.CustomerAccountRepository
+	CustomerDevices  domain.CustomerDeviceRepository
 	StaffUsers       domain.StaffUserRepository
 	StaffMemberships domain.StaffMembershipRepository
 	AuditEvents      domain.AuditEventRepository
@@ -38,6 +39,7 @@ type Deps struct {
 	Loyalty      *service.LoyaltyService
 	CustomerAuth *service.CustomerAuthService
 	StaffAuth    *service.StaffAuthService
+	QR           *service.QRService
 
 	// CustomerAccessTokenSecret and StaffAccessTokenSecret verify the
 	// respective access tokens (see internal/auth). Both may be the same

@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
+	"github.com/shopspring/decimal"
 
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/config"
@@ -157,6 +159,17 @@ func (f *fakeFullTransactionRepo) GetByExternalID(_ context.Context, storeID int
 	return nil, domain.ErrNotFound
 }
 
+func (f *fakeFullTransactionRepo) GetByID(_ context.Context, id int64) (*domain.Transaction, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, tx := range f.all {
+		if tx.ID == id {
+			return tx, nil
+		}
+	}
+	return nil, domain.ErrNotFound
+}
+
 func (f *fakeFullTransactionRepo) ListByClient(_ context.Context, clientID int64) ([]*domain.Transaction, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -234,6 +247,115 @@ func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domai
 	f.txs.mu.Unlock()
 
 	return &posted, &domain.Balance{ClientID: tx.ClientID, Points: newPoints}, nil
+}
+
+// PostRedeemChecked mirrors the real repository's atomic daily-limit check
+// (internal/repository/postgres/ledger_repository.go), summing this fake
+// store's own redeem history in the trailing window.
+func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+	if dailyLimit > 0 {
+		f.txs.mu.Lock()
+		var redeemedInWindow int64
+		cutoff := time.Now().Add(-window)
+		for _, existing := range f.txs.all {
+			if existing.ClientID == tx.ClientID && existing.Type == domain.TransactionRedeem && existing.CreatedAt.After(cutoff) {
+				redeemedInWindow += -existing.PointsDelta
+			}
+		}
+		f.txs.mu.Unlock()
+		if redeemedInWindow-tx.PointsDelta > dailyLimit {
+			return nil, nil, domain.ErrDailyRedeemLimitExceeded
+		}
+	}
+	return f.Post(ctx, tx)
+}
+
+// PostRefund mirrors the real repository's atomic refund posting
+// (internal/repository/postgres/ledger_repository.go's PostRefund) against
+// this fake store's in-memory transactions/balances.
+func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transaction) (*domain.Transaction, *domain.Transaction, *domain.Balance, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.txs.mu.Lock()
+	defer f.txs.mu.Unlock()
+
+	for _, existing := range f.txs.all {
+		if existing.StoreID == refund.StoreID && existing.Type == domain.TransactionRefund && existing.ExternalTxID == refund.ExternalTxID {
+			return nil, nil, nil, domain.ErrConflict
+		}
+	}
+
+	if refund.OriginalTransactionID == nil {
+		return nil, nil, nil, fmt.Errorf("fakeLedgerRepo: PostRefund requires OriginalTransactionID")
+	}
+	var original *domain.Transaction
+	for _, tx := range f.txs.all {
+		if tx.ID == *refund.OriginalTransactionID && tx.StoreID == refund.StoreID {
+			original = tx
+			break
+		}
+	}
+	if original == nil {
+		return nil, nil, nil, domain.ErrNotFound
+	}
+	if original.Type == domain.TransactionRefund {
+		return nil, nil, nil, domain.ErrCannotRefundRefund
+	}
+
+	newRefundedAmount := original.RefundedAmount.Add(refund.Amount)
+	if newRefundedAmount.GreaterThan(original.Amount) {
+		return nil, nil, nil, domain.ErrOverRefund
+	}
+
+	originalPoints := original.PointsDelta
+	if originalPoints < 0 {
+		originalPoints = -originalPoints
+	}
+
+	var cumulativePoints int64
+	if newRefundedAmount.Equal(original.Amount) {
+		cumulativePoints = originalPoints
+	} else if original.Amount.IsPositive() {
+		cumulativePoints = decimal.NewFromInt(originalPoints).Mul(newRefundedAmount).Div(original.Amount).Floor().IntPart()
+	}
+	thisRefundPoints := cumulativePoints - original.RefundedPoints
+
+	var pointsDelta int64
+	var allowNegativeBalance bool
+	switch original.Type {
+	case domain.TransactionAccrual:
+		pointsDelta = -thisRefundPoints
+		allowNegativeBalance = true
+	case domain.TransactionRedeem:
+		pointsDelta = thisRefundPoints
+		allowNegativeBalance = false
+	}
+
+	original.RefundedAmount = newRefundedAmount
+	original.RefundedPoints = cumulativePoints
+
+	f.balances.mu.Lock()
+	newBalance := f.balances.points[original.ClientID] + pointsDelta
+	if !allowNegativeBalance && newBalance < 0 {
+		f.balances.mu.Unlock()
+		return nil, nil, nil, domain.ErrInsufficientBalance
+	}
+	f.balances.points[original.ClientID] = newBalance
+	f.balances.mu.Unlock()
+
+	f.nextID++
+	posted := *refund
+	posted.ID = f.nextID
+	posted.ClientID = original.ClientID
+	posted.Type = domain.TransactionRefund
+	posted.PointsDelta = pointsDelta
+	posted.BalanceAfter = newBalance
+	posted.CreatedAt = time.Now()
+	posted.OriginalTransactionID = &original.ID
+	f.txs.all = append(f.txs.all, &posted)
+
+	return &posted, original, &domain.Balance{ClientID: original.ClientID, Points: newBalance}, nil
 }
 
 // fakeLoyaltyConfigRepo is an in-memory domain.LoyaltyConfigRepository.
@@ -507,16 +629,6 @@ func (f *fakeStaffUserRepo) UpdateProfile(_ context.Context, id int64, email, di
 	return nil
 }
 
-func (f *fakeStaffUserRepo) seed(u *domain.StaffUser) *domain.StaffUser {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.nextID++
-	u.ID = f.nextID
-	u.CreatedAt = time.Now()
-	f.byID[u.ID] = u
-	return u
-}
-
 type fakeStaffMembershipRepo struct {
 	mu     sync.Mutex
 	byID   map[int64]*domain.StaffMembership
@@ -549,6 +661,16 @@ func (f *fakeStaffMembershipRepo) ListByOrganization(_ context.Context, organiza
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeStaffMembershipRepo) GetByID(_ context.Context, id int64) (*domain.StaffMembership, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	m, ok := f.byID[id]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return m, nil
 }
 
 func (f *fakeStaffMembershipRepo) Create(_ context.Context, m *domain.StaffMembership) error {
@@ -643,12 +765,6 @@ func (f *fakeAuditEventRepo) ListByOrganization(_ context.Context, organizationI
 	return out, nil
 }
 
-func (f *fakeAuditEventRepo) count() int {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return len(f.all)
-}
-
 // --- Notification / SMS ---
 
 type fakeNotifier struct{}
@@ -665,6 +781,76 @@ func (f *fakeSMSSender) Send(_ context.Context, phone, message string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.sent = append(f.sent, phone+":"+message)
+	return nil
+}
+
+// --- Customer devices (FCM push tokens) ---
+
+// fakeCustomerDeviceRepo is an in-memory domain.CustomerDeviceRepository.
+type fakeCustomerDeviceRepo struct {
+	mu     sync.Mutex
+	byID   map[int64]*domain.CustomerDevice
+	nextID int64
+}
+
+func newFakeCustomerDeviceRepo() *fakeCustomerDeviceRepo {
+	return &fakeCustomerDeviceRepo{byID: map[int64]*domain.CustomerDevice{}}
+}
+
+func (f *fakeCustomerDeviceRepo) Upsert(_ context.Context, device *domain.CustomerDevice) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, d := range f.byID {
+		if d.PushToken == device.PushToken && d.RevokedAt == nil {
+			d.CustomerAccountID = device.CustomerAccountID
+			d.Platform = device.Platform
+			d.UpdatedAt = time.Now()
+			*device = *d
+			return nil
+		}
+	}
+	f.nextID++
+	device.ID = f.nextID
+	device.CreatedAt = time.Now()
+	device.UpdatedAt = time.Now()
+	f.byID[device.ID] = device
+	return nil
+}
+
+func (f *fakeCustomerDeviceRepo) ListActiveByCustomerAccount(_ context.Context, customerAccountID int64) ([]*domain.CustomerDevice, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*domain.CustomerDevice
+	for _, d := range f.byID {
+		if d.CustomerAccountID == customerAccountID && d.RevokedAt == nil {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeCustomerDeviceRepo) Revoke(_ context.Context, deviceID, customerAccountID int64) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d, ok := f.byID[deviceID]
+	if !ok || d.CustomerAccountID != customerAccountID || d.RevokedAt != nil {
+		return domain.ErrNotFound
+	}
+	now := time.Now()
+	d.RevokedAt = &now
+	return nil
+}
+
+func (f *fakeCustomerDeviceRepo) RevokeByToken(_ context.Context, pushToken string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, d := range f.byID {
+		if d.PushToken == pushToken && d.RevokedAt == nil {
+			now := time.Now()
+			d.RevokedAt = &now
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -687,6 +873,7 @@ type testFakes struct {
 	StaffUsers       *fakeStaffUserRepo
 	StaffMemberships *fakeStaffMembershipRepo
 	AuditEvents      *fakeAuditEventRepo
+	CustomerDevices  *fakeCustomerDeviceRepo
 	SMS              *fakeSMSSender
 	Redis            *redis.Client
 }
@@ -719,11 +906,21 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 	staffUsers := newFakeStaffUserRepo()
 	staffMemberships := newFakeStaffMembershipRepo()
 	auditEvents := newFakeAuditEventRepo()
+	customerDevices := newFakeCustomerDeviceRepo()
 	sms := &fakeSMSSender{}
 
 	log := testLogger()
 
-	loyaltySvc := service.New(log, clients, txs, balances, ledger, configs, fakeNotifier{})
+	loyaltySvc := service.New(log, clients, txs, balances, ledger, configs, fakeNotifier{}, service.AntiFraudConfig{
+		DailyRedeemPointsLimit: 1_000_000,
+		DailyRedeemWindow:      24 * time.Hour,
+	})
+
+	// Cooldowns are 0 by default so route tests aren't accidentally throttled
+	// by QR issue/consume cooldowns they didn't ask to exercise — tests that
+	// specifically target cooldown behavior build their own service.QRService
+	// with a non-zero cooldown instead of using this shared Deps.
+	qrSvc := service.NewQRService(log, rdb, service.QRConfig{TTL: time.Minute, IssueCooldown: 0, ConsumeCooldown: 0}, clients, customerAccounts, balances, auditEvents)
 
 	customerAuthSvc := service.NewCustomerAuthService(
 		log, customerAccounts, customerSessions, customerConsents, clients, auditEvents, sms, rdb,
@@ -764,6 +961,7 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 
 		Organizations:    orgs,
 		CustomerAccounts: customerAccounts,
+		CustomerDevices:  customerDevices,
 		StaffUsers:       staffUsers,
 		StaffMemberships: staffMemberships,
 		AuditEvents:      auditEvents,
@@ -771,6 +969,7 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 		Loyalty:      loyaltySvc,
 		CustomerAuth: customerAuthSvc,
 		StaffAuth:    staffAuthSvc,
+		QR:           qrSvc,
 
 		CustomerAccessTokenSecret: testCustomerSecret,
 		StaffAccessTokenSecret:    testStaffSecret,
@@ -783,7 +982,7 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 		Transactions: txs, Ledger: ledger, LoyaltyConfigs: configs, Organizations: orgs,
 		CustomerAccounts: customerAccounts, CustomerSessions: customerSessions, CustomerConsents: customerConsents,
 		StaffUsers: staffUsers, StaffMemberships: staffMemberships, AuditEvents: auditEvents,
-		SMS: sms, Redis: rdb,
+		CustomerDevices: customerDevices, SMS: sms, Redis: rdb,
 	}
 }
 

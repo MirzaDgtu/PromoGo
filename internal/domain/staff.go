@@ -63,6 +63,11 @@ type StaffMembershipRepository interface {
 	// across all organizations.
 	ListByStaffUser(ctx context.Context, staffUserID int64) ([]*StaffMembership, error)
 	ListByOrganization(ctx context.Context, organizationID int64) ([]*StaffMembership, error)
+	// GetByID returns domain.ErrNotFound if no membership has this id.
+	// Callers that mutate a membership by path-supplied id must use this
+	// (and check OrganizationID) before UpdateStatus/UpdateRole, rather than
+	// trusting the id alone, since those ids are not organization-scoped.
+	GetByID(ctx context.Context, id int64) (*StaffMembership, error)
 	// Create returns domain.ErrConflict if this exact
 	// (staff_user_id, organization_id, store_id) membership already exists.
 	Create(ctx context.Context, membership *StaffMembership) error

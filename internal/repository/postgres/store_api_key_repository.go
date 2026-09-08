@@ -32,10 +32,10 @@ func scanStoreAPIKey(row pgx.Row) (*domain.StoreAPIKey, error) {
 	return k, err
 }
 
-func (r *StoreAPIKeyRepository) GetByHash(ctx context.Context, keyHash string) (*domain.StoreAPIKey, error) {
-	query := `SELECT ` + storeAPIKeyColumns + ` FROM store_api_keys WHERE key_hash = $1`
+func (r *StoreAPIKeyRepository) GetByKeyID(ctx context.Context, keyID string) (*domain.StoreAPIKey, error) {
+	query := `SELECT ` + storeAPIKeyColumns + ` FROM store_api_keys WHERE key_id = $1`
 
-	k, err := scanStoreAPIKey(r.pool.QueryRow(ctx, query, keyHash))
+	k, err := scanStoreAPIKey(r.pool.QueryRow(ctx, query, keyID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("store api key: %w", domain.ErrNotFound)
 	}
@@ -92,11 +92,15 @@ func (r *StoreAPIKeyRepository) Create(ctx context.Context, key *domain.StoreAPI
 	return nil
 }
 
-func (r *StoreAPIKeyRepository) Revoke(ctx context.Context, id int64) error {
-	const query = `UPDATE store_api_keys SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL`
+func (r *StoreAPIKeyRepository) Revoke(ctx context.Context, storeID, id int64) error {
+	const query = `UPDATE store_api_keys SET revoked_at = now() WHERE id = $1 AND store_id = $2 AND revoked_at IS NULL`
 
-	if _, err := r.pool.Exec(ctx, query, id); err != nil {
+	tag, err := r.pool.Exec(ctx, query, id, storeID)
+	if err != nil {
 		return fmt.Errorf("revoke store api key %d: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("store api key %d: %w", id, domain.ErrNotFound)
 	}
 
 	return nil

@@ -136,17 +136,17 @@ func TestRateLimit_AccrualPrincipalIsolatedByStoreAPIKey(t *testing.T) {
 	}
 
 	for i := 1; i <= cfg.AccrualPrincipalLimit; i++ {
-		rec := doRequest(handler, makeReq("key-a", "tx-a-"+itoa(int64(i))))
+		rec := doRequest(handler, makeReq("key-id-a.key-a", "tx-a-"+itoa(int64(i))))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("key-a request %d: status = %d, want 200 (body=%s)", i, rec.Code, rec.Body.String())
 		}
 	}
-	if rec := doRequest(handler, makeReq("key-a", "tx-a-over")); rec.Code != http.StatusTooManyRequests {
+	if rec := doRequest(handler, makeReq("key-id-a.key-a", "tx-a-over")); rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("key-a over limit: status = %d, want 429", rec.Code)
 	}
 
 	// A different store API key for the same store has its own quota.
-	if rec := doRequest(handler, makeReq("key-b", "tx-b-1")); rec.Code != http.StatusOK {
+	if rec := doRequest(handler, makeReq("key-id-b.key-b", "tx-b-1")); rec.Code != http.StatusOK {
 		t.Fatalf("key-b request: status = %d, want 200 (isolated from key-a's exhausted quota)", rec.Code)
 	}
 }
@@ -173,9 +173,9 @@ func TestRateLimit_ClientLookupPhoneDimensionExceeded(t *testing.T) {
 	// The phone dimension is shared across principals (anti-enumeration):
 	// alternating keys still exhausts the shared phone-hash bucket.
 	for i := 1; i <= cfg.ClientLookupPhoneLimit; i++ {
-		key := "key-a"
+		key := "key-1.key-a"
 		if i%2 == 0 {
-			key = "key-b"
+			key = "key-2.key-b"
 		}
 		rec := doRequest(handler, lookupReq(key))
 		if rec.Code != http.StatusOK {
@@ -183,7 +183,7 @@ func TestRateLimit_ClientLookupPhoneDimensionExceeded(t *testing.T) {
 		}
 	}
 
-	rec := doRequest(handler, lookupReq("key-a"))
+	rec := doRequest(handler, lookupReq("key-1.key-a"))
 	if rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("status = %d, want 429 (shared phone-hash quota exhausted across both keys)", rec.Code)
 	}
@@ -213,7 +213,7 @@ func TestRateLimit_RedisKeysContainNoRawPhoneOrIP(t *testing.T) {
 	const rawIP = "198.51.100.42"
 	const rawPhone = "+79261234567"
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/lookup?phone=%2B79261234567", nil)
-	req.Header.Set("Authorization", "Bearer key-a")
+	req.Header.Set("Authorization", "Bearer key-1.key-a")
 	req.RemoteAddr = rawIP + ":4242"
 	doRequest(handler, req)
 

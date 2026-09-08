@@ -141,6 +141,10 @@ func handleRedeemTransaction(loyalty *service.LoyaltyService, log *slog.Logger) 
 			Points:       body.Points,
 			Amount:       body.Amount,
 		})
+		if errors.Is(err, domain.ErrDailyRedeemLimitExceeded) {
+			writeErrorCode(w, http.StatusUnprocessableEntity, "daily_redeem_limit_exceeded", "daily redeem limit exceeded")
+			return
+		}
 		if errors.Is(err, domain.ErrInsufficientBalance) {
 			writeError(w, http.StatusUnprocessableEntity, "insufficient balance")
 			return

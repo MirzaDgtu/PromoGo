@@ -37,7 +37,7 @@ func TestHandleAccrueTransaction_Success(t *testing.T) {
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
 	seedPointsConfig(fakes, 1)
 
-	rec := doRequest(handler, accrueReq("key", map[string]any{
+	rec := doRequest(handler, accrueReq("key-1.key", map[string]any{
 		"transaction_id": "tx-1", "phone": "+79261234567", "amount": "100.00",
 	}))
 	if rec.Code != http.StatusOK {
@@ -59,7 +59,7 @@ func TestHandleAccrueTransaction_MalformedJSON(t *testing.T) {
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", stringBody("{not json"))
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
@@ -72,7 +72,7 @@ func TestHandleAccrueTransaction_UnknownFieldsRejected(t *testing.T) {
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
 	seedPointsConfig(fakes, 1)
 
-	rec := doRequest(handler, accrueReq("key", map[string]any{
+	rec := doRequest(handler, accrueReq("key-1.key", map[string]any{
 		"transaction_id": "tx-1", "phone": "+79261234567", "amount": "100.00", "unexpected_field": "x",
 	}))
 	if rec.Code != http.StatusBadRequest {
@@ -87,14 +87,14 @@ func TestHandleAccrueTransaction_IdempotentReplay(t *testing.T) {
 	seedPointsConfig(fakes, 1)
 
 	body := map[string]any{"transaction_id": "tx-replay", "phone": "+79261234567", "amount": "50.00"}
-	first := doRequest(handler, accrueReq("key", body))
+	first := doRequest(handler, accrueReq("key-1.key", body))
 	if first.Code != http.StatusOK {
 		t.Fatalf("first request status = %d, want 200 (body=%s)", first.Code, first.Body.String())
 	}
 	var firstResp transactionResponseBody
 	decodeJSON(t, first, &firstResp)
 
-	second := doRequest(handler, accrueReq("key", body))
+	second := doRequest(handler, accrueReq("key-1.key", body))
 	if second.Code != http.StatusOK {
 		t.Fatalf("second request status = %d, want 200 (body=%s)", second.Code, second.Body.String())
 	}
@@ -115,7 +115,7 @@ func TestHandleAccrueTransaction_IdempotencyConflictOnReusedID(t *testing.T) {
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
 	seedPointsConfig(fakes, 1)
 
-	first := doRequest(handler, accrueReq("key", map[string]any{
+	first := doRequest(handler, accrueReq("key-1.key", map[string]any{
 		"transaction_id": "tx-reuse", "phone": "+79261234567", "amount": "50.00",
 	}))
 	if first.Code != http.StatusOK {
@@ -123,7 +123,7 @@ func TestHandleAccrueTransaction_IdempotencyConflictOnReusedID(t *testing.T) {
 	}
 
 	// Same transaction_id, different amount — not a genuine replay.
-	second := doRequest(handler, accrueReq("key", map[string]any{
+	second := doRequest(handler, accrueReq("key-1.key", map[string]any{
 		"transaction_id": "tx-reuse", "phone": "+79261234567", "amount": "999.00",
 	}))
 	if second.Code != http.StatusConflict {
@@ -137,7 +137,7 @@ func TestHandleAccrueTransaction_ServiceErrorMissingLoyaltyConfig(t *testing.T) 
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
 	// No loyalty config seeded for store 1.
 
-	rec := doRequest(handler, accrueReq("key", map[string]any{
+	rec := doRequest(handler, accrueReq("key-1.key", map[string]any{
 		"transaction_id": "tx-1", "phone": "+79261234567", "amount": "100.00",
 	}))
 	if rec.Code != http.StatusInternalServerError {
@@ -156,7 +156,7 @@ func TestHandleRedeemTransaction_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions/redeem", jsonBodyAny(map[string]any{
 		"transaction_id": "redeem-1", "client_id": client.ID, "points": 30, "amount": "30.00",
 	}))
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
@@ -179,7 +179,7 @@ func TestHandleRedeemTransaction_InsufficientBalance(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions/redeem", jsonBodyAny(map[string]any{
 		"transaction_id": "redeem-2", "client_id": client.ID, "points": 30, "amount": "30.00",
 	}))
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want 422", rec.Code)
@@ -195,7 +195,7 @@ func TestHandleRedeemTransaction_ClientNotFound(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions/redeem", jsonBodyAny(map[string]any{
 		"transaction_id": "redeem-3", "client_id": 999999, "points": 10, "amount": "10.00",
 	}))
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
@@ -208,7 +208,7 @@ func TestHandleRedeemTransaction_MalformedBody(t *testing.T) {
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions/redeem", stringBody("not json"))
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
@@ -223,7 +223,7 @@ func TestHandleLookupClientByPhone_MissingPhone(t *testing.T) {
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeClientsLookup}}, "key")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/lookup", nil)
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
@@ -236,7 +236,7 @@ func TestHandleLookupClientByPhone_NotFound(t *testing.T) {
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeClientsLookup}}, "key")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/lookup?phone=+79269999999", nil)
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
@@ -250,7 +250,7 @@ func TestHandleGetClientBalance_MalformedID(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/not-a-number/balance", nil)
 	req.SetPathValue("id", "not-a-number")
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
@@ -266,7 +266,7 @@ func TestHandleGetClientBalance_Success(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/clients/"+itoa(client.ID)+"/balance", nil)
 	req.SetPathValue("id", itoa(client.ID))
-	req.Header.Set("Authorization", "Bearer key")
+	req.Header.Set("Authorization", "Bearer key-1.key")
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())

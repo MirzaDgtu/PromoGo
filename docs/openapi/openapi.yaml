@@ -150,6 +150,97 @@ paths:
         "500": { $ref: "#/components/responses/InternalError" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
+  /api/v1/transactions/refund:
+    post:
+      operationId: refundTransaction
+      tags: [Store]
+      summary: Partially or fully refund a prior accrual/redeem (1C webhook)
+      description: >
+        Idempotent on (store, transaction_id), like accrual/redeem.
+        original_transaction_id/original_transaction_type identify the
+        transaction being reversed; original_transaction_type is only
+        required when original_transaction_id was used for both an accrual
+        and a redeem under this store. Multiple partial refunds against the
+        same original are supported — see refunded_amount_total/
+        fully_refunded on the response. Requires the `transactions.write`
+        scope.
+      security:
+        - storeApiKey: [transactions.write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefundRequest" }
+            examples:
+              partial-refund:
+                summary: Partial refund of an accrual
+                value:
+                  transaction_id: "1C-000123456-R1"
+                  original_transaction_id: "1C-000123456"
+                  amount: "500.00"
+      responses:
+        "200":
+          description: Refund processed (or replayed).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RefundResponse" }
+        "400":
+          description: Malformed request, or original_transaction_type required to disambiguate (code "ambiguous_original_transaction"), or the original transaction is itself a refund (code "cannot_refund_refund").
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: original_transaction_id does not exist under this store.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422":
+          description: Refund amount exceeds the original's remaining refundable amount (code "over_refund"), or insufficient balance.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/clients/resolve-qr:
+    post:
+      operationId: resolveQR
+      tags: [Store]
+      summary: Exchange a customer-issued QR payload for a store-scoped client (POS)
+      description: >
+        Atomically consumes a one-time QR payload minted by POST /me/qr,
+        resolving (and creating/linking if this is the client's first visit
+        to this store) a store-scoped client. Requires the `clients.lookup`
+        scope. See DEC-011.
+      security:
+        - storeApiKey: [clients.lookup]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolveQRRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResolveQRResponse" }
+        "400":
+          description: Malformed payload (code "qr_malformed").
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "410": { $ref: "#/components/responses/Gone" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
   /api/v1/clients/lookup:
     get:
       operationId: lookupClientByPhone
@@ -405,6 +496,69 @@ paths:
               schema: { $ref: "#/components/schemas/MeTransactionsPage" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/me/qr:
+    post:
+      operationId: issueQR
+      tags: [Customer]
+      summary: Mint a new one-time QR payload for identification at POS
+      description: >
+        The payload carries no PII and is one-time-use (see DEC-011).
+        Re-issuing before the previous QR's issue cooldown elapses returns
+        429 with Retry-After.
+      security:
+        - customerAccessToken: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IssueQRResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/v1/me/devices:
+    post:
+      operationId: registerDevice
+      tags: [Customer]
+      summary: Register or refresh an FCM push token for the caller's account
+      security:
+        - customerAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterDeviceRequest" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RegisterDeviceResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /api/v1/me/devices/{deviceID}:
+    delete:
+      operationId: revokeDevice
+      tags: [Customer]
+      summary: Revoke one of the caller's own devices
+      description: 404s (not 403) if deviceID belongs to a different account, so the response never confirms the ID exists.
+      security:
+        - customerAccessToken: []
+      parameters:
+        - name: deviceID
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "204": { description: Revoked }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalError" }
 
   /api/v1/staff/auth/oidc:
     post:
@@ -885,6 +1039,14 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    Gone:
+      description: >
+        The referenced one-time resource is expired, already consumed, or
+        never existed — deliberately a single response for all three (see
+        DEC-011), so the caller can't distinguish them.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     TooManyRequests:
       description: Rate limit exceeded.
       headers:
@@ -909,6 +1071,14 @@ components:
       required: [error]
       properties:
         error: { type: string, description: Human-readable error message. }
+        code:
+          type: string
+          description: >
+            Machine-readable error code, present on a subset of error
+            responses that callers may need to branch on programmatically
+            (e.g. "daily_redeem_limit_exceeded", "qr_malformed",
+            "over_refund"). Absent on errors with no defined code — callers
+            must not assume this field is always present.
 
     AuthTokens:
       type: object
@@ -1000,6 +1170,77 @@ components:
       properties:
         client_id: { type: integer, format: int64 }
         balance: { type: integer, format: int64 }
+
+    RefundRequest:
+      type: object
+      required: [transaction_id, original_transaction_id, amount]
+      properties:
+        transaction_id:
+          type: string
+          maxLength: 255
+          description: 1C's unique identifier for this refund event — the idempotency key together with (store, "refund").
+        original_transaction_id:
+          type: string
+          maxLength: 255
+          description: external_tx_id of the accrual or redeem being reversed.
+        original_transaction_type:
+          type: string
+          enum: [accrual, redeem]
+          description: Required only if original_transaction_id was used for both an accrual and a redeem under this store.
+        amount:
+          type: string
+          format: decimal
+          description: This refund's amount (may be a partial refund); cumulative refunds against one original may never exceed its original amount.
+          example: "500.00"
+
+    RefundResponse:
+      type: object
+      properties:
+        client_id: { type: integer, format: int64 }
+        points_reversed: { type: integer, format: int64 }
+        balance:
+          type: integer
+          format: int64
+          description: May be negative if this refund reversed an accrual for more points than the client currently holds (DEC-012).
+        refunded_amount_total:
+          type: string
+          format: decimal
+          description: Cumulative amount refunded against the original transaction so far, including this refund.
+        fully_refunded: { type: boolean }
+        replayed: { type: boolean }
+
+    IssueQRResponse:
+      type: object
+      properties:
+        payload:
+          type: string
+          description: Opaque, versioned, one-time-use token. Contains no PII. The mobile app renders this as a QR image — the backend never generates image data.
+        expires_at: { type: string, format: date-time }
+        expires_in: { type: integer, description: "Seconds until expiry, at response time." }
+
+    ResolveQRRequest:
+      type: object
+      required: [payload]
+      properties:
+        payload: { type: string }
+
+    ResolveQRResponse:
+      type: object
+      properties:
+        client_id: { type: integer, format: int64 }
+        balance: { type: integer, format: int64 }
+
+    RegisterDeviceRequest:
+      type: object
+      required: [platform, push_token]
+      properties:
+        platform: { type: string, maxLength: 32, example: android }
+        push_token: { type: string, maxLength: 4096 }
+
+    RegisterDeviceResponse:
+      type: object
+      properties:
+        device_id: { type: integer, format: int64 }
 
     Organization:
       type: object

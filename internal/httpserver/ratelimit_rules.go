@@ -203,6 +203,17 @@ func rateLimitRulesFor(route routeMeta, cfg config.RateLimitConfig, trustedProxi
 		post = []ratelimit.Rule{
 			storeAPIKeyOrStoreRule("principal", cfg.AccrualPrincipalLimit, cfg.AccrualPrincipalWindow),
 		}
+	case rlProfileQRResolve:
+		// Reuses the client-lookup profile's limits (DEC-011: QR resolve is
+		// a brute-force-guessing target much like phone lookup) — the
+		// QR-specific one-time-use and per-store consume cooldown are
+		// enforced separately, inside service.QRService itself.
+		pre = []ratelimit.Rule{
+			ipRule("ip", cfg.ClientLookupIPLimit, cfg.ClientLookupIPWindow, trustedProxies),
+		}
+		post = []ratelimit.Rule{
+			storeAPIKeyOrStoreRule("principal", cfg.ClientLookupPrincipalLimit, cfg.ClientLookupPrincipalWindow),
+		}
 	}
 	return pre, post
 }

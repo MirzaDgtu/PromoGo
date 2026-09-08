@@ -113,6 +113,16 @@ func (f *fakeStaffMembershipRepo) ListByOrganization(_ context.Context, orgID in
 	return out, nil
 }
 
+func (f *fakeStaffMembershipRepo) GetByID(_ context.Context, id int64) (*domain.StaffMembership, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	m, ok := f.byID[id]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	return m, nil
+}
+
 func (f *fakeStaffMembershipRepo) Create(_ context.Context, m *domain.StaffMembership) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

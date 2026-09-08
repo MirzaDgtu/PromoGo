@@ -6,22 +6,30 @@ Backend-платформа программы лояльности для рит
 
 ## Возможности
 
-- начисление и списание баллов с защитой от повторной обработки транзакций;
+- начисление, списание и (частичный/полный) возврат баллов с защитой от повторной обработки транзакций;
 - настраиваемые правила программы лояльности для магазина;
 - интеграция с 1С/POS по store-scoped API-ключам и разрешениям;
+- QR-идентификация клиента на кассе: одноразовый непрозрачный payload без ПДн, с TTL и cooldown (см. `knowledge/Decisions.md#DEC-011`);
+- anti-fraud: суточный лимит списания баллов на клиента (rolling window), проверяемый атомарно с проводкой (`DEC-013`);
 - регистрация клиентов по номеру телефона, OTP и refresh-сессии;
-- клиентские методы для получения профиля, баланса и истории операций;
+- клиентские методы для получения профиля, баланса, истории операций и push-устройств;
+- реальная доставка SMS (настраиваемый HTTPS-шлюз) и push-уведомлений (Firebase Cloud Messaging) — см. «SMS и push» ниже;
 - OIDC-аутентификация сотрудников;
 - роли и права для организаций, магазинов и platform admin;
 - управление сотрудниками, API-ключами и аудит административных действий;
 - автоматические SQL-миграции при запуске;
 - health/readiness endpoints и graceful shutdown.
 
-Сейчас SMS-коды и уведомления о начислении выводятся в лог. Интерфейсы для внешних SMS- и push-провайдеров уже выделены, но реальные интеграции ещё не подключены.
+## SMS и push
+
+- SMS: `sms.provider` — `log` (только для `development`, просто пишет в лог) или `http` (настраиваемый HTTPS SMS-шлюз, `internal/notification/httpsms`; конкретный вендор пока не выбран — см. `.claude/skills/add-notification-channel/SKILL.md`).
+- Push: `internal/notification/fcmchannel` использует официальный Firebase Admin SDK; при незаданном `fcm.credentials_json` приложение в `development` падает обратно на лог-канал (`internal/notification/logchannel`).
+- **Вне `development` оба канала обязательны** — `internal/config.Load` завершается с ошибкой при старте, если `sms.provider=log` или `fcm.credentials_json` не задан (см. `knowledge/Decisions.md#DEC-014`).
+- Доставка push/SMS остаётся best-effort после commit транзакции (как и раньше для accrual-уведомлений) — сбой доставки никогда не откатывает уже записанную операцию. Transactional outbox сознательно не реализован в этой волне — см. открытый пункт `Q-P0-103-outbox` в `knowledge/Project Questions.md`.
 
 ## Стек
 
-- Go 1.25.12
+- Go 1.25.14
 - PostgreSQL 16
 - Redis 7
 - `net/http`
@@ -86,7 +94,7 @@ docker compose -f deployments/docker-compose.yml down -v
 
 Понадобятся:
 
-- Go 1.25.12 (версия toolchain из `go.mod`);
+- Go 1.25.14 (версия из `go.mod`);
 - PostgreSQL и Redis — локально либо через Docker;
 - `make` — необязательно, все команды можно запускать напрямую.
 
@@ -136,10 +144,21 @@ PROMOGO_CONFIG_FILE=/path/to/config.yaml
 | `auth.access_token_secret` | `PROMOGO_AUTH_ACCESS_TOKEN_SECRET` |
 | `oidc.issuer_url` | `PROMOGO_OIDC_ISSUER_URL` |
 | `fcm.credentials_json` | `PROMOGO_FCM_CREDENTIALS_JSON` |
+| `sms.provider` | `PROMOGO_SMS_PROVIDER` (`log` \| `http`) |
+| `sms.endpoint` | `PROMOGO_SMS_ENDPOINT` |
+| `sms.token` | `PROMOGO_SMS_TOKEN` |
+| `antifraud.daily_redeem_points_limit` | `PROMOGO_ANTIFRAUD_DAILY_REDEEM_POINTS_LIMIT` |
 
 Локальный `.env` загружается автоматически и не должен попадать в Git.
 
-Для любого окружения, кроме `development`, обязательно задайте `PROMOGO_AUTH_ACCESS_TOKEN_SECRET` длиной не менее 32 байт. Для staff login также настройте OIDC issuer, audience и при необходимости JWKS URL.
+Для любого окружения, кроме `development`, обязательно задайте:
+
+- `PROMOGO_AUTH_ACCESS_TOKEN_SECRET` длиной не менее 32 байт;
+- `PROMOGO_SMS_PROVIDER=http` вместе с `PROMOGO_SMS_ENDPOINT`/`PROMOGO_SMS_TOKEN`;
+- `PROMOGO_FCM_CREDENTIALS_JSON`;
+- `PROMOGO_ANTIFRAUD_DAILY_REDEEM_POINTS_LIMIT` (целое число `> 0`).
+
+Отсутствие любого из них приводит к падению `internal/config.Load` при старте, а не к молчаливому небезопасному дефолту. Для staff login также настройте OIDC issuer, audience и при необходимости JWKS URL.
 
 ## API
 
@@ -157,13 +176,15 @@ PROMOGO_CONFIG_FILE=/path/to/config.yaml
 | Метод | Путь | Назначение |
 |---|---|---|
 | `POST` | `/api/v1/transactions` | Начислить баллы за покупку |
-| `POST` | `/api/v1/transactions/redeem` | Списать баллы |
+| `POST` | `/api/v1/transactions/redeem` | Списать баллы (проверяет суточный anti-fraud лимит) |
+| `POST` | `/api/v1/transactions/refund` | Частично или полностью вернуть баллы по исходной операции |
 | `GET` | `/api/v1/clients/lookup?phone=...` | Найти клиента по телефону |
 | `GET` | `/api/v1/clients/{id}/balance` | Получить баланс клиента |
+| `POST` | `/api/v1/clients/resolve-qr` | Обменять QR-payload клиента на store-scoped `client_id`/баланс |
 
 ### Мобильный клиент
 
-OTP request/verify, refresh и logout доступны без access token. Методы `/me` и `logout-all` требуют `Authorization: Bearer <customer-access-token>`.
+OTP request/verify, refresh и logout доступны без access token. Остальные методы требуют `Authorization: Bearer <customer-access-token>`.
 
 | Метод | Путь |
 |---|---|
@@ -175,6 +196,20 @@ OTP request/verify, refresh и logout доступны без access token. Ме
 | `GET` | `/api/v1/me` |
 | `GET` | `/api/v1/me/balance` |
 | `GET` | `/api/v1/me/transactions` |
+| `POST` | `/api/v1/me/qr` | Выпустить новый одноразовый QR-payload |
+| `POST` | `/api/v1/me/devices` | Зарегистрировать/обновить push-токен устройства |
+| `DELETE` | `/api/v1/me/devices/{deviceID}` | Отозвать своё устройство |
+
+### QR-флоу
+
+1. Приложение вызывает `POST /me/qr` → получает `{payload, expires_at, expires_in}`. `payload` не содержит ПДн и одноразовый; повторный вызов раньше `qr_issue_cooldown` — `429` с `Retry-After`.
+2. Приложение рисует QR из `payload` самостоятельно — backend изображение не генерирует.
+3. Касса сканирует QR и вызывает `POST /clients/resolve-qr` (store API key, scope `clients.lookup`) с этим `payload`.
+4. Backend атомарно потребляет токен (одноразово), находит/создаёт `client_id` для текущего магазина и возвращает его вместе с балансом. Истёкший, уже использованный или неизвестный токен — единообразный `410`; некорректный формат — `400`.
+
+### Refund-флоу
+
+`POST /api/v1/transactions/refund` (store API key, scope `transactions.write`) обязательно ссылается на исходную `accrual`/`redeem` операцию (`original_transaction_id`, при необходимости `original_transaction_type`). Частичные возвраты суммируются; последний возврат, закрывающий исходную сумму, забирает точный остаток баллов (без потерь на округлении). Возврат `accrual` может увести баланс в отрицательное значение (следующее начисление сначала гасит долг) — обычное списание по-прежнему не может увести баланс ниже нуля. Подробности — `knowledge/Decisions.md#DEC-012`.
 
 ### Staff / admin
 

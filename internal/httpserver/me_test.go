@@ -44,6 +44,9 @@ type fakeMeTransactionRepo struct {
 func (f *fakeMeTransactionRepo) GetByExternalID(context.Context, int64, domain.TransactionType, string) (*domain.Transaction, error) {
 	return nil, domain.ErrNotFound
 }
+func (f *fakeMeTransactionRepo) GetByID(context.Context, int64) (*domain.Transaction, error) {
+	return nil, domain.ErrNotFound
+}
 func (f *fakeMeTransactionRepo) ListByClient(context.Context, int64) ([]*domain.Transaction, error) {
 	return nil, nil
 }
