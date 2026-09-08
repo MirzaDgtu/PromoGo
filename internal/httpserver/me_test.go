@@ -87,6 +87,17 @@ func (f *fakeMeTransactionRepo) ListByClientIDs(_ context.Context, clientIDs []i
 	return matched, nil
 }
 
+// meCustomerAccounts returns a fakeCustomerAccountRepo with an active
+// account seeded at id 1 — the fixed customerAccountID these tests issue
+// tokens for — so RequireCustomerSession's account-status lookup doesn't
+// itself reject an otherwise-valid token.
+func meCustomerAccounts() *fakeCustomerAccountRepo {
+	accounts := newFakeCustomerAccountRepo()
+	accounts.byID[1] = &domain.CustomerAccount{ID: 1, Status: domain.CustomerAccountActive}
+	accounts.nextID = 1
+	return accounts
+}
+
 func newMeTransactionsRequest(t *testing.T, customerAccountID int64, query string) *http.Request {
 	t.Helper()
 	token, err := auth.IssueCustomerAccessToken(testCustomerSecret, customerAccountID, time.Minute)
@@ -133,7 +144,7 @@ func TestHandleGetMyTransactions_FirstPageHasNextCursor(t *testing.T) {
 	}}
 	txRepo := &fakeMeTransactionRepo{txs: append(seedTransactions(10, 3, base), seedTransactions(20, 3, base)...)}
 
-	handler := RequireCustomerSession(testCustomerSecret)(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
 	rec := httptest.NewRecorder()
 	handler(rec, newMeTransactionsRequest(t, 1, "?limit=4"))
 
@@ -160,7 +171,7 @@ func TestHandleGetMyTransactions_SecondPageExhausts(t *testing.T) {
 		1: {{ID: 10, StoreID: 1}},
 	}}
 	txRepo := &fakeMeTransactionRepo{txs: seedTransactions(10, 5, base)}
-	handler := RequireCustomerSession(testCustomerSecret)(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
 
 	rec1 := httptest.NewRecorder()
 	handler(rec1, newMeTransactionsRequest(t, 1, "?limit=3"))
@@ -187,7 +198,7 @@ func TestHandleGetMyTransactions_SecondPageExhausts(t *testing.T) {
 func TestHandleGetMyTransactions_InvalidCursorRejected(t *testing.T) {
 	clients := &fakeMeClientRepo{byCustomerAccount: map[int64][]*domain.Client{1: {{ID: 10}}}}
 	txRepo := &fakeMeTransactionRepo{}
-	handler := RequireCustomerSession(testCustomerSecret)(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
 
 	rec := httptest.NewRecorder()
 	handler(rec, newMeTransactionsRequest(t, 1, "?cursor=not-valid-base64!!"))
@@ -200,7 +211,7 @@ func TestHandleGetMyTransactions_InvalidCursorRejected(t *testing.T) {
 func TestHandleGetMyTransactions_NoLinkedClientsSkipsQuery(t *testing.T) {
 	clients := &fakeMeClientRepo{byCustomerAccount: map[int64][]*domain.Client{}}
 	txRepo := &fakeMeTransactionRepo{}
-	handler := RequireCustomerSession(testCustomerSecret)(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
 
 	rec := httptest.NewRecorder()
 	handler(rec, newMeTransactionsRequest(t, 1, ""))

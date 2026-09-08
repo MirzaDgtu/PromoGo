@@ -85,7 +85,7 @@ func New(deps Deps) *http.Server {
 	mux := http.NewServeMux()
 
 	requireStoreKey := RequireStoreAPIKey(deps.Stores, deps.StoreAPIKeys, deps.Log)
-	requireCustomer := RequireCustomerSession(deps.CustomerAccessTokenSecret)
+	requireCustomer := RequireCustomerSession(deps.CustomerAccessTokenSecret, deps.CustomerAccounts)
 	rl := ratelimit.NewMiddleware(deps.RateLimiter, deps.Log)
 
 	for _, route := range routeTable {

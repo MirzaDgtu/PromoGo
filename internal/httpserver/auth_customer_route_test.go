@@ -249,6 +249,13 @@ func TestHandleGetMe_Success(t *testing.T) {
 	}
 }
 
+// TestHandleGetMe_AccountNotFound: a token naming a CustomerAccountID that
+// doesn't exist is now rejected by RequireCustomerSession itself (401),
+// before ever reaching the handler — the middleware's per-request account
+// lookup (added to enforce blocked/deleted status promptly, see its doc
+// comment) treats a missing account the same as one that exists but isn't
+// active, rather than letting the request through to fail differently
+// deeper in the stack.
 func TestHandleGetMe_AccountNotFound(t *testing.T) {
 	handler, _ := newTestServer(t)
 	token := issueCustomerToken(t, 999999)
@@ -256,8 +263,8 @@ func TestHandleGetMe_AccountNotFound(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := doRequest(handler, req)
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want 404", rec.Code)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
 	}
 }
 

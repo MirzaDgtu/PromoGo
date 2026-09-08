@@ -520,17 +520,38 @@ func (f *fakeCustomerSessionRepo) GetByRefreshTokenHash(_ context.Context, hash 
 	return nil, domain.ErrNotFound
 }
 
-func (f *fakeCustomerSessionRepo) Rotate(_ context.Context, sessionID, replacedByID int64) error {
+func (f *fakeCustomerSessionRepo) ClaimForRotation(_ context.Context, oldRefreshTokenHash string, newSession *domain.CustomerSession) (*domain.CustomerSession, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	s, ok := f.byID[sessionID]
-	if !ok {
-		return domain.ErrNotFound
+
+	var old *domain.CustomerSession
+	for _, s := range f.byID {
+		if s.RefreshTokenHash == oldRefreshTokenHash {
+			old = s
+			break
+		}
 	}
+	if old == nil {
+		return nil, domain.ErrNotFound
+	}
+	if old.RevokedAt != nil {
+		return old, domain.ErrSessionReused
+	}
+	if time.Now().After(old.ExpiresAt) {
+		return nil, domain.ErrNotFound
+	}
+
+	newSession.CustomerAccountID = old.CustomerAccountID
+	f.nextID++
+	newSession.ID = f.nextID
+	newSession.IssuedAt = time.Now()
+	f.byID[newSession.ID] = newSession
+
 	now := time.Now()
-	s.RevokedAt = &now
-	s.ReplacedByID = &replacedByID
-	return nil
+	old.RevokedAt = &now
+	old.ReplacedByID = &newSession.ID
+
+	return old, nil
 }
 
 func (f *fakeCustomerSessionRepo) Revoke(_ context.Context, sessionID int64) error {

@@ -116,17 +116,41 @@ func (f *fakeCustomerSessionRepo) GetByRefreshTokenHash(_ context.Context, hash 
 	return nil, domain.ErrNotFound
 }
 
-func (f *fakeCustomerSessionRepo) Rotate(_ context.Context, sessionID, replacedByID int64) error {
+func (f *fakeCustomerSessionRepo) ClaimForRotation(_ context.Context, oldRefreshTokenHash string, newSession *domain.CustomerSession) (*domain.CustomerSession, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	s, ok := f.byID[sessionID]
-	if !ok {
-		return domain.ErrNotFound
+
+	var old *domain.CustomerSession
+	for _, s := range f.byID {
+		if s.RefreshTokenHash == oldRefreshTokenHash {
+			old = s
+			break
+		}
 	}
+	if old == nil {
+		return nil, domain.ErrNotFound
+	}
+	if old.RevokedAt != nil {
+		cp := *old
+		return &cp, domain.ErrSessionReused
+	}
+	if time.Now().After(old.ExpiresAt) {
+		return nil, domain.ErrNotFound
+	}
+
+	newSession.CustomerAccountID = old.CustomerAccountID
+	f.nextID++
+	newSession.ID = f.nextID
+	newSession.IssuedAt = time.Now()
+	cp := *newSession
+	f.byID[newSession.ID] = &cp
+
 	now := time.Now()
-	s.RevokedAt = &now
-	s.ReplacedByID = &replacedByID
-	return nil
+	old.RevokedAt = &now
+	old.ReplacedByID = &newSession.ID
+
+	oldCp := *old
+	return &oldCp, nil
 }
 
 func (f *fakeCustomerSessionRepo) Revoke(_ context.Context, sessionID int64) error {
@@ -649,5 +673,153 @@ func TestCustomerAuth_InvalidPhoneRejected(t *testing.T) {
 
 	if err := deps.svc.RequestOTP(ctx, "123", "1.2.3.4"); !errors.Is(err, ErrInvalidPhone) {
 		t.Fatalf("RequestOTP() with malformed phone error = %v, want ErrInvalidPhone", err)
+	}
+}
+
+// TestCustomerAuth_ConcurrentOTPVerifySameCodeExactlyOneSuccess is the
+// regression test for the otp_store.verify race: HGETALL-then-DEL as
+// separate Redis round trips let two concurrent verifies of the same code
+// both read the challenge before either deleted it, both pass the
+// comparison, and both succeed — a single-use code consumed twice. The
+// fix (verifyOTPScript) is one atomic Lua script; this drives N real
+// concurrent VerifyOTP calls with the identical correct code and requires
+// exactly one to succeed.
+func TestCustomerAuth_ConcurrentOTPVerifySameCodeExactlyOneSuccess(t *testing.T) {
+	deps := newCustomerAuthTestDeps(t, defaultOTPConfig())
+	ctx := context.Background()
+	const phone = "+70000000201"
+	const n = 20
+
+	if err := deps.svc.RequestOTP(ctx, phone, "1.2.3.4"); err != nil {
+		t.Fatalf("RequestOTP() error = %v", err)
+	}
+	code := deps.sms.lastCode(t)
+
+	var wg sync.WaitGroup
+	var successes, invalid int64
+	var mu sync.Mutex
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _, err := deps.svc.VerifyOTP(ctx, VerifyOTPRequest{Phone: phone, Code: code, IP: "1.2.3.4"})
+			mu.Lock()
+			defer mu.Unlock()
+			if err == nil {
+				successes++
+			} else if errors.Is(err, ErrOTPInvalid) {
+				invalid++
+			}
+		}()
+	}
+	wg.Wait()
+
+	if successes != 1 {
+		t.Errorf("successful VerifyOTP() calls = %d, want exactly 1 (out of %d concurrent attempts)", successes, n)
+	}
+	if successes+invalid != n {
+		t.Errorf("successes(%d) + invalid(%d) = %d, want %d (every call must resolve one way or the other)", successes, invalid, successes+invalid, n)
+	}
+}
+
+// TestCustomerAuth_ConcurrentRefreshSameTokenExactlyOneSuccess is the
+// regression test for refresh-token rotation not being atomic: loading the
+// session, minting a replacement, and marking the old one rotated used to
+// be three separate steps, so two concurrent Refresh calls with the same
+// token could both pass the revoked/expired checks and both mint a valid
+// new session from one token. ClaimForRotation now does all three under a
+// single row lock; this drives N real concurrent Refresh calls with the
+// identical token and requires exactly one to succeed.
+func TestCustomerAuth_ConcurrentRefreshSameTokenExactlyOneSuccess(t *testing.T) {
+	deps := newCustomerAuthTestDeps(t, defaultOTPConfig())
+	ctx := context.Background()
+	const phone = "+70000000202"
+	const n = 20
+
+	if err := deps.svc.RequestOTP(ctx, phone, "1.2.3.4"); err != nil {
+		t.Fatalf("RequestOTP() error = %v", err)
+	}
+	code := deps.sms.lastCode(t)
+	first, account, err := deps.svc.VerifyOTP(ctx, VerifyOTPRequest{Phone: phone, Code: code, IP: "1.2.3.4"})
+	if err != nil {
+		t.Fatalf("VerifyOTP() error = %v", err)
+	}
+
+	var wg sync.WaitGroup
+	var successes, invalid int64
+	var mu sync.Mutex
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := deps.svc.Refresh(ctx, first.RefreshToken, "1.2.3.4", "test-agent")
+			mu.Lock()
+			defer mu.Unlock()
+			if err == nil {
+				successes++
+			} else if errors.Is(err, ErrSessionInvalid) {
+				invalid++
+			}
+		}()
+	}
+	wg.Wait()
+
+	if successes != 1 {
+		t.Errorf("successful Refresh() calls = %d, want exactly 1 (out of %d concurrent attempts)", successes, n)
+	}
+	if successes+invalid != n {
+		t.Errorf("successes(%d) + invalid(%d) = %d, want %d (every call must resolve one way or the other)", successes, invalid, successes+invalid, n)
+	}
+	// The other n-1 racers all observe the token already rotated —
+	// indistinguishable from genuine reuse — and each triggers
+	// RevokeAllForAccount. That can (and, in this test, reliably does) also
+	// revoke the winner's brand-new session if a loser's revoke-all lands
+	// after it: correct fail-safe behavior for suspected token reuse, not a
+	// bug, so the only invariant to assert here is "never more than one
+	// live session" rather than "exactly one survives."
+	if got := deps.sessions.countNonRevoked(account.ID); got > 1 {
+		t.Errorf("non-revoked sessions for account after the race = %d, want at most 1", got)
+	}
+}
+
+// TestCustomerAuth_ConcurrentRequestOTPCooldownRace is the regression test
+// for cooldown acquisition not being atomic: a separate EXISTS check
+// followed later by a SET let two concurrent RequestOTP calls for the same
+// phone both observe no cooldown and both proceed, bypassing it entirely.
+// acquireCooldown's SET NX closes that gap; this drives N real concurrent
+// RequestOTP calls for the same phone and requires exactly one to succeed.
+func TestCustomerAuth_ConcurrentRequestOTPCooldownRace(t *testing.T) {
+	deps := newCustomerAuthTestDeps(t, defaultOTPConfig())
+	ctx := context.Background()
+	const phone = "+70000000203"
+	const n = 20
+
+	var wg sync.WaitGroup
+	var successes, cooldown int64
+	var mu sync.Mutex
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := deps.svc.RequestOTP(ctx, phone, "1.2.3.4")
+			mu.Lock()
+			defer mu.Unlock()
+			if err == nil {
+				successes++
+			} else if errors.Is(err, ErrOTPCooldown) {
+				cooldown++
+			}
+		}()
+	}
+	wg.Wait()
+
+	if successes != 1 {
+		t.Errorf("successful RequestOTP() calls = %d, want exactly 1 (out of %d concurrent attempts)", successes, n)
+	}
+	if successes+cooldown != n {
+		t.Errorf("successes(%d) + cooldown(%d) = %d, want %d (every call must resolve one way or the other)", successes, cooldown, successes+cooldown, n)
+	}
+	if got := deps.sms.count(); got != 1 {
+		t.Errorf("sms sent = %d, want exactly 1", got)
 	}
 }

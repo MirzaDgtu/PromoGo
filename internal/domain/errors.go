@@ -42,3 +42,8 @@ var ErrAmbiguousOriginalTransaction = errors.New("ambiguous original transaction
 // push the client's rolling-window redeemed-points total past the
 // configured anti-fraud daily limit (see AntiFraudConfig).
 var ErrDailyRedeemLimitExceeded = errors.New("daily redeem limit exceeded")
+
+// ErrSessionReused is returned by CustomerSessionRepository.ClaimForRotation
+// when the presented refresh token's session was already revoked —
+// evidence the token was used twice, treated as compromise.
+var ErrSessionReused = errors.New("refresh token already used")

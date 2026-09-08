@@ -7,9 +7,22 @@ import (
 	"time"
 
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
+	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
 
 var testCustomerSecret = []byte("test-secret-at-least-32-bytes-long!")
+
+// activeCustomerAccounts returns a fakeCustomerAccountRepo with an active
+// account seeded at id 99 — the fixed customerAccountID these tests issue
+// tokens for — so RequireCustomerSession's per-request account-status
+// lookup (see its doc comment) doesn't itself reject an otherwise-valid
+// token. Tests that need a non-active account seed byID[99] directly.
+func activeCustomerAccounts() *fakeCustomerAccountRepo {
+	accounts := newFakeCustomerAccountRepo()
+	accounts.byID[99] = &domain.CustomerAccount{ID: 99, Status: domain.CustomerAccountActive}
+	accounts.nextID = 99
+	return accounts
+}
 
 func TestRequireCustomerSession_ValidToken(t *testing.T) {
 	token, err := auth.IssueCustomerAccessToken(testCustomerSecret, 99, time.Minute)
@@ -18,7 +31,7 @@ func TestRequireCustomerSession_ValidToken(t *testing.T) {
 	}
 
 	var sawID int64
-	handler := RequireCustomerSession(testCustomerSecret)(func(w http.ResponseWriter, r *http.Request) {
+	handler := RequireCustomerSession(testCustomerSecret, activeCustomerAccounts())(func(w http.ResponseWriter, r *http.Request) {
 		sawID, _ = customerFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
@@ -37,7 +50,7 @@ func TestRequireCustomerSession_ValidToken(t *testing.T) {
 }
 
 func TestRequireCustomerSession_MissingTokenRejected(t *testing.T) {
-	handler := RequireCustomerSession(testCustomerSecret)(okHandler())
+	handler := RequireCustomerSession(testCustomerSecret, activeCustomerAccounts())(okHandler())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	rec := httptest.NewRecorder()
@@ -57,7 +70,7 @@ func TestRequireCustomerSession_StaffTokenRejected(t *testing.T) {
 		t.Fatalf("IssueStaffAccessToken() error = %v", err)
 	}
 
-	handler := RequireCustomerSession(testCustomerSecret)(okHandler())
+	handler := RequireCustomerSession(testCustomerSecret, activeCustomerAccounts())(okHandler())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+staffToken)
@@ -75,7 +88,7 @@ func TestRequireCustomerSession_ExpiredTokenRejected(t *testing.T) {
 		t.Fatalf("IssueCustomerAccessToken() error = %v", err)
 	}
 
-	handler := RequireCustomerSession(testCustomerSecret)(okHandler())
+	handler := RequireCustomerSession(testCustomerSecret, activeCustomerAccounts())(okHandler())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -84,5 +97,31 @@ func TestRequireCustomerSession_ExpiredTokenRejected(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+}
+
+// TestRequireCustomerSession_BlockedAccountRejected is the regression test
+// for the audit finding that customer access tokens were purely stateless
+// JWTs: blocking/deleting a CustomerAccount had zero effect on its
+// already-issued access tokens until they naturally expired (up to
+// AccessTokenTTL later). RequireCustomerSession now loads the account on
+// every request and rejects anything but CustomerAccountActive.
+func TestRequireCustomerSession_BlockedAccountRejected(t *testing.T) {
+	token, err := auth.IssueCustomerAccessToken(testCustomerSecret, 99, time.Minute)
+	if err != nil {
+		t.Fatalf("IssueCustomerAccessToken() error = %v", err)
+	}
+	accounts := activeCustomerAccounts()
+	accounts.byID[99].Status = domain.CustomerAccountBlocked
+
+	handler := RequireCustomerSession(testCustomerSecret, accounts)(okHandler())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 (blocked account's still-valid access token must be rejected)", rec.Code)
 	}
 }

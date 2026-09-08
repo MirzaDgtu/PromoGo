@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-08T20:26:25.889432+00:00",
+  "generated_at": "2026-09-08T21:38:35.337837+00:00",
   "nodes": {
     "claude_planned_architecture": {
       "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
@@ -12,7 +12,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.380170145,
+      "score": 0.379730249,
       "source_file": "CLAUDE.md",
       "status": "tentative",
       "uses": 1
@@ -20,8 +20,13 @@
     "config_config": {
       "code_fingerprint": "0a880363fed0e4025f883b4d8da3d45923cbfff7e49bc32cc52831514135f07d",
       "label": "Config",
-      "last": "2026-09-08T20:16:33.656954+00:00",
+      "last": "2026-09-08T20:35:08.304175+00:00",
       "provenance": [
+        {
+          "date": "2026-09-08T20:35:08.304175+00:00",
+          "outcome": "useful",
+          "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
+        },
         {
           "date": "2026-09-08T20:16:33.656954+00:00",
           "outcome": "useful",
@@ -33,10 +38,10 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 1.380011784,
+      "score": 2.377397418,
       "source_file": "internal/config/config.go",
       "status": "preferred",
-      "uses": 2
+      "uses": 3
     },
     "configs_config_runtime_configuration": {
       "code_fingerprint": "086a77ba17250ae55c8a92108cddef232da4dfdbb93df8157e2c6274d0650936",
@@ -49,7 +54,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.380170145,
+      "score": 0.379730249,
       "source_file": "configs/config.yaml",
       "status": "tentative",
       "uses": 1
@@ -57,18 +62,23 @@
     "deployments_docker_compose_local_stack": {
       "code_fingerprint": "3c0c54d8185205a5c4cbcb889b697673b8d6e5f0c9e1afb35eb0f495d89da9cc",
       "label": "Docker Compose Local Stack",
-      "last": "2026-07-28T23:50:12.729339+00:00",
+      "last": "2026-09-08T20:35:08.304175+00:00",
       "provenance": [
+        {
+          "date": "2026-09-08T20:35:08.304175+00:00",
+          "outcome": "useful",
+          "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
+        },
         {
           "date": "2026-07-28T23:50:12.729339+00:00",
           "outcome": "useful",
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.380170145,
+      "score": 1.378712698,
       "source_file": "deployments/docker-compose.yml",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "domain_transaction": {
       "code_fingerprint": "af41d78e772de33ceaee278b83d267a02b84379aec8f066c2534445536fecbca",
@@ -81,7 +91,7 @@
           "q": "Ознакомься с проектом. Его идеей и целью. Если видишь изъяны, допущения и возможности улучшения, то распиши их. Проведи полный аудит приложения"
         }
       ],
-      "score": 0.999841639,
+      "score": 0.99868472,
       "source_file": "internal/domain/transaction.go",
       "status": "tentative",
       "uses": 1
@@ -102,7 +112,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.768045957,
+      "score": 0.76715725,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -123,7 +133,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.767536507,
+      "score": 0.766648389,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -139,13 +149,29 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.38859219,
+      "score": 0.388142549,
       "source_file": "Idea.md",
       "status": "tentative",
       "uses": 1
     },
+    "internal_domain_rbac": {
+      "code_fingerprint": "c5f99e5926f35c64d778616b96d3da43d908e68292d76f0aa30899e8195d2a77",
+      "label": "rbac.go",
+      "last": "2026-09-08T20:35:08.304175+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-08T20:35:08.304175+00:00",
+          "outcome": "useful",
+          "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
+        }
+      ],
+      "score": 0.998982449,
+      "source_file": "internal/domain/rbac.go",
+      "status": "tentative",
+      "uses": 1
+    },
     "internal_httpserver_middleware_requirestoreapikey": {
-      "code_fingerprint": "5555d3de97931d5f4b3aa0a519b191c7dbf1c2a2b0db9063ac8a8c3ad4820d2f",
+      "code_fingerprint": "4f42b0e252965ab908e3defa442a2f7741085573ed078591dd60c1f1bc515bf9",
       "label": "RequireStoreAPIKey()",
       "last": "2026-09-08T20:16:33.656954+00:00",
       "provenance": [
@@ -165,10 +191,26 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.758707657,
+      "score": 1.756672653,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 3
+    },
+    "internal_httpserver_openapi_parity_test": {
+      "code_fingerprint": "5a49b5afc5e5f33c904433e83f72e2c8e19350c19a1f5e7d962965e2872e867c",
+      "label": "openapi_parity_test.go",
+      "last": "2026-09-08T20:35:08.304175+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-08T20:35:08.304175+00:00",
+          "outcome": "useful",
+          "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
+        }
+      ],
+      "score": 0.998982449,
+      "source_file": "internal/httpserver/openapi_parity_test.go",
+      "status": "tentative",
+      "uses": 1
     },
     "knowledge_project_questions_administration_configuration": {
       "code_fingerprint": "dcc892bf8c6fbf89be9caa6a06142b4b6f373248e83669c9c7b0d44e0b7147c5",
@@ -186,7 +228,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.758866018,
+      "score": 0.757987933,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -207,7 +249,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.758866018,
+      "score": 0.757987933,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -228,7 +270,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.767536507,
+      "score": 0.766648389,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -236,21 +278,26 @@
     "knowledge_project_questions_operational_release_readiness": {
       "code_fingerprint": "dcc892bf8c6fbf89be9caa6a06142b4b6f373248e83669c9c7b0d44e0b7147c5",
       "label": "Reliability, Operations, Quality, and Release Readiness",
-      "last": "2026-07-28T20:28:55.649296+00:00",
+      "last": "2026-09-08T20:35:08.304175+00:00",
       "provenance": [
+        {
+          "date": "2026-09-08T20:35:08.304175+00:00",
+          "outcome": "useful",
+          "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
+        },
         {
           "date": "2026-07-28T20:28:55.649296+00:00",
           "outcome": "useful",
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.378944317,
+      "score": 1.377488289,
       "source_file": "knowledge/Project Questions.md",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "readme_api": {
-      "code_fingerprint": "2353d50e6f047ae17822cd3c4fcb89b2b4042ee36dfbfc424aab3d01b18d570f",
+      "code_fingerprint": "f44448c6bdde58bb906e2240e3da69a4aabc4b0604f53cf8298583c5b0e6b129",
       "label": "API",
       "last": "2026-07-29T22:35:50.165372+00:00",
       "provenance": [
@@ -260,13 +307,13 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.38859219,
+      "score": 0.388142549,
       "source_file": "README.md",
       "status": "tentative",
       "uses": 1
     },
     "readme_promogo": {
-      "code_fingerprint": "2353d50e6f047ae17822cd3c4fcb89b2b4042ee36dfbfc424aab3d01b18d570f",
+      "code_fingerprint": "f44448c6bdde58bb906e2240e3da69a4aabc4b0604f53cf8298583c5b0e6b129",
       "label": "PromoGo",
       "last": "2026-09-08T20:16:33.656954+00:00",
       "provenance": [
@@ -281,26 +328,10 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 1.388433829,
+      "score": 1.386827269,
       "source_file": "README.md",
       "status": "preferred",
       "uses": 2
-    },
-    "service_customerauthservice": {
-      "code_fingerprint": "095ef886b7c1b6f0ee8b19454811f0c31c081b1fcdee0aeef04a79ebac99ea16",
-      "label": "CustomerAuthService",
-      "last": "2026-09-08T20:16:33.656954+00:00",
-      "provenance": [
-        {
-          "date": "2026-09-08T20:16:33.656954+00:00",
-          "outcome": "useful",
-          "q": "Ознакомься с проектом. Его идеей и целью. Если видишь изъяны, допущения и возможности улучшения, то распиши их. Проведи полный аудит приложения"
-        }
-      ],
-      "score": 0.999841639,
-      "source_file": "internal/service/customerauth.go",
-      "status": "tentative",
-      "uses": 1
     }
   },
   "version": 1

@@ -64,10 +64,20 @@ type CustomerSessionRepository interface {
 	// GetByRefreshTokenHash returns domain.ErrNotFound if no session has
 	// that hash.
 	GetByRefreshTokenHash(ctx context.Context, hash string) (*CustomerSession, error)
-	// Rotate atomically marks sessionID revoked (RevokedAt = now,
-	// ReplacedByID = replacedByID) — the write side of refresh-token
-	// rotation, paired with Create of the new session.
-	Rotate(ctx context.Context, sessionID, replacedByID int64) error
+	// ClaimForRotation is refresh-token rotation's single atomic step: under
+	// one row lock (SELECT ... FOR UPDATE) it finds the session for
+	// oldRefreshTokenHash, and if it is active and unexpired, inserts
+	// newSession (populating its ID/IssuedAt) and links the old session to
+	// it (RevokedAt = now, ReplacedByID = newSession.ID) — all before
+	// releasing the lock, so two concurrent rotations of the same token can
+	// never both succeed; the loser observes the row already revoked.
+	//
+	// Returns domain.ErrNotFound if no session has that hash, or it has
+	// expired. Returns domain.ErrSessionReused if the session was already
+	// revoked (token reuse) — the returned *CustomerSession is still
+	// non-nil in that case so the caller can read CustomerAccountID to
+	// revoke every session for the account.
+	ClaimForRotation(ctx context.Context, oldRefreshTokenHash string, newSession *CustomerSession) (*CustomerSession, error)
 	// Revoke marks sessionID revoked without a replacement (plain logout).
 	Revoke(ctx context.Context, sessionID int64) error
 	// RevokeAllForAccount revokes every non-revoked session for

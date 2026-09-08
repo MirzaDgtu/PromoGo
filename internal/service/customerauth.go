@@ -93,23 +93,33 @@ func NewCustomerAuthService(
 	}
 }
 
-// RequestOTP normalizes phone, applies rate limiting (by phone and by IP)
-// and resend cooldown, generates a code via crypto/rand, stores only its
-// hash (TTL'd) in Redis, and sends it via SMS. It always succeeds or fails
-// the same way regardless of whether phone is already a registered
-// CustomerAccount — an unknown phone is not distinguishable from a known
-// one in the response, so this endpoint can't be used to enumerate
-// accounts.
+// RequestOTP normalizes phone, atomically claims the resend cooldown (see
+// otpStore.acquireCooldown — a SET NX gate, not a separate check-then-set,
+// so two concurrent requests for the same phone can't both pass it),
+// applies rate limiting (by phone and by IP), generates a code via
+// crypto/rand, stores only its hash (TTL'd) in Redis, and sends it via SMS.
+// It always succeeds or fails the same way regardless of whether phone is
+// already a registered CustomerAccount — an unknown phone is not
+// distinguishable from a known one in the response, so this endpoint can't
+// be used to enumerate accounts.
+//
+// If anything after the cooldown is claimed fails — rate limit, SMS send —
+// the cooldown is released so a code that was never (or not yet) delivered
+// doesn't lock the user out for the full cooldown window.
 func (s *CustomerAuthService) RequestOTP(ctx context.Context, rawPhone, ip string) error {
 	phone, err := auth.NormalizePhone(rawPhone)
 	if err != nil {
 		return ErrInvalidPhone
 	}
 
-	if err := s.otp.checkCooldown(ctx, phone); err != nil {
+	if err := s.otp.acquireCooldown(ctx, phone); err != nil {
 		return ErrOTPCooldown
 	}
+
 	if err := s.otp.checkRateLimit(ctx, phone, ip); err != nil {
+		if relErr := s.otp.releaseCooldown(ctx, phone); relErr != nil {
+			s.log.WarnContext(ctx, "release otp cooldown after rate limit", "error", relErr)
+		}
 		return ErrOTPRateLimited
 	}
 
@@ -123,6 +133,9 @@ func (s *CustomerAuthService) RequestOTP(ctx context.Context, rawPhone, ip strin
 	}
 
 	if err := s.sms.Send(ctx, phone, fmt.Sprintf("PromoGo: ваш код подтверждения %s", code)); err != nil {
+		if relErr := s.otp.releaseCooldown(ctx, phone); relErr != nil {
+			s.log.WarnContext(ctx, "release otp cooldown after sms failure", "error", relErr)
+		}
 		return fmt.Errorf("request otp: send sms: %w", err)
 	}
 
@@ -235,41 +248,74 @@ func (s *CustomerAuthService) linkExistingClients(ctx context.Context, phone str
 	return nil
 }
 
-// Refresh rotates refreshToken: the presented token is revoked and a new
-// pair is issued. Presenting a token that's already revoked is treated as
-// compromise (token reuse) — every session for that CustomerAccountID is
-// revoked and the event is audit-logged.
+// Refresh rotates refreshToken: the presented token is atomically claimed
+// and revoked, and a new pair is issued in its place (see
+// CustomerSessionRepository.ClaimForRotation — the claim, the new session's
+// creation, and the old session's revocation all happen under one row lock
+// in a single database transaction, so two concurrent Refresh calls with
+// the same token can never both succeed). Presenting a token whose session
+// was already revoked is treated as compromise (token reuse) — every
+// session for that CustomerAccountID is revoked and the event is
+// audit-logged.
 func (s *CustomerAuthService) Refresh(ctx context.Context, refreshToken, ip, userAgent string) (*CustomerAuthTokens, error) {
-	hash := auth.HashOpaqueToken(refreshToken)
-	session, err := s.sessions.GetByRefreshTokenHash(ctx, hash)
+	oldHash := auth.HashOpaqueToken(refreshToken)
+
+	newToken, newHash, err := auth.GenerateRefreshToken()
+	if err != nil {
+		return nil, fmt.Errorf("refresh: generate refresh token: %w", err)
+	}
+	newSession := &domain.CustomerSession{
+		RefreshTokenHash: newHash,
+		ExpiresAt:        time.Now().Add(s.cfg.RefreshTokenTTL),
+		UserAgent:        userAgent,
+		IP:               ip,
+	}
+
+	old, err := s.sessions.ClaimForRotation(ctx, oldHash, newSession)
+	if errors.Is(err, domain.ErrSessionReused) {
+		if revokeErr := s.sessions.RevokeAllForAccount(ctx, old.CustomerAccountID); revokeErr != nil {
+			s.log.ErrorContext(ctx, "revoke all sessions after reuse detection", "customer_account_id", old.CustomerAccountID, "error", revokeErr)
+		}
+		accountID := old.CustomerAccountID
+		s.auditLog(ctx, domain.AuditActorCustomer, &accountID, domain.AuditActionCustomerRefreshReuse, nil, ip, userAgent)
+		return nil, ErrSessionInvalid
+	}
 	if errors.Is(err, domain.ErrNotFound) {
 		return nil, ErrSessionInvalid
 	}
 	if err != nil {
-		return nil, fmt.Errorf("refresh: load session: %w", err)
+		return nil, fmt.Errorf("refresh: claim session for rotation: %w", err)
 	}
 
-	if session.RevokedAt != nil {
-		if err := s.sessions.RevokeAllForAccount(ctx, session.CustomerAccountID); err != nil {
-			s.log.ErrorContext(ctx, "revoke all sessions after reuse detection", "customer_account_id", session.CustomerAccountID, "error", err)
-		}
-		accountID := session.CustomerAccountID
-		s.auditLog(ctx, domain.AuditActorCustomer, &accountID, domain.AuditActionCustomerRefreshReuse, nil, ip, userAgent)
-		return nil, ErrSessionInvalid
-	}
-	if time.Now().After(session.ExpiresAt) {
-		return nil, ErrSessionInvalid
-	}
-
-	tokens, newSessionID, err := s.issueTokensReturningID(ctx, session.CustomerAccountID, ip, userAgent)
+	// The claim above already rotated the old session out regardless of
+	// account status — that's correct (a blocked/deleted account's old
+	// token must not remain independently valid either). What must not
+	// happen is handing back a *new* usable token pair, so a blocked
+	// account is caught here, after the claim, and every session
+	// (including the one just minted) is revoked immediately rather than
+	// left to expire after AccessTokenTTL.
+	account, err := s.accounts.GetByID(ctx, newSession.CustomerAccountID)
 	if err != nil {
-		return nil, fmt.Errorf("refresh: issue tokens: %w", err)
+		return nil, fmt.Errorf("refresh: load account: %w", err)
 	}
-	if err := s.sessions.Rotate(ctx, session.ID, newSessionID); err != nil {
-		return nil, fmt.Errorf("refresh: rotate session: %w", err)
+	if account.Status != domain.CustomerAccountActive {
+		if revokeErr := s.sessions.RevokeAllForAccount(ctx, newSession.CustomerAccountID); revokeErr != nil {
+			s.log.ErrorContext(ctx, "revoke all sessions for blocked/deleted account", "customer_account_id", newSession.CustomerAccountID, "error", revokeErr)
+		}
+		return nil, ErrAccountBlocked
 	}
 
-	return tokens, nil
+	accessToken, err := auth.IssueCustomerAccessToken(s.cfg.AccessTokenSecret, newSession.CustomerAccountID, s.cfg.AccessTokenTTL)
+	if err != nil {
+		return nil, fmt.Errorf("refresh: issue access token: %w", err)
+	}
+
+	return &CustomerAuthTokens{
+		AccessToken:           accessToken,
+		AccessTokenExpiresAt:  time.Now().Add(s.cfg.AccessTokenTTL),
+		RefreshToken:          newToken,
+		RefreshTokenExpiresAt: newSession.ExpiresAt,
+	}, nil
 }
 
 // Logout revokes the session identified by refreshToken. Idempotent: a
