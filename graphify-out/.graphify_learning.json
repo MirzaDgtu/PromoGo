@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-08T21:38:35.337837+00:00",
+  "generated_at": "2026-09-08T22:16:58.406269+00:00",
   "nodes": {
     "claude_planned_architecture": {
       "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
@@ -12,7 +12,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.379730249,
+      "score": 0.379496452,
       "source_file": "CLAUDE.md",
       "status": "tentative",
       "uses": 1
@@ -38,7 +38,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 2.377397418,
+      "score": 2.375933674,
       "source_file": "internal/config/config.go",
       "status": "preferred",
       "uses": 3
@@ -54,7 +54,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.379730249,
+      "score": 0.379496452,
       "source_file": "configs/config.yaml",
       "status": "tentative",
       "uses": 1
@@ -75,26 +75,10 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 1.378712698,
+      "score": 1.377863836,
       "source_file": "deployments/docker-compose.yml",
       "status": "preferred",
       "uses": 2
-    },
-    "domain_transaction": {
-      "code_fingerprint": "af41d78e772de33ceaee278b83d267a02b84379aec8f066c2534445536fecbca",
-      "label": "Transaction",
-      "last": "2026-09-08T20:16:33.656954+00:00",
-      "provenance": [
-        {
-          "date": "2026-09-08T20:16:33.656954+00:00",
-          "outcome": "useful",
-          "q": "Ознакомься с проектом. Его идеей и целью. Если видишь изъяны, допущения и возможности улучшения, то распиши их. Проведи полный аудит приложения"
-        }
-      ],
-      "score": 0.99868472,
-      "source_file": "internal/domain/transaction.go",
-      "status": "tentative",
-      "uses": 1
     },
     "full_scope_phase_2_multistore_product": {
       "code_fingerprint": "1b1eec672d61721317c29cfaabb70e7366db8a5cab5bf7be7bef8881405b5a87",
@@ -112,7 +96,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.76715725,
+      "score": 0.766684917,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -133,7 +117,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.766648389,
+      "score": 0.76617637,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -149,7 +133,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.388142549,
+      "score": 0.387903573,
       "source_file": "Idea.md",
       "status": "tentative",
       "uses": 1
@@ -165,7 +149,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.998982449,
+      "score": 0.998367384,
       "source_file": "internal/domain/rbac.go",
       "status": "tentative",
       "uses": 1
@@ -191,7 +175,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.756672653,
+      "score": 1.755591084,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 3
@@ -207,7 +191,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.998982449,
+      "score": 0.998367384,
       "source_file": "internal/httpserver/openapi_parity_test.go",
       "status": "tentative",
       "uses": 1
@@ -228,7 +212,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.757987933,
+      "score": 0.757521246,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -249,7 +233,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.757987933,
+      "score": 0.757521246,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -270,7 +254,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.766648389,
+      "score": 0.76617637,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -291,7 +275,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 1.377488289,
+      "score": 1.376640181,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -307,7 +291,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.388142549,
+      "score": 0.387903573,
       "source_file": "README.md",
       "status": "tentative",
       "uses": 1
@@ -328,7 +312,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 1.386827269,
+      "score": 1.385973411,
       "source_file": "README.md",
       "status": "preferred",
       "uses": 2

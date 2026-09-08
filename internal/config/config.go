@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -93,17 +94,35 @@ type PostgresConfig struct {
 	MaxConns int32  `mapstructure:"max_conns"`
 }
 
-// DSN returns a connection string suitable for pgxpool.
+// DSN returns a connection string suitable for pgxpool. Built via net/url
+// rather than fmt.Sprintf interpolation: User/Password are percent-encoded
+// through url.UserPassword, so a credential containing a URL-meaningful
+// character (@, :, /, ?, #, %) can never be misparsed as part of the host,
+// path, or query string — or, worse, used to smuggle extra connection
+// parameters into the DSN.
 func (c PostgresConfig) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		c.User, c.Password, c.Host, c.Port, c.DBName, c.SSLMode)
+	u := url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(c.User, c.Password),
+		Host:   fmt.Sprintf("%s:%d", c.Host, c.Port),
+		Path:   "/" + c.DBName,
+	}
+	q := url.Values{}
+	q.Set("sslmode", c.SSLMode)
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
-// RedisConfig configures the connection to Redis.
+// RedisConfig configures the connection to Redis. TLSEnabled is required
+// outside development (see Load's validateRedis) — Redis holds OTP
+// challenges, rate-limit counters, and QR one-time tokens, all sensitive
+// enough that the connection to it shouldn't be plaintext on an untrusted
+// network.
 type RedisConfig struct {
-	Addr     string `mapstructure:"addr"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
+	Addr       string `mapstructure:"addr"`
+	Password   string `mapstructure:"password"`
+	DB         int    `mapstructure:"db"`
+	TLSEnabled bool   `mapstructure:"tls_enabled"`
 }
 
 // LoggerConfig configures the application's structured logger.
@@ -215,6 +234,12 @@ func Load(path string) (*Config, error) {
 	if err := cfg.validateFCM(); err != nil {
 		return nil, err
 	}
+	if err := cfg.validatePostgres(); err != nil {
+		return nil, err
+	}
+	if err := cfg.validateRedis(); err != nil {
+		return nil, err
+	}
 
 	return &cfg, nil
 }
@@ -246,18 +271,33 @@ func (c *Config) validateAntiFraud() error {
 	return nil
 }
 
-// validateSMS fails fast outside development if the SMS provider is still
-// the dev-only "log" stub, or if provider "http" is missing the endpoint/
-// token it needs — see DEC-014.
+// validSMSProviders is the strict enum for sms.provider — any other value
+// fails Load outright (see validateSMS) rather than reaching internal/app,
+// where an unrecognized value used to silently construct the dev-only log
+// sender in every environment, production included.
+var validSMSProviders = map[string]bool{"log": true, "http": true}
+
+// validateSMS enforces sms.provider as a strict enum in every environment
+// (an unrecognized value is always a startup error, never a silent
+// fallback — see DEC-014), and outside development additionally fails fast
+// if the provider is still the dev-only "log" stub, or if provider "http"
+// is missing the endpoint/token it needs or the endpoint isn't HTTPS — an
+// OTP code sent over plain HTTP would be interceptable in transit.
 func (c *Config) validateSMS() error {
+	if !validSMSProviders[c.SMS.Provider] {
+		return fmt.Errorf("sms.provider %q is not a recognized value (must be \"log\" or \"http\")", c.SMS.Provider)
+	}
 	if c.App.Env == "development" {
 		return nil
 	}
-	if c.SMS.Provider == "" || c.SMS.Provider == "log" {
+	if c.SMS.Provider == "log" {
 		return fmt.Errorf("sms.provider must not be \"log\" outside development (set PROMOGO_SMS_PROVIDER=http and configure sms.endpoint/sms.token)")
 	}
-	if c.SMS.Provider == "http" && (c.SMS.Endpoint == "" || c.SMS.Token == "") {
+	if c.SMS.Endpoint == "" || c.SMS.Token == "" {
 		return fmt.Errorf("sms.endpoint and sms.token must be set via PROMOGO_SMS_ENDPOINT/PROMOGO_SMS_TOKEN when sms.provider=http")
+	}
+	if !strings.HasPrefix(c.SMS.Endpoint, "https://") {
+		return fmt.Errorf("sms.endpoint must use https:// outside development, got %q", c.SMS.Endpoint)
 	}
 	return nil
 }
@@ -271,6 +311,39 @@ func (c *Config) validateFCM() error {
 	}
 	if c.FCM.CredentialsJSON == "" {
 		return fmt.Errorf("fcm.credentials_json must be set via PROMOGO_FCM_CREDENTIALS_JSON outside development")
+	}
+	return nil
+}
+
+// pgSSLModesRequiringTLS are the postgres.sslmode values that actually
+// enforce an encrypted connection. "prefer"/"allow" silently fall back to
+// plaintext if the server doesn't offer TLS, which defeats the point of a
+// production requirement, so they don't count here.
+var pgSSLModesRequiringTLS = map[string]bool{"require": true, "verify-ca": true, "verify-full": true}
+
+// validatePostgres fails fast outside development unless postgres.sslmode
+// is set to a mode that actually enforces TLS — "disable" (the default,
+// for local dev) and the fallback-permitting "allow"/"prefer" modes would
+// otherwise let a production deployment silently run an unencrypted
+// connection to its primary datastore.
+func (c *Config) validatePostgres() error {
+	if c.App.Env == "development" {
+		return nil
+	}
+	if !pgSSLModesRequiringTLS[c.Postgres.SSLMode] {
+		return fmt.Errorf("postgres.sslmode must be \"require\", \"verify-ca\", or \"verify-full\" outside development, got %q", c.Postgres.SSLMode)
+	}
+	return nil
+}
+
+// validateRedis fails fast outside development unless redis.tls_enabled is
+// set — see RedisConfig's doc comment.
+func (c *Config) validateRedis() error {
+	if c.App.Env == "development" {
+		return nil
+	}
+	if !c.Redis.TLSEnabled {
+		return fmt.Errorf("redis.tls_enabled must be true outside development (set PROMOGO_REDIS_TLS_ENABLED=true)")
 	}
 	return nil
 }
@@ -332,6 +405,7 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("redis.db", 0)
+	v.SetDefault("redis.tls_enabled", false)
 
 	v.SetDefault("logger.level", "info")
 	v.SetDefault("logger.format", "json")

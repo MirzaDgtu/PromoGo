@@ -140,7 +140,9 @@ PROMOGO_CONFIG_FILE=/path/to/config.yaml
 | `http.port` | `PROMOGO_HTTP_PORT` |
 | `postgres.host` | `PROMOGO_POSTGRES_HOST` |
 | `postgres.password` | `PROMOGO_POSTGRES_PASSWORD` |
+| `postgres.sslmode` | `PROMOGO_POSTGRES_SSLMODE` (`require`\|`verify-ca`\|`verify-full` outside `development`) |
 | `redis.addr` | `PROMOGO_REDIS_ADDR` |
+| `redis.tls_enabled` | `PROMOGO_REDIS_TLS_ENABLED` (required outside `development`) |
 | `auth.access_token_secret` | `PROMOGO_AUTH_ACCESS_TOKEN_SECRET` |
 | `oidc.issuer_url` | `PROMOGO_OIDC_ISSUER_URL` |
 | `fcm.credentials_json` | `PROMOGO_FCM_CREDENTIALS_JSON` |

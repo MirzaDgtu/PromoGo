@@ -1,7 +1,7 @@
 package httpserver
 
 import (
-	"net"
+	"fmt"
 	"net/http"
 	"net/netip"
 	"strconv"
@@ -14,75 +14,32 @@ import (
 )
 
 // ParseTrustedProxies parses HTTPConfig.TrustedProxies (CIDR strings) into
-// netip.Prefix values once at startup. A malformed entry is dropped rather
-// than failing server construction — see clientIPForRateLimit's doc comment
-// on what an empty/partial list means for trust.
-func ParseTrustedProxies(cidrs []string) []netip.Prefix {
+// netip.Prefix values once at startup. A malformed entry fails startup
+// outright rather than being silently dropped — a typo here would
+// otherwise silently narrow or misconfigure which peers are trusted to set
+// X-Forwarded-For for every IP-scoped audit log, OTP limiter, and rate
+// limiter (see resolveClientIP), with no visible error.
+func ParseTrustedProxies(cidrs []string) ([]netip.Prefix, error) {
 	prefixes := make([]netip.Prefix, 0, len(cidrs))
 	for _, c := range cidrs {
 		p, err := netip.ParsePrefix(strings.TrimSpace(c))
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("invalid trusted proxy CIDR %q: %w", c, err)
 		}
 		prefixes = append(prefixes, p)
 	}
-	return prefixes
-}
-
-// clientIPForRateLimit resolves the caller's IP for the distributed rate
-// limiter. It trusts X-Forwarded-For only when the immediate peer
-// (RemoteAddr) matches a configured trusted proxy CIDR — an empty
-// trustedProxies list (the default) means every caller's RemoteAddr is used
-// directly, exactly matching clientIP's existing, audited behavior (see
-// remoteaddr.go). This is deliberately a separate function from clientIP:
-// changing what audit logs and the OTP limiter consider "the client IP" is
-// out of scope here.
-func clientIPForRateLimit(r *http.Request, trustedProxies []netip.Prefix) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-
-	if len(trustedProxies) == 0 {
-		return host
-	}
-	addr, err := netip.ParseAddr(host)
-	if err != nil {
-		return host
-	}
-	trusted := false
-	for _, p := range trustedProxies {
-		if p.Contains(addr) {
-			trusted = true
-			break
-		}
-	}
-	if !trusted {
-		return host
-	}
-
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff == "" {
-		return host
-	}
-	// The left-most entry is the original client, appended to by every
-	// proxy hop since; only meaningful once we've established the
-	// immediate peer is itself a trusted proxy.
-	first, _, _ := strings.Cut(xff, ",")
-	first = strings.TrimSpace(first)
-	if first == "" {
-		return host
-	}
-	return first
+	return prefixes, nil
 }
 
 // ipRule rate-limits by caller IP, hashed via auth.HashOpaqueToken so a raw
-// IP never appears in a Redis key or log line.
-func ipRule(name string, limit int, window time.Duration, trustedProxies []netip.Prefix) ratelimit.Rule {
+// IP never appears in a Redis key or log line. Uses clientIP — the same
+// trust-resolved IP used for audit logging and OTP throttling (see
+// remoteaddr.go) — so all three can never disagree about who the caller is.
+func ipRule(name string, limit int, window time.Duration) ratelimit.Rule {
 	return ratelimit.Rule{
 		Name: name, Limit: limit, Window: window,
 		KeyFunc: func(r *http.Request) (string, bool) {
-			return "ip:" + auth.HashOpaqueToken(clientIPForRateLimit(r, trustedProxies)), true
+			return "ip:" + auth.HashOpaqueToken(clientIP(r)), true
 		},
 	}
 }
@@ -177,28 +134,28 @@ func phoneQueryRule(name string, limit int, window time.Duration) ratelimit.Rule
 // post-auth rules (checked once a principal is in context — innermost,
 // right before the handler). A route with no RateLimitProfile gets no
 // rules at all.
-func rateLimitRulesFor(route routeMeta, cfg config.RateLimitConfig, trustedProxies []netip.Prefix) (pre, post []ratelimit.Rule) {
+func rateLimitRulesFor(route routeMeta, cfg config.RateLimitConfig) (pre, post []ratelimit.Rule) {
 	switch route.RateLimitProfile {
 	case rlProfileStaffLogin:
 		pre = []ratelimit.Rule{
-			ipRule("ip", cfg.StaffLoginIPLimit, cfg.StaffLoginIPWindow, trustedProxies),
+			ipRule("ip", cfg.StaffLoginIPLimit, cfg.StaffLoginIPWindow),
 		}
 	case rlProfileAdmin:
 		pre = []ratelimit.Rule{
-			ipRule("ip", cfg.AdminIPLimit, cfg.AdminIPWindow, trustedProxies),
+			ipRule("ip", cfg.AdminIPLimit, cfg.AdminIPWindow),
 		}
 		post = []ratelimit.Rule{
 			staffUserRule("staff", cfg.AdminStaffLimit, cfg.AdminStaffWindow),
 		}
 	case rlProfileClientLookup:
 		post = []ratelimit.Rule{
-			ipRule("ip", cfg.ClientLookupIPLimit, cfg.ClientLookupIPWindow, trustedProxies),
+			ipRule("ip", cfg.ClientLookupIPLimit, cfg.ClientLookupIPWindow),
 			principalRule("principal", cfg.ClientLookupPrincipalLimit, cfg.ClientLookupPrincipalWindow),
 			phoneQueryRule("phone", cfg.ClientLookupPhoneLimit, cfg.ClientLookupPhoneWindow),
 		}
 	case rlProfileAccrual:
 		pre = []ratelimit.Rule{
-			ipRule("ip", cfg.AccrualIPLimit, cfg.AccrualIPWindow, trustedProxies),
+			ipRule("ip", cfg.AccrualIPLimit, cfg.AccrualIPWindow),
 		}
 		post = []ratelimit.Rule{
 			storeAPIKeyOrStoreRule("principal", cfg.AccrualPrincipalLimit, cfg.AccrualPrincipalWindow),
@@ -209,7 +166,7 @@ func rateLimitRulesFor(route routeMeta, cfg config.RateLimitConfig, trustedProxi
 		// QR-specific one-time-use and per-store consume cooldown are
 		// enforced separately, inside service.QRService itself.
 		pre = []ratelimit.Rule{
-			ipRule("ip", cfg.ClientLookupIPLimit, cfg.ClientLookupIPWindow, trustedProxies),
+			ipRule("ip", cfg.ClientLookupIPLimit, cfg.ClientLookupIPWindow),
 		}
 		post = []ratelimit.Rule{
 			storeAPIKeyOrStoreRule("principal", cfg.ClientLookupPrincipalLimit, cfg.ClientLookupPrincipalWindow),

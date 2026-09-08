@@ -12,6 +12,11 @@ postgres:
   user: promogo
   password: promogo
   dbname: promogo
+  # "disable" is a development-only default. REQUIRED to be "require",
+  # "verify-ca", or "verify-full" outside app.env=development —
+  # internal/config.Load fails fast otherwise ("prefer"/"allow" don't
+  # count: they silently fall back to plaintext if the server doesn't
+  # offer TLS).
   sslmode: disable
   max_conns: 10
 
@@ -19,6 +24,10 @@ redis:
   addr: localhost:6379
   password: ""
   db: 0
+  # REQUIRED (true) outside app.env=development — internal/config.Load
+  # fails fast otherwise. Redis holds OTP challenges, rate-limit counters,
+  # and QR one-time tokens.
+  tls_enabled: false
 
 logger:
   level: info

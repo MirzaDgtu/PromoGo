@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -46,6 +47,11 @@ type App struct {
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	log := logger.New(cfg.Logger)
 
+	trustedProxies, err := httpserver.ParseTrustedProxies(cfg.HTTP.TrustedProxies)
+	if err != nil {
+		return nil, fmt.Errorf("parse http.trusted_proxies: %w", err)
+	}
+
 	pgPool, err := postgres.NewPool(ctx, cfg.Postgres.DSN(), cfg.Postgres.MaxConns)
 	if err != nil {
 		return nil, fmt.Errorf("connect postgres: %w", err)
@@ -56,7 +62,11 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
-	redisClient := redis.NewClient(&redis.Options{Addr: cfg.Redis.Addr, Password: cfg.Redis.Password, DB: cfg.Redis.DB})
+	redisOpts := &redis.Options{Addr: cfg.Redis.Addr, Password: cfg.Redis.Password, DB: cfg.Redis.DB}
+	if cfg.Redis.TLSEnabled {
+		redisOpts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	redisClient := redis.NewClient(redisOpts)
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		pgPool.Close()
 		return nil, fmt.Errorf("connect redis: %w", err)
@@ -79,10 +89,11 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	auditEventRepo := postgres.NewAuditEventRepository(pgPool)
 	customerDeviceRepo := postgres.NewCustomerDeviceRepository(pgPool)
 
-	// SMS: config.validateSMS already enforced (outside development) that
-	// Provider isn't "log" and that "http" has endpoint/token set, so this
-	// switch never silently falls back to the dev stub in production — see
-	// DEC-014.
+	// SMS: config.validateSMS already enforced Provider is a recognized
+	// value in every environment, and (outside development) that it isn't
+	// "log" and that "http" has a valid endpoint/token set — so an unknown
+	// or misconfigured value is always a startup error above, never a
+	// silent fallback to the dev stub here. See DEC-014.
 	var smsSender domain.SMSSender
 	if cfg.SMS.Provider == "http" {
 		smsSender = httpsms.New(cfg.SMS, log)
@@ -170,7 +181,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 		RateLimiter:    ratelimit.New(redisClient),
 		RateLimit:      cfg.RateLimit,
-		TrustedProxies: httpserver.ParseTrustedProxies(cfg.HTTP.TrustedProxies),
+		TrustedProxies: trustedProxies,
 
 		Ready: func(ctx context.Context) error {
 			if err := pgPool.Ping(ctx); err != nil {

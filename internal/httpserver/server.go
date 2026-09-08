@@ -96,7 +96,7 @@ func New(deps Deps) *http.Server {
 		// request context, so they wrap the handler *before* that
 		// middleware is applied below — see rateLimitRulesFor's doc comment
 		// on this ordering.
-		preAuth, postAuth := rateLimitRulesFor(route, deps.RateLimit, deps.TrustedProxies)
+		preAuth, postAuth := rateLimitRulesFor(route, deps.RateLimit)
 		h = rl.Wrap(route.RateLimitProfile, postAuth...)(h)
 
 		switch route.Contour {
@@ -128,6 +128,7 @@ func New(deps Deps) *http.Server {
 
 	var handler http.Handler = mux
 	handler = loggingMW(deps.Log)(handler)
+	handler = withResolvedClientIP(deps.TrustedProxies)(handler)
 	handler = http.MaxBytesHandler(handler, 1<<20)
 
 	return &http.Server{
