@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
+	"github.com/MirzaDgtu/PromoGo/internal/mechanicbuild"
 )
 
 type loyaltyConfigResponseBody struct {
@@ -77,9 +78,7 @@ func handlePutLoyaltyConfig(stores domain.StoreRepository, configs domain.Loyalt
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
 		var body putLoyaltyConfigBody
-		if err := dec.Decode(&body); err != nil || body.Mechanic == "" ||
-			body.AccrualPercent.IsNegative() || body.MinPurchaseAmount.IsNegative() ||
-			body.MinBalanceToRedeem < 0 || body.MaxRedeemPercent.IsNegative() || body.PointsExchangeRate.IsNegative() {
+		if err := dec.Decode(&body); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid loyalty config")
 			return
 		}
@@ -90,6 +89,19 @@ func handlePutLoyaltyConfig(stores domain.StoreRepository, configs domain.Loyalt
 			MinBalanceToRedeem: body.MinBalanceToRedeem, MaxRedeemPercent: body.MaxRedeemPercent,
 			PointsExchangeRate: body.PointsExchangeRate,
 		}
+		if err := cfg.Validate(); err != nil {
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		// Mechanic enum membership is internal/mechanicbuild's source of
+		// truth (the switch that Accrue/Redeem build a domain.Mechanic
+		// from) — reject an unknown mechanic here, at config-write time,
+		// rather than letting it surface as an accrual-time 500 later.
+		if _, err := mechanicbuild.Build(cfg.Mechanic); err != nil {
+			writeError(w, http.StatusUnprocessableEntity, "unknown mechanic: "+cfg.Mechanic)
+			return
+		}
+
 		if err := configs.Upsert(r.Context(), cfg); err != nil {
 			log.ErrorContext(r.Context(), "upsert loyalty config", "store_id", store.ID, "error", err)
 			writeError(w, http.StatusInternalServerError, "save loyalty config")

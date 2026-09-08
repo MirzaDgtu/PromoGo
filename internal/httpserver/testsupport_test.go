@@ -217,7 +217,14 @@ type fakeLedgerRepo struct {
 func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domain.Transaction, *domain.Balance, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	return f.postLocked(tx)
+}
 
+// postLocked is Post's body factored out so PostRedeemChecked can perform
+// its extra checks and the resulting write under a single critical section
+// (one f.mu.Lock() call), matching the real repository's SELECT ... FOR
+// UPDATE transaction. Callers must already hold f.mu.
+func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction) (*domain.Transaction, *domain.Balance, error) {
 	f.txs.mu.Lock()
 	for _, existing := range f.txs.all {
 		if existing.StoreID == tx.StoreID && existing.Type == tx.Type && existing.ExternalTxID == tx.ExternalTxID {
@@ -252,7 +259,22 @@ func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domai
 // PostRedeemChecked mirrors the real repository's atomic daily-limit check
 // (internal/repository/postgres/ledger_repository.go), summing this fake
 // store's own redeem history in the trailing window.
-func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+// PostRedeemChecked holds f.mu for its entire check-then-write body,
+// mirroring the real repository's SELECT ... FOR UPDATE: the balance/min-
+// balance/daily-limit checks and the resulting write must be one atomic
+// section, or two concurrent redemptions could both pass the checks against
+// a balance neither of their writes has applied yet (see
+// TestRedeem_ConcurrentRedemptionsRespectMinBalance in transactions_route_test.go).
+func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.balances.mu.Lock()
+	current := f.balances.points[tx.ClientID]
+	f.balances.mu.Unlock()
+	if current < minBalance {
+		return nil, nil, domain.ErrInsufficientBalance
+	}
 	if dailyLimit > 0 {
 		f.txs.mu.Lock()
 		var redeemedInWindow int64
@@ -267,7 +289,7 @@ func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Trans
 			return nil, nil, domain.ErrDailyRedeemLimitExceeded
 		}
 	}
-	return f.Post(ctx, tx)
+	return f.postLocked(tx)
 }
 
 // PostRefund mirrors the real repository's atomic refund posting

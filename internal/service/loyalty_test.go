@@ -173,7 +173,10 @@ func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domai
 // PostRedeemChecked mirrors the real repository's atomic daily-limit check
 // (see internal/repository/postgres/ledger_repository.go), summing this
 // fake store's own redeem history in the trailing window.
-func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+	if f.balances.points[tx.ClientID] < minBalance {
+		return nil, nil, domain.ErrInsufficientBalance
+	}
 	if dailyLimit > 0 {
 		var redeemedInWindow int64
 		cutoff := time.Now().Add(-window)
@@ -263,6 +266,8 @@ func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transactio
 	posted.BalanceAfter = newBalance
 	posted.CreatedAt = time.Now()
 	posted.OriginalTransactionID = &original.ID
+	posted.RefundCumulativeAmount = newRefundedAmount
+	posted.RefundFullyRefunded = newRefundedAmount.Equal(original.Amount)
 	f.txs.all = append(f.txs.all, &posted)
 
 	return &posted, original, &domain.Balance{ClientID: original.ClientID, Points: newBalance}, nil
@@ -768,6 +773,79 @@ func TestRefund_IdempotentReplay(t *testing.T) {
 	balance, _ := deps.balances.Get(ctx, client.ID)
 	if balance.Points != 6 {
 		t.Fatalf("balance after replay = %d, want 6 (10 accrued - 4 reversed once, not twice)", balance.Points)
+	}
+}
+
+// TestRefund_ReplayOfEarlierPartialRefundReturnsStableSnapshot guards against
+// two distinct regressions in a replayed partial refund's RefundedAmountTotal:
+// (1) reporting just that one refund's own Amount instead of the cumulative
+// total as of when it was posted, and (2) reporting the ORIGINAL row's
+// current cumulative total, which drifts once later refunds are posted
+// against it. Both would make a replayed response disagree with what the
+// caller received the first time.
+func TestRefund_ReplayOfEarlierPartialRefundReturnsStableSnapshot(t *testing.T) {
+	deps := newTestService(pointsConfig(1))
+	ctx := context.Background()
+
+	client := &domain.Client{StoreID: 1, Phone: "+70000000109", CreatedAt: time.Now()}
+	if err := deps.clients.Create(ctx, client); err != nil {
+		t.Fatalf("seed client: %v", err)
+	}
+	if _, err := deps.svc.Accrue(ctx, AccrueRequest{
+		StoreID: 1, ExternalTxID: "rcpt-109", Phone: client.Phone, Amount: decimal.NewFromInt(100),
+	}); err != nil {
+		t.Fatalf("Accrue() error = %v", err)
+	}
+
+	first, err := deps.svc.Refund(ctx, RefundRequest{
+		StoreID: 1, ExternalTxID: "refund-109a", OriginalExternalTxID: "rcpt-109", Amount: decimal.NewFromInt(30),
+	})
+	if err != nil {
+		t.Fatalf("first partial Refund() error = %v", err)
+	}
+	if !first.RefundedAmountTotal.Equal(decimal.NewFromInt(30)) || first.FullyRefunded {
+		t.Fatalf("first partial Refund() = %+v, want RefundedAmountTotal=30 FullyRefunded=false", first)
+	}
+
+	// A second, later partial refund against the same original advances its
+	// cumulative refunded_amount from 30 to 70.
+	if _, err := deps.svc.Refund(ctx, RefundRequest{
+		StoreID: 1, ExternalTxID: "refund-109b", OriginalExternalTxID: "rcpt-109", Amount: decimal.NewFromInt(40),
+	}); err != nil {
+		t.Fatalf("second partial Refund() error = %v", err)
+	}
+
+	// Replaying the FIRST refund's external_tx_id must still report the
+	// cumulative total as of that refund (30), not the original refund's own
+	// amount (also 30, coincidentally) and not the original row's now-current
+	// total (70) — so replay this again with an amount that would make the
+	// three numbers distinguishable is unnecessary here since Amount==30
+	// already differs from the post-second-refund total of 70.
+	replay, err := deps.svc.Refund(ctx, RefundRequest{
+		StoreID: 1, ExternalTxID: "refund-109a", OriginalExternalTxID: "rcpt-109", Amount: decimal.NewFromInt(30),
+	})
+	if err != nil {
+		t.Fatalf("replay of first partial Refund() error = %v", err)
+	}
+	if !replay.Replayed {
+		t.Fatalf("replay of first partial Refund().Replayed = false, want true")
+	}
+	if !replay.RefundedAmountTotal.Equal(decimal.NewFromInt(30)) {
+		t.Fatalf("replay of first partial Refund().RefundedAmountTotal = %s, want 30 (snapshot at time of that refund, not the drifted current total of 70)", replay.RefundedAmountTotal)
+	}
+	if replay.FullyRefunded {
+		t.Fatalf("replay of first partial Refund().FullyRefunded = true, want false (it wasn't fully refunded when this refund was posted)")
+	}
+
+	// And replaying the SECOND refund must report its own snapshot (70, fully refunded), not 30.
+	replay2, err := deps.svc.Refund(ctx, RefundRequest{
+		StoreID: 1, ExternalTxID: "refund-109b", OriginalExternalTxID: "rcpt-109", Amount: decimal.NewFromInt(40),
+	})
+	if err != nil {
+		t.Fatalf("replay of second partial Refund() error = %v", err)
+	}
+	if !replay2.RefundedAmountTotal.Equal(decimal.NewFromInt(70)) {
+		t.Fatalf("replay of second partial Refund().RefundedAmountTotal = %s, want 70", replay2.RefundedAmountTotal)
 	}
 }
 

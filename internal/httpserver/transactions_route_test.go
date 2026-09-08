@@ -1,8 +1,11 @@
 package httpserver
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -199,6 +202,81 @@ func TestHandleRedeemTransaction_ClientNotFound(t *testing.T) {
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestHandleRedeemTransaction_MinBalanceToRedeemEnforced(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	fakes.Stores.byID[1] = &domain.Store{ID: 1, OrganizationID: 1, Name: "Store"}
+	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
+	seedPointsConfig(fakes, 1)
+	fakes.LoyaltyConfigs.byStore[1].MinBalanceToRedeem = 50
+	client := fakes.Clients.seed(&domain.Client{StoreID: 1, Phone: "+79261234567"})
+	// Balance is below the store's configured minimum, even though it's
+	// comfortably enough to cover the requested redemption on its own.
+	fakes.Balances.set(client.ID, 40)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions/redeem", jsonBodyAny(map[string]any{
+		"transaction_id": "redeem-min-1", "client_id": client.ID, "points": 10, "amount": "10.00",
+	}))
+	req.Header.Set("Authorization", "Bearer key-1.key")
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 (balance 40 below MinBalanceToRedeem 50)", rec.Code)
+	}
+}
+
+// TestRedeem_ConcurrentRedemptionsRespectMinBalance guards Phase 2's
+// MinBalanceToRedeem-under-concurrency requirement (docs/audit-remediation-
+// prompt.md): the eligibility check must run inside the same locked ledger
+// transaction as the balance write, not as a separate unlocked pre-check —
+// otherwise two concurrent redemptions can each read the same
+// still-above-minimum balance and both proceed, leaving the client below
+// the configured minimum afterward. With balance=60 and
+// MinBalanceToRedeem=50, only one of two concurrent 20-point redemptions
+// may succeed (60-20=40 would leave the second below the minimum to have
+// started at all under a correctly serialized check).
+func TestRedeem_ConcurrentRedemptionsRespectMinBalance(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	fakes.Stores.byID[1] = &domain.Store{ID: 1, OrganizationID: 1, Name: "Store"}
+	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
+	seedPointsConfig(fakes, 1)
+	fakes.LoyaltyConfigs.byStore[1].MinBalanceToRedeem = 50
+	client := fakes.Clients.seed(&domain.Client{StoreID: 1, Phone: "+79261234567"})
+	fakes.Balances.set(client.ID, 60)
+
+	const attempts = 8
+	var wg sync.WaitGroup
+	codes := make([]int, attempts)
+	for i := 0; i < attempts; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions/redeem", jsonBodyAny(map[string]any{
+				"transaction_id": fmt.Sprintf("redeem-concurrent-%d", i), "client_id": client.ID, "points": 20, "amount": "20.00",
+			}))
+			req.Header.Set("Authorization", "Bearer key-1.key")
+			codes[i] = doRequest(handler, req).Code
+		}(i)
+	}
+	wg.Wait()
+
+	succeeded := 0
+	for _, code := range codes {
+		if code == http.StatusOK {
+			succeeded++
+		}
+	}
+	if succeeded != 1 {
+		t.Fatalf("succeeded = %d of %d concurrent redemptions, want exactly 1 (balance 60, MinBalanceToRedeem 50, 20 points each)", succeeded, attempts)
+	}
+
+	balance, err := fakes.Balances.Get(context.Background(), client.ID)
+	if err != nil {
+		t.Fatalf("Balances.Get: %v", err)
+	}
+	if balance.Points != 40 {
+		t.Fatalf("final balance = %d, want 40 (60 - one successful 20-point redemption)", balance.Points)
 	}
 }
 

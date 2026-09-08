@@ -53,12 +53,18 @@ type LedgerRepository interface {
 	// fully_refunded without a second query.
 	PostRefund(ctx context.Context, refund *Transaction) (posted *Transaction, original *Transaction, balance *Balance, err error)
 
-	// PostRedeemChecked is Post for the redemption path, with an atomic
-	// anti-fraud check added: it locks the balance row, sums this client's
-	// already-redeemed points over the trailing window, and returns
-	// domain.ErrDailyRedeemLimitExceeded — without writing anything — if
-	// tx.PointsDelta (negative) would push that rolling-window total past
-	// dailyLimit. Refund rows are excluded from the window sum (refunds
-	// don't consume the daily limit, per DEC-013).
-	PostRedeemChecked(ctx context.Context, tx *Transaction, dailyLimit int64, window time.Duration) (*Transaction, *Balance, error)
+	// PostRedeemChecked is Post for the redemption path, with atomic
+	// anti-fraud and eligibility checks added: it locks the balance row,
+	// rejects with domain.ErrInsufficientBalance — without writing anything
+	// — if the locked pre-redemption balance is below minBalance (a
+	// service-layer pre-check against the same threshold is only a
+	// fast-fail optimization; this locked check is the one that actually
+	// prevents a concurrent redemption from letting the balance dip below
+	// the store's configured minimum), sums this client's already-redeemed
+	// points over the trailing window, and returns
+	// domain.ErrDailyRedeemLimitExceeded if tx.PointsDelta (negative) would
+	// push that rolling-window total past dailyLimit. Refund rows are
+	// excluded from the window sum (refunds don't consume the daily limit,
+	// per DEC-013).
+	PostRedeemChecked(ctx context.Context, tx *Transaction, minBalance, dailyLimit int64, window time.Duration) (*Transaction, *Balance, error)
 }

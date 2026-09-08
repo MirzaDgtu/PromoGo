@@ -90,13 +90,13 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 	return tx, balance, nil
 }
 
-const selectTransactionColumns = `id, store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refunded_amount, refunded_points`
+const selectTransactionColumns = `id, store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refunded_amount, refunded_points, refund_cumulative_amount, refund_fully_refunded`
 
 func scanTransactionRow(row pgx.Row) (*domain.Transaction, error) {
 	tx := &domain.Transaction{}
 	err := row.Scan(
 		&tx.ID, &tx.StoreID, &tx.ClientID, &tx.ExternalTxID, &tx.Amount, &tx.Type, &tx.PointsDelta, &tx.BalanceAfter, &tx.RequestFingerprint, &tx.CreatedAt,
-		&tx.OriginalTransactionID, &tx.RefundedAmount, &tx.RefundedPoints,
+		&tx.OriginalTransactionID, &tx.RefundedAmount, &tx.RefundedPoints, &tx.RefundCumulativeAmount, &tx.RefundFullyRefunded,
 	)
 	if err != nil {
 		return nil, err
@@ -204,11 +204,13 @@ func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transa
 		}
 	}
 
+	fullyRefunded := newRefundedAmount.Equal(original.Amount)
+
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refund_cumulative_amount, refund_fully_refunded)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9, $10, $11)
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, refund.StoreID, refund.ClientID, refund.ExternalTxID, refund.Amount, domain.TransactionRefund, pointsDelta, balance.Points, refund.RequestFingerprint, original.ID).
+	err = dbTx.QueryRow(ctx, insert, refund.StoreID, refund.ClientID, refund.ExternalTxID, refund.Amount, domain.TransactionRefund, pointsDelta, balance.Points, refund.RequestFingerprint, original.ID, newRefundedAmount, fullyRefunded).
 		Scan(&refund.ID, &refund.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -220,6 +222,8 @@ func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transa
 	refund.Type = domain.TransactionRefund
 	refund.BalanceAfter = balance.Points
 	refund.OriginalTransactionID = &original.ID
+	refund.RefundCumulativeAmount = newRefundedAmount
+	refund.RefundFullyRefunded = fullyRefunded
 
 	if err := dbTx.Commit(ctx); err != nil {
 		return nil, nil, nil, fmt.Errorf("post refund %d/%s: commit: %w", refund.StoreID, refund.ExternalTxID, err)
@@ -235,7 +239,7 @@ func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transa
 // check and the write atomic together: without the explicit lock, two
 // concurrent redemptions could both read a window sum below the limit
 // before either commits.
-func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
 	dbTx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("post redeem %d/%s: begin tx: %w", tx.StoreID, tx.ExternalTxID, err)
@@ -251,6 +255,10 @@ func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Tra
 	var currentPoints int64
 	if err := dbTx.QueryRow(ctx, lockBalance, tx.ClientID).Scan(&currentPoints); err != nil {
 		return nil, nil, fmt.Errorf("post redeem %d/%s: lock balance: %w", tx.StoreID, tx.ExternalTxID, err)
+	}
+
+	if currentPoints < minBalance {
+		return nil, nil, domain.ErrInsufficientBalance
 	}
 
 	if dailyLimit > 0 {

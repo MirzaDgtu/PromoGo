@@ -47,3 +47,10 @@ var ErrDailyRedeemLimitExceeded = errors.New("daily redeem limit exceeded")
 // when the presented refresh token's session was already revoked —
 // evidence the token was used twice, treated as compromise.
 var ErrSessionReused = errors.New("refresh token already used")
+
+// ErrInvalidLoyaltyConfig is returned by LoyaltyConfig.Validate when the
+// configuration violates one of the invariants Validate checks — wrap it
+// with a specific reason via fmt.Errorf("...: %w", ErrInvalidLoyaltyConfig).
+// The HTTP layer maps this to 400/422, never 500: a rejected configuration
+// is a client input error, not a server fault.
+var ErrInvalidLoyaltyConfig = errors.New("invalid loyalty config")

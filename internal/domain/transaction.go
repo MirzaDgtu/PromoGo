@@ -55,6 +55,17 @@ type Transaction struct {
 	// rows themselves.
 	RefundedAmount decimal.Decimal
 	RefundedPoints int64
+	// RefundCumulativeAmount and RefundFullyRefunded are set only when Type
+	// is TransactionRefund: a snapshot, taken at write time, of the
+	// original transaction's RefundedAmount/fully-refunded status
+	// immediately after this refund was posted (see
+	// LedgerRepository.PostRefund). Replaying this refund request must
+	// return this snapshot rather than re-reading the original row, whose
+	// cumulative total can have advanced since if later refunds were
+	// posted against it. Meaningless (left at zero/false) on accrual/redeem
+	// rows.
+	RefundCumulativeAmount decimal.Decimal
+	RefundFullyRefunded    bool
 }
 
 // TransactionCursor is a keyset-pagination continuation point: the

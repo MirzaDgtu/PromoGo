@@ -693,8 +693,78 @@ func TestHandlePutLoyaltyConfig_NegativeValueRejected(t *testing.T) {
 	req.SetPathValue("orgID", itoa(org.ID))
 	req.SetPathValue("storeID", itoa(store.ID))
 	rec := doRequest(handler, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 (negative accrual_percent)", rec.Code)
+	}
+}
+
+func TestHandlePutLoyaltyConfig_MalformedJSONRejectedWith400(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config", stringBody("{not json"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
 	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400 (negative accrual_percent)", rec.Code)
+		t.Fatalf("status = %d, want 400 (malformed JSON, distinct from a 422 validation failure)", rec.Code)
+	}
+}
+
+func TestHandlePutLoyaltyConfig_UnknownMechanicRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPut, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config", token, map[string]any{
+		"mechanic": "punch_card_not_implemented", "accrual_percent": "10", "min_purchase_amount": "0",
+		"min_balance_to_redeem": 0, "max_redeem_percent": "100", "points_exchange_rate": "1",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 (unknown mechanic, rejected at config-write time instead of surfacing as a 500 on the next accrual)", rec.Code)
+	}
+}
+
+func TestHandlePutLoyaltyConfig_PercentAbove100Rejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPut, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config", token, map[string]any{
+		"mechanic": "points", "accrual_percent": "150", "min_purchase_amount": "0",
+		"min_balance_to_redeem": 0, "max_redeem_percent": "100", "points_exchange_rate": "1",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 (accrual_percent=150 is out of [0,100])", rec.Code)
+	}
+}
+
+func TestHandlePutLoyaltyConfig_ZeroExchangeRateRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPut, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config", token, map[string]any{
+		"mechanic": "points", "accrual_percent": "10", "min_purchase_amount": "0",
+		"min_balance_to_redeem": 0, "max_redeem_percent": "100", "points_exchange_rate": "0",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422 (points_exchange_rate must be positive)", rec.Code)
 	}
 }
 

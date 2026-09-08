@@ -277,6 +277,11 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 		return nil, fmt.Errorf("redeem: load balance: %w", err)
 	}
 
+	// Fast-fail only: an unlocked read here can be stale under concurrent
+	// redemptions, so it's not sufficient on its own to enforce the
+	// invariant — PostRedeemChecked re-checks this same threshold against
+	// the balance row under its FOR UPDATE lock, which is what actually
+	// prevents a race from letting the balance dip below MinBalanceToRedeem.
 	if balance.Points < cfg.MinBalanceToRedeem {
 		return nil, domain.ErrInsufficientBalance
 	}
@@ -306,7 +311,7 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 		RequestFingerprint: redeemFingerprint(req.ClientID, req.Amount, req.Points),
 	}
 
-	posted, newBalance, err := s.ledger.PostRedeemChecked(ctx, tx, s.antiFraud.DailyRedeemPointsLimit, s.antiFraud.DailyRedeemWindow)
+	posted, newBalance, err := s.ledger.PostRedeemChecked(ctx, tx, cfg.MinBalanceToRedeem, s.antiFraud.DailyRedeemPointsLimit, s.antiFraud.DailyRedeemWindow)
 	if errors.Is(err, domain.ErrConflict) {
 		return s.replayedRedeem(ctx, req.StoreID, req.ExternalTxID, req.ClientID, req.Amount, req.Points)
 	}
@@ -488,19 +493,12 @@ func (s *LoyaltyService) replayedRefund(ctx context.Context, storeID int64, exte
 		return nil, domain.ErrIdempotencyConflict
 	}
 
-	fullyRefunded := false
-	if existing.OriginalTransactionID != nil {
-		if o, oerr := s.txs.GetByID(ctx, *existing.OriginalTransactionID); oerr == nil {
-			fullyRefunded = o.RefundedAmount.Equal(o.Amount)
-		}
-	}
-
 	return &RefundResult{
 		ClientID:            existing.ClientID,
 		PointsReversed:      existing.PointsDelta,
 		Balance:             existing.BalanceAfter,
-		RefundedAmountTotal: existing.Amount,
-		FullyRefunded:       fullyRefunded,
+		RefundedAmountTotal: existing.RefundCumulativeAmount,
+		FullyRefunded:       existing.RefundFullyRefunded,
 		Replayed:            true,
 	}, nil
 }
