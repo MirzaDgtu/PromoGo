@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
 
@@ -39,7 +40,7 @@ func handleAdminLookupClient(stores domain.StoreRepository, clients domain.Clien
 			return
 		}
 		if err != nil {
-			log.ErrorContext(r.Context(), "lookup client", "phone", phone, "error", err)
+			log.ErrorContext(r.Context(), "lookup client", "phone", auth.MaskPhone(phone), "error", err)
 			writeError(w, http.StatusInternalServerError, "lookup client")
 			return
 		}

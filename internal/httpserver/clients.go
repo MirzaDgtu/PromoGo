@@ -87,7 +87,7 @@ func handleLookupClientByPhone(clients domain.ClientRepository, balances domain.
 			return
 		}
 		if err != nil {
-			log.ErrorContext(r.Context(), "lookup client", "phone", phone, "error", err)
+			log.ErrorContext(r.Context(), "lookup client", "phone", auth.MaskPhone(phone), "error", err)
 			writeError(w, http.StatusInternalServerError, "lookup client")
 			return
 		}

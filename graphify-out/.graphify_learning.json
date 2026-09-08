@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-08T22:16:58.406269+00:00",
+  "generated_at": "2026-09-08T22:25:38.597793+00:00",
   "nodes": {
     "claude_planned_architecture": {
       "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
@@ -12,13 +12,13 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.379496452,
+      "score": 0.379443665,
       "source_file": "CLAUDE.md",
       "status": "tentative",
       "uses": 1
     },
     "config_config": {
-      "code_fingerprint": "0a880363fed0e4025f883b4d8da3d45923cbfff7e49bc32cc52831514135f07d",
+      "code_fingerprint": "6fc6e665bde281452929dc461c9708e83cffcf26ce74cac07354340ad82c5c9e",
       "label": "Config",
       "last": "2026-09-08T20:35:08.304175+00:00",
       "provenance": [
@@ -38,13 +38,13 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 2.375933674,
+      "score": 2.375603184,
       "source_file": "internal/config/config.go",
       "status": "preferred",
       "uses": 3
     },
     "configs_config_runtime_configuration": {
-      "code_fingerprint": "086a77ba17250ae55c8a92108cddef232da4dfdbb93df8157e2c6274d0650936",
+      "code_fingerprint": "a0e70ad86f112cbd045128d31b1c6a5863ac9b66d1dca32e0b485f8709941c9e",
       "label": "PromoGo Runtime Configuration",
       "last": "2026-07-28T23:50:12.729339+00:00",
       "provenance": [
@@ -54,7 +54,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.379496452,
+      "score": 0.379443665,
       "source_file": "configs/config.yaml",
       "status": "tentative",
       "uses": 1
@@ -75,7 +75,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 1.377863836,
+      "score": 1.377672177,
       "source_file": "deployments/docker-compose.yml",
       "status": "preferred",
       "uses": 2
@@ -96,7 +96,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.766684917,
+      "score": 0.766578272,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -117,7 +117,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.76617637,
+      "score": 0.766069796,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -133,7 +133,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.387903573,
+      "score": 0.387849616,
       "source_file": "Idea.md",
       "status": "tentative",
       "uses": 1
@@ -149,7 +149,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.998367384,
+      "score": 0.998228512,
       "source_file": "internal/domain/rbac.go",
       "status": "tentative",
       "uses": 1
@@ -175,7 +175,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.755591084,
+      "score": 1.755346883,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 3
@@ -191,7 +191,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.998367384,
+      "score": 0.998228512,
       "source_file": "internal/httpserver/openapi_parity_test.go",
       "status": "tentative",
       "uses": 1
@@ -212,7 +212,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.757521246,
+      "score": 0.757415876,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -233,7 +233,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.757521246,
+      "score": 0.757415876,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -254,7 +254,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.76617637,
+      "score": 0.766069796,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -275,13 +275,13 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 1.376640181,
+      "score": 1.376448692,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
     },
     "readme_api": {
-      "code_fingerprint": "f44448c6bdde58bb906e2240e3da69a4aabc4b0604f53cf8298583c5b0e6b129",
+      "code_fingerprint": "c3abc9ac3ac000e181c08f2c7ccf0f0a6d375f65b40f2fe81c5abbc1d396fcb3",
       "label": "API",
       "last": "2026-07-29T22:35:50.165372+00:00",
       "provenance": [
@@ -291,13 +291,13 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.387903573,
+      "score": 0.387849616,
       "source_file": "README.md",
       "status": "tentative",
       "uses": 1
     },
     "readme_promogo": {
-      "code_fingerprint": "f44448c6bdde58bb906e2240e3da69a4aabc4b0604f53cf8298583c5b0e6b129",
+      "code_fingerprint": "c3abc9ac3ac000e181c08f2c7ccf0f0a6d375f65b40f2fe81c5abbc1d396fcb3",
       "label": "PromoGo",
       "last": "2026-09-08T20:16:33.656954+00:00",
       "provenance": [
@@ -312,7 +312,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 1.385973411,
+      "score": 1.385780623,
       "source_file": "README.md",
       "status": "preferred",
       "uses": 2

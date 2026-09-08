@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
 
@@ -36,10 +37,10 @@ func (r *CustomerAccountRepository) GetByPhone(ctx context.Context, phone string
 
 	acc, err := scanCustomerAccount(r.pool.QueryRow(ctx, query, phone))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("customer account %s: %w", phone, domain.ErrNotFound)
+		return nil, fmt.Errorf("customer account %s: %w", auth.MaskPhone(phone), domain.ErrNotFound)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get customer account %s: %w", phone, err)
+		return nil, fmt.Errorf("get customer account %s: %w", auth.MaskPhone(phone), err)
 	}
 
 	return acc, nil
@@ -72,9 +73,9 @@ func (r *CustomerAccountRepository) Create(ctx context.Context, acc *domain.Cust
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return fmt.Errorf("create customer account %s: %w", acc.Phone, domain.ErrConflict)
+			return fmt.Errorf("create customer account %s: %w", auth.MaskPhone(acc.Phone), domain.ErrConflict)
 		}
-		return fmt.Errorf("create customer account %s: %w", acc.Phone, err)
+		return fmt.Errorf("create customer account %s: %w", auth.MaskPhone(acc.Phone), err)
 	}
 
 	return nil

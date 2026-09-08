@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
 
@@ -35,10 +36,10 @@ func (r *ClientRepository) GetByPhone(ctx context.Context, storeID int64, phone 
 
 	client, err := scanClient(r.pool.QueryRow(ctx, query, storeID, phone))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("client %d/%s: %w", storeID, phone, domain.ErrNotFound)
+		return nil, fmt.Errorf("client %d/%s: %w", storeID, auth.MaskPhone(phone), domain.ErrNotFound)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("get client %d/%s: %w", storeID, phone, err)
+		return nil, fmt.Errorf("get client %d/%s: %w", storeID, auth.MaskPhone(phone), err)
 	}
 
 	return client, nil
@@ -67,9 +68,9 @@ func (r *ClientRepository) Create(ctx context.Context, client *domain.Client) er
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return fmt.Errorf("create client %d/%s: %w", client.StoreID, client.Phone, domain.ErrConflict)
+			return fmt.Errorf("create client %d/%s: %w", client.StoreID, auth.MaskPhone(client.Phone), domain.ErrConflict)
 		}
-		return fmt.Errorf("create client %d/%s: %w", client.StoreID, client.Phone, err)
+		return fmt.Errorf("create client %d/%s: %w", client.StoreID, auth.MaskPhone(client.Phone), err)
 	}
 
 	return nil
@@ -80,7 +81,7 @@ func (r *ClientRepository) ListUnlinkedByPhone(ctx context.Context, phone string
 
 	rows, err := r.pool.Query(ctx, query, phone)
 	if err != nil {
-		return nil, fmt.Errorf("list unlinked clients %s: %w", phone, err)
+		return nil, fmt.Errorf("list unlinked clients %s: %w", auth.MaskPhone(phone), err)
 	}
 	defer rows.Close()
 
@@ -88,12 +89,12 @@ func (r *ClientRepository) ListUnlinkedByPhone(ctx context.Context, phone string
 	for rows.Next() {
 		client, err := scanClient(rows)
 		if err != nil {
-			return nil, fmt.Errorf("scan unlinked client %s: %w", phone, err)
+			return nil, fmt.Errorf("scan unlinked client %s: %w", auth.MaskPhone(phone), err)
 		}
 		clients = append(clients, client)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list unlinked clients %s: %w", phone, err)
+		return nil, fmt.Errorf("list unlinked clients %s: %w", auth.MaskPhone(phone), err)
 	}
 
 	return clients, nil
