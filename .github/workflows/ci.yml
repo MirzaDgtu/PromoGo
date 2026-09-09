@@ -269,6 +269,55 @@ jobs:
           # container is discarded with the job regardless).
           go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR postgres "$DATABASE_URL" up
 
+  e2e-pilot:
+    name: pilot E2E (1C webhook -> accrual -> mobile -> QR -> redeem -> refund)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: promogo
+          POSTGRES_PASSWORD: promogo
+          POSTGRES_DB: promogo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U promogo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PROMOGO_POSTGRES_HOST: 127.0.0.1
+      PROMOGO_POSTGRES_PORT: "5432"
+      PROMOGO_POSTGRES_USER: promogo
+      PROMOGO_POSTGRES_PASSWORD: promogo
+      PROMOGO_POSTGRES_DBNAME: promogo
+      PROMOGO_REDIS_ADDR: 127.0.0.1:6379
+      PROMOGO_HTTP_HOST: 127.0.0.1
+      PROMOGO_HTTP_PORT: "18098"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go test -tags e2e (internal/e2e.TestPilotEndToEnd)
+        run: go test -tags e2e -run TestPilotEndToEnd -v -count=1 -timeout 90s ./internal/e2e/...
+
   container:
     name: container build / image scan / SBOM
     runs-on: ubuntu-latest

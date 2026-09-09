@@ -41,12 +41,35 @@ type App struct {
 	background   *httpserver.BackgroundTracker
 }
 
+// Option customizes App construction. Production code (cmd/promogo) never
+// passes one; it exists for tests that need to substitute an
+// infrastructure boundary New would otherwise build from cfg.
+type Option func(*options)
+
+type options struct {
+	smsSender domain.SMSSender
+}
+
+// WithSMSSender overrides the domain.SMSSender New would otherwise
+// construct from cfg.SMS. Used by internal/e2e's pilot test to capture the
+// OTP code it needs to complete the customer-auth flow — the code is never
+// retrievable any other way: Redis stores only its hash (see
+// internal/service/otp_store.go), and logsms deliberately never logs it.
+func WithSMSSender(sender domain.SMSSender) Option {
+	return func(o *options) { o.smsSender = sender }
+}
+
 // New constructs an App and its dependencies: it connects to Postgres,
 // applies pending migrations (see internal/migrate), connects to Redis,
 // builds the repositories and services, and configures the HTTP server. A
 // successful return means the schema is current, so /readyz reporting
 // healthy is meaningful.
-func New(ctx context.Context, cfg *config.Config) (*App, error) {
+func New(ctx context.Context, cfg *config.Config, opts ...Option) (*App, error) {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	log := logger.New(cfg.Logger)
 
 	trustedProxies, err := httpserver.ParseTrustedProxies(cfg.HTTP.TrustedProxies)
@@ -111,9 +134,12 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	// or misconfigured value is always a startup error above, never a
 	// silent fallback to the dev stub here. See DEC-014.
 	var smsSender domain.SMSSender
-	if cfg.SMS.Provider == "http" {
+	switch {
+	case o.smsSender != nil:
+		smsSender = o.smsSender
+	case cfg.SMS.Provider == "http":
 		smsSender = httpsms.New(cfg.SMS, log)
-	} else {
+	default:
 		smsSender = logsms.New(log)
 	}
 
