@@ -339,12 +339,14 @@ tags:
   govulncheck, unit+integration тесты, `migration-deploy-model` (up/down +
   запуск нескольких реплик), Trivy image scan + Syft SBOM, gitleaks secret
   scan (см. [[Decisions#DEC-016]]).
-- [ ] **Q-P0-095:** Какой минимальный набор end-to-end тестов доказывает флоу
-  1С → начисление → приложение → списание → возврат? Остаётся открытым —
-  см. раздел 14 (Q-P0-095, Group J): требуется реальный pilot E2E тест
-  (1С/POS событие → начисление → видимость в приложении → QR/телефон
-  идентификация → списание → offline retry → duplicate delivery), пока не
-  реализован.
+- [x] **Q-P0-095:** Какой минимальный набор end-to-end тестов доказывает флоу
+  1С → начисление → приложение → списание → возврат? — реализован
+  `internal/e2e.TestPilotEndToEnd` (`docs/e2e-testing.md`): реальный
+  Postgres+Redis, реальный HTTP API, полная цепочка 1С/POS webhook →
+  offline retry/duplicate delivery → OTP-логин → видимость в приложении →
+  QR-идентификация → списание → возврат (с собственным duplicate delivery)
+  → видимость возврата в приложении. В CI как `e2e-pilot`
+  (`.github/workflows/ci.yml`), на каждый push.
 - [ ] **Q-P0-096:** Где хранятся API contract tests и тестовые fixtures 1С?
   Зависит от факта интеграции с реальным 1С — см. раздел 14, Group D.
 - [x] **Q-P0-097:** Как seed-ить первый магазин, API-ключ, конфигурацию и тестовых
@@ -569,18 +571,14 @@ business/ops. *Rationale:* 087 — метрики есть (`internal/metrics`),
 пропущенный инцидент/backlog spike без алерта). *Milestone:* до pilot
 go-live.
 
-**Group J — качество/релиз** (Q-P0-095, Q-P0-098 остаток, Q-P0-099,
-Q-P1-100). *Owner:* backend (095/098) / eng leadership (099/100).
-*Rationale:* Q-P0-095 (pilot E2E тест) — реальный, признанный пробел:
-ничего сейчас не доказывает полную цепочку 1С→начисление→приложение→
-списание→возврат→offline retry→duplicate delivery целиком; это следующий
-конкретный шаг Phase 5 после этой ревизии backlog. Q-P0-098 остаток —
-тест partial-failure миграции (падение на середине) не написан. Q-P0-099 —
-единый release manifest не нужен, пока существует только backend.
-*Risk:* Q-P0-095 — высокий (go-live без доказанного E2E — это именно тот
-риск, ради которого весь `docs/audit-remediation-prompt.md` был написан);
-остальные — низкий/средний. *Milestone:* Q-P0-095/098 — до pilot go-live;
-Q-P0-099/100 — когда появится второй компонент (mobile/configurator).
+**Group J — качество/релиз** (Q-P0-098 остаток, Q-P0-099, Q-P1-100).
+*Owner:* backend (098) / eng leadership (099/100). *Rationale:* Q-P0-095
+закрыт (см. inline-пометку выше — `internal/e2e.TestPilotEndToEnd`).
+Q-P0-098 остаток — тест partial-failure миграции (падение на середине) не
+написан. Q-P0-099 — единый release manifest не нужен, пока существует
+только backend. *Risk:* низкий/средний. *Milestone:* Q-P0-098 — до pilot
+go-live; Q-P0-099/100 — когда появится второй компонент
+(mobile/configurator).
 
 **Group K — архитектура после пилота** (Q-P1-115–118). *Owner:* product/
 architecture. *Rationale:* Q-P1-113/114 закрыты через
