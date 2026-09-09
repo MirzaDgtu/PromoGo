@@ -606,6 +606,45 @@ proprietary LICENSE без явного решения владельца пра
 первого внешнего распространения кода (публичный репозиторий, передача
 третьей стороне) или по решению владельца.
 
+## 15. Находки чистого CI-прогона (2026-09-09)
+
+Обнаружены при первом полном прогоне CI из чистого checkout (см.
+`docs/ci-clean-checkout-baseline-2026-09-09.md`, [[DEC-019]]). Per явную
+инструкцию в этой сессии — зафиксировать verdict без исправления новых
+проблем в этом же коммите; обе строки ниже открыты намеренно.
+
+- [ ] **Q-P0-126:** `go test -race -count=1 ./...` детектирует два data race
+  в `internal/httpserver/middleware_test.go`'s `fakeStoreAPIKeyRepo`
+  (тестовый double на голой `map` без мьютекса, задетый асинхронным
+  `TouchLastUsed` из `middleware.go:101-102` через
+  `BackgroundTracker.Go` — гонка воспроизведена дважды: в
+  `TestHandleCreateStoreAPIKey_PlaintextAuthenticatesRealRequest` и в
+  `TestRateLimit_AccrualPrincipalIsolatedByStoreAPIKey`). Влияет только на
+  тестовую инфраструктуру (сам `fakeStoreAPIKeyRepo` — не production код),
+  но CI job `race` в `.github/workflows/ci.yml` красный на чистом HEAD
+  (`3e7c174`) — то есть это не флейк окружения, а стабильно
+  воспроизводимая гонка. *Owner:* backend. *Risk:* средний — не блокирует
+  пилот (production `StoreAPIKeyRepository` — реальный Postgres, там нет
+  этой гонки), но `race` job в CI сейчас систематически красный, что
+  снижает сигнальность CI для будущих реальных гонок. *Milestone:* до
+  следующего PR, трогающего `internal/httpserver/middleware_test.go` или
+  `background.go` — не блокирует релиз-гейт, но должно закрыться до
+  merge-freeze перед пилотом.
+- [ ] **Q-P0-127:** `secret-scan` (`gitleaks`) job красный на чистом HEAD —
+  один finding, `docs/load-testing.md:46`, rule `generic-api-key`,
+  внесён коммитом `82399bb6` (Phase 4, load-testing doc). Значение —
+  пример вывода `loadtest-seed` (одноразовый dev-ключ из
+  docker-compose-стенда, не реальный production-секрет), но gitleaks не
+  отличает пример от секрета без явного allowlist-правила
+  (`.gitleaks.toml`). *Owner:* backend. *Risk:* низкий по существу
+  (ключ не реальный), но CI-гейт `secret-scan` сейчас систематически
+  красный — нужно либо заменить пример на явный placeholder
+  (`<...>`), либо добавить allowlist-правило с обоснованием в
+  `.gitleaks.toml`, чтобы не приучать проверяющих игнорировать красный
+  secret-scan. *Milestone:* до merge-freeze перед пилотом (тот же список,
+  что и Q-P0-126) — не блокирует release-gate немедленно, но должно
+  закрыться до RC.
+
 ## Порядок разбора
 
 1. Сначала ответить на P0 из разделов 1–5: они определяют пилот и API.
