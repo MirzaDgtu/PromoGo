@@ -50,17 +50,34 @@ func (f *fakeDeviceRepo) RevokeByToken(_ context.Context, pushToken string) erro
 	return nil
 }
 
+// fakeMessagingSender mirrors messaging.Client.SendEach's two-level failure
+// mode: err simulates a total batch failure (SendEach itself returns an
+// error, nothing in the batch delivered), while perMsgErr simulates a
+// per-message failure inside an otherwise-successful batch call (a
+// BatchResponse with that message's SendResponse.Success=false) — the
+// shape Channel.Send actually branches on for invalid-token revocation.
 type fakeMessagingSender struct {
 	err       error
+	perMsgErr error
 	sentCount int
 }
 
-func (f *fakeMessagingSender) Send(context.Context, *messaging.Message) (string, error) {
-	f.sentCount++
+func (f *fakeMessagingSender) SendEach(_ context.Context, messages []*messaging.Message) (*messaging.BatchResponse, error) {
+	f.sentCount += len(messages)
 	if f.err != nil {
-		return "", f.err
+		return nil, f.err
 	}
-	return "message-id", nil
+	resp := &messaging.BatchResponse{}
+	for range messages {
+		if f.perMsgErr != nil {
+			resp.Responses = append(resp.Responses, &messaging.SendResponse{Success: false, Error: f.perMsgErr})
+			resp.FailureCount++
+			continue
+		}
+		resp.Responses = append(resp.Responses, &messaging.SendResponse{Success: true, MessageID: "message-id"})
+		resp.SuccessCount++
+	}
+	return resp, nil
 }
 
 func newTestChannel(sender messagingSender, clients *fakeClientRepo, devices *fakeDeviceRepo, isInvalidToken func(error) bool) *Channel {
@@ -97,7 +114,7 @@ func TestFCMChannel_Send_InvalidTokenIsRevoked(t *testing.T) {
 	accountID := int64(43)
 	clients := &fakeClientRepo{byID: map[int64]*domain.Client{1: {ID: 1, CustomerAccountID: &accountID}}}
 	devices := &fakeDeviceRepo{active: map[int64][]*domain.CustomerDevice{accountID: {{ID: 11, PushToken: "dead-token"}}}}
-	sender := &fakeMessagingSender{err: errTransient}
+	sender := &fakeMessagingSender{perMsgErr: errTransient}
 
 	// isInvalidToken stands in for messaging.IsRegistrationTokenNotRegistered/
 	// IsInvalidArgument, which inspect an unexported SDK error type that
@@ -118,7 +135,7 @@ func TestFCMChannel_Send_TransientErrorNotRevoked(t *testing.T) {
 	accountID := int64(44)
 	clients := &fakeClientRepo{byID: map[int64]*domain.Client{1: {ID: 1, CustomerAccountID: &accountID}}}
 	devices := &fakeDeviceRepo{active: map[int64][]*domain.CustomerDevice{accountID: {{ID: 12, PushToken: "tok-2"}}}}
-	sender := &fakeMessagingSender{err: errTransient}
+	sender := &fakeMessagingSender{perMsgErr: errTransient}
 
 	ch := newTestChannel(sender, clients, devices, func(error) bool { return false })
 
@@ -157,6 +174,62 @@ func TestFCMChannel_Send_NoDevicesIsNoOp(t *testing.T) {
 	if sender.sentCount != 0 {
 		t.Fatalf("sentCount = %d, want 0", sender.sentCount)
 	}
+}
+
+// TestFCMChannel_Send_TotalBatchFailureIsBestEffort covers SendEach's
+// documented total-failure mode (an error from SendEach itself, not a
+// per-message failure inside the batch) — Channel.Send must still honor
+// domain.NotificationChannel's best-effort contract rather than
+// propagating it to the caller.
+func TestFCMChannel_Send_TotalBatchFailureIsBestEffort(t *testing.T) {
+	accountID := int64(46)
+	clients := &fakeClientRepo{byID: map[int64]*domain.Client{1: {ID: 1, CustomerAccountID: &accountID}}}
+	devices := &fakeDeviceRepo{active: map[int64][]*domain.CustomerDevice{accountID: {{ID: 13, PushToken: "tok-3"}}}}
+	sender := &fakeMessagingSender{err: errTransient}
+
+	ch := newTestChannel(sender, clients, devices, isInvalidTokenError)
+	if err := ch.Send(context.Background(), 1, "hello"); err != nil {
+		t.Fatalf("Send() error = %v, want nil (best-effort even on a total SendEach failure)", err)
+	}
+}
+
+// TestFCMChannel_Send_MultipleDevicesOneBatchCall guards Phase 3's
+// batch/parallelize requirement (docs/audit-remediation-prompt.md): fanning
+// out to several devices must be one SendEach call carrying every message,
+// not a sequential per-device loop.
+func TestFCMChannel_Send_MultipleDevicesOneBatchCall(t *testing.T) {
+	accountID := int64(47)
+	clients := &fakeClientRepo{byID: map[int64]*domain.Client{1: {ID: 1, CustomerAccountID: &accountID}}}
+	devices := &fakeDeviceRepo{active: map[int64][]*domain.CustomerDevice{accountID: {
+		{ID: 14, PushToken: "tok-a"}, {ID: 15, PushToken: "tok-b"}, {ID: 16, PushToken: "tok-c"},
+	}}}
+	sender := &fakeCallCountingSender{}
+
+	ch := newTestChannel(sender, clients, devices, isInvalidTokenError)
+	if err := ch.Send(context.Background(), 1, "hello"); err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+	if sender.calls != 1 {
+		t.Fatalf("SendEach calls = %d, want 1 (one batch call for all 3 devices, not one call per device)", sender.calls)
+	}
+	if sender.lastBatchSize != 3 {
+		t.Fatalf("last batch size = %d, want 3", sender.lastBatchSize)
+	}
+}
+
+type fakeCallCountingSender struct {
+	calls         int
+	lastBatchSize int
+}
+
+func (f *fakeCallCountingSender) SendEach(_ context.Context, messages []*messaging.Message) (*messaging.BatchResponse, error) {
+	f.calls++
+	f.lastBatchSize = len(messages)
+	resp := &messaging.BatchResponse{SuccessCount: len(messages)}
+	for range messages {
+		resp.Responses = append(resp.Responses, &messaging.SendResponse{Success: true, MessageID: "message-id"})
+	}
+	return resp, nil
 }
 
 func TestFCMChannel_Send_ClientLookupErrorPropagates(t *testing.T) {

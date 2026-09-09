@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-09T02:01:00.950495+00:00",
+  "generated_at": "2026-09-09T07:45:13.133544+00:00",
   "nodes": {
     "claude_planned_architecture": {
       "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
@@ -12,7 +12,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.378134696,
+      "score": 0.376052104,
       "source_file": "CLAUDE.md",
       "status": "tentative",
       "uses": 1
@@ -38,7 +38,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 2.367408055,
+      "score": 2.354369459,
       "source_file": "internal/config/config.go",
       "status": "preferred",
       "uses": 3
@@ -54,16 +54,37 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.378134696,
+      "score": 0.376052104,
       "source_file": "configs/config.yaml",
+      "status": "tentative",
+      "uses": 1
+    },
+    "deployments_docker_compose_app_service": {
+      "code_fingerprint": "3c0c54d8185205a5c4cbcb889b697673b8d6e5f0c9e1afb35eb0f495d89da9cc",
+      "label": "PromoGo Application Service",
+      "last": "2026-09-09T07:41:54.364822+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-09T07:41:54.364822+00:00",
+          "outcome": "useful",
+          "q": "Почему такая ошибка при make redeploy? Error response from daemon: failed to set up container networking: Bind for 0.0.0.0:8080 failed: port is already allocated"
+        }
+      ],
+      "score": 0.999946847,
+      "source_file": "deployments/docker-compose.yml",
       "status": "tentative",
       "uses": 1
     },
     "deployments_docker_compose_local_stack": {
       "code_fingerprint": "3c0c54d8185205a5c4cbcb889b697673b8d6e5f0c9e1afb35eb0f495d89da9cc",
       "label": "Docker Compose Local Stack",
-      "last": "2026-09-08T20:35:08.304175+00:00",
+      "last": "2026-09-09T07:41:54.364822+00:00",
       "provenance": [
+        {
+          "date": "2026-09-09T07:41:54.364822+00:00",
+          "outcome": "useful",
+          "q": "Почему такая ошибка при make redeploy? Error response from daemon: failed to set up container networking: Bind for 0.0.0.0:8080 failed: port is already allocated"
+        },
         {
           "date": "2026-09-08T20:35:08.304175+00:00",
           "outcome": "useful",
@@ -75,10 +96,10 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 1.372919615,
+      "score": 2.365305051,
       "source_file": "deployments/docker-compose.yml",
       "status": "preferred",
-      "uses": 2
+      "uses": 3
     },
     "full_scope_phase_2_multistore_product": {
       "code_fingerprint": "1b1eec672d61721317c29cfaabb70e7366db8a5cab5bf7be7bef8881405b5a87",
@@ -96,7 +117,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.763933804,
+      "score": 0.759726407,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -117,7 +138,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.763427081,
+      "score": 0.759222475,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -133,7 +154,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.386511649,
+      "score": 0.384382921,
       "source_file": "Idea.md",
       "status": "tentative",
       "uses": 1
@@ -149,7 +170,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.994784919,
+      "score": 0.9893061,
       "source_file": "internal/domain/rbac.go",
       "status": "tentative",
       "uses": 1
@@ -175,7 +196,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.749291455,
+      "score": 1.739657161,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 3
@@ -191,7 +212,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.994784919,
+      "score": 0.9893061,
       "source_file": "internal/httpserver/openapi_parity_test.go",
       "status": "tentative",
       "uses": 1
@@ -212,7 +233,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.754803015,
+      "score": 0.750645906,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -233,7 +254,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.754803015,
+      "score": 0.750645906,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -254,7 +275,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.763427081,
+      "score": 0.759222475,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -275,7 +296,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 1.371700351,
+      "score": 1.364145655,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -291,7 +312,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.386511649,
+      "score": 0.384382921,
       "source_file": "README.md",
       "status": "tentative",
       "uses": 1
@@ -312,7 +333,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 1.38100009,
+      "score": 1.373394175,
       "source_file": "README.md",
       "status": "preferred",
       "uses": 2

@@ -18,17 +18,28 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
 
-// sendTimeout bounds each per-device FCM send call — push delivery must
-// never make an accrual/redeem/refund request hang waiting on a slow or
-// unresponsive FCM endpoint (it's already best-effort and post-commit).
+// sendTimeout bounds the whole fanout to one CustomerAccount's devices —
+// push delivery must never make an accrual/redeem/refund request hang
+// waiting on a slow or unresponsive FCM endpoint (it's already best-effort
+// and post-commit). It bounds the batch as a whole, not per device, since
+// SendEach parallelizes internally rather than looping sequentially.
 const sendTimeout = 5 * time.Second
+
+// maxMessagesPerSendEach is messaging.Client.SendEach's own documented
+// limit on how many messages one call accepts. A CustomerAccount is very
+// unlikely to ever register this many devices, but chunking defensively
+// means a pathological case degrades to multiple calls instead of an error.
+const maxMessagesPerSendEach = 500
 
 // messagingSender is the subset of *messaging.Client's API this package
 // calls — narrowed to an interface so tests can inject a fake instead of a
 // real Firebase connection. *messaging.Client satisfies this (via its
-// embedded fcmClient) with no adapter needed.
+// embedded fcmClient) with no adapter needed. SendEach (not the deprecated
+// SendAll) is used for multi-device fanout: unlike a manual per-device loop,
+// it parallelizes internally with SDK-managed bounded concurrency instead
+// of an unbounded sequential five-second call per device.
 type messagingSender interface {
-	Send(ctx context.Context, message *messaging.Message) (string, error)
+	SendEach(ctx context.Context, messages []*messaging.Message) (*messaging.BatchResponse, error)
 }
 
 // Channel implements domain.NotificationChannel over FCM.
@@ -76,14 +87,15 @@ func isInvalidTokenError(err error) bool {
 func (c *Channel) Name() string { return "fcm" }
 
 // Send implements domain.NotificationChannel: resolves clientID's linked
-// CustomerAccount, sends message to every active device, and revokes any
-// device FCM reports as unregistered/invalid — a self-healing token store
-// that needs no separate cleanup job. No devices is a successful no-op.
-// Never logs a push token. A send failure for one device never affects
-// another, and never propagates as an error from Send (matching
-// domain.NotificationChannel's "best-effort, never fails the caller's
-// request" contract) — errors are logged, not returned, except when the
-// account/device lookup itself fails.
+// CustomerAccount, sends message to every active device in bounded-
+// concurrency batches via SendEach (not a sequential per-device loop — see
+// messagingSender's doc comment), and revokes any device FCM reports as
+// unregistered/invalid — a self-healing token store that needs no separate
+// cleanup job. No devices is a successful no-op. Never logs a push token. A
+// send failure for one device never affects another, and never propagates
+// as an error from Send (matching domain.NotificationChannel's
+// "best-effort, never fails the caller's request" contract) — errors are
+// logged, not returned, except when the account/device lookup itself fails.
 func (c *Channel) Send(ctx context.Context, clientID int64, message string) error {
 	client, err := c.clients.GetByID(ctx, clientID)
 	if err != nil {
@@ -102,25 +114,42 @@ func (c *Channel) Send(ctx context.Context, clientID int64, message string) erro
 		return nil
 	}
 
-	for _, d := range devices {
-		sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
-		_, err := c.client.Send(sendCtx, &messaging.Message{
-			Token:        d.PushToken,
-			Notification: &messaging.Notification{Body: message},
-		})
-		cancel()
-		if err == nil {
-			continue
-		}
+	sendCtx, cancel := context.WithTimeout(ctx, sendTimeout)
+	defer cancel()
 
-		if c.isInvalidToken(err) {
-			if revokeErr := c.devices.RevokeByToken(ctx, d.PushToken); revokeErr != nil {
-				c.log.WarnContext(ctx, "revoke invalid fcm device token", "device_id", d.ID, "error", revokeErr)
+	for start := 0; start < len(devices); start += maxMessagesPerSendEach {
+		end := min(start+maxMessagesPerSendEach, len(devices))
+		batch := devices[start:end]
+
+		messages := make([]*messaging.Message, len(batch))
+		for i, d := range batch {
+			messages[i] = &messaging.Message{
+				Token:        d.PushToken,
+				Notification: &messaging.Notification{Body: message},
 			}
+		}
+
+		resp, err := c.client.SendEach(sendCtx, messages)
+		if err != nil {
+			// A total failure (see SendEach's doc comment) — nothing in
+			// this batch was delivered; log once rather than per device.
+			c.log.WarnContext(ctx, "send fcm push batch", "batch_size", len(batch), "error", err)
 			continue
 		}
 
-		c.log.WarnContext(ctx, "send fcm push", "device_id", d.ID, "error", err)
+		for i, r := range resp.Responses {
+			if r.Success {
+				continue
+			}
+			d := batch[i]
+			if c.isInvalidToken(r.Error) {
+				if revokeErr := c.devices.RevokeByToken(ctx, d.PushToken); revokeErr != nil {
+					c.log.WarnContext(ctx, "revoke invalid fcm device token", "device_id", d.ID, "error", revokeErr)
+				}
+				continue
+			}
+			c.log.WarnContext(ctx, "send fcm push", "device_id", d.ID, "error", r.Error)
+		}
 	}
 
 	return nil

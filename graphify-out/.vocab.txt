@@ -223,12 +223,15 @@ expiry
 explicitly
 external
 fails
+failure
 fake
 fakes
 fallback
 fcm
 fcmchannel
 fields
+finalize
+finalizes
 fingerprint
 first
 flatten
@@ -418,6 +421,7 @@ over
 own
 ownership
 page
+panic
 parity
 parse
 partial
@@ -505,6 +509,7 @@ rejected
 rejects
 relationships
 release
+releases
 reliability
 reliable
 remediation
