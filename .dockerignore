@@ -1,0 +1,36 @@
+# Version control
+.git
+.gitignore
+
+# Local environment / secrets — must never enter the build context or a cache layer
+.env
+.env.*
+*.pem
+*.key
+**/serviceAccountKey*.json
+**/*credentials*.json
+
+# Knowledge graph output (large, irrelevant to the build, and can carry query history)
+graphify-out/
+
+# Editor / OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docs and local-only project files not needed inside the image
+docs/
+knowledge/
+*.md
+!README.md
+
+# Build artifacts / local tooling output
+bin/
+dist/
+*.cover.out
+*.test
+
+# Local dev infra state
+deployments/*.local.yml

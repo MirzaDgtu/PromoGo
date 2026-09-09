@@ -72,8 +72,8 @@ docker compose -f deployments/docker-compose.yml up --build
 После запуска:
 
 ```bash
-curl http://localhost:8080/healthz
-curl http://localhost:8080/readyz
+curl http://localhost:8090/healthz
+curl http://localhost:8090/readyz
 ```
 
 Оба запроса должны вернуть HTTP `200`. При старте приложение самостоятельно применяет недостающие миграции.
