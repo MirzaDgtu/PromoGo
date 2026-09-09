@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -66,48 +67,71 @@ func sha256Hex(s string) string {
 }
 
 // fakeStoreAPIKeyRepo is a minimal in-memory domain.StoreAPIKeyRepository.
+//
+// It stores domain.StoreAPIKey by value (not by pointer) and hands callers
+// fresh copies on every read, guarded by mu. RequireStoreAPIKey reads the
+// key it resolved (in the request goroutine) while its background
+// TouchLastUsed call (see BackgroundTracker.Go in background.go) mutates
+// the same key concurrently; sharing one *domain.StoreAPIKey between the
+// two used to race under `go test -race` (found in the
+// 2026-09-09 clean-checkout CI baseline, Q-P0-126) because both the map
+// access and the pointed-to struct's fields were touched without
+// synchronization. Copy-out-on-read plus a mutex around the map removes
+// both races: no goroutine ever mutates a struct another goroutine holds.
 type fakeStoreAPIKeyRepo struct {
-	byKeyID map[string]*domain.StoreAPIKey
+	mu      sync.Mutex
+	byKeyID map[string]domain.StoreAPIKey
 	nextID  int64
 }
 
 func newFakeStoreAPIKeyRepo() *fakeStoreAPIKeyRepo {
-	return &fakeStoreAPIKeyRepo{byKeyID: map[string]*domain.StoreAPIKey{}}
+	return &fakeStoreAPIKeyRepo{byKeyID: map[string]domain.StoreAPIKey{}}
 }
 
 func (f *fakeStoreAPIKeyRepo) GetByKeyID(_ context.Context, keyID string) (*domain.StoreAPIKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	k, ok := f.byKeyID[keyID]
 	if !ok {
 		return nil, domain.ErrNotFound
 	}
-	return k, nil
+	out := k
+	return &out, nil
 }
 
 func (f *fakeStoreAPIKeyRepo) ListByStore(_ context.Context, storeID int64) ([]*domain.StoreAPIKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	var out []*domain.StoreAPIKey
 	for _, k := range f.byKeyID {
 		if k.StoreID == storeID {
-			out = append(out, k)
+			kk := k
+			out = append(out, &kk)
 		}
 	}
 	return out, nil
 }
 
 func (f *fakeStoreAPIKeyRepo) Create(_ context.Context, k *domain.StoreAPIKey) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if k.ID == 0 {
 		f.nextID++
 		k.ID = f.nextID
 	}
 	k.CreatedAt = time.Now()
-	f.byKeyID[k.KeyID] = k
+	f.byKeyID[k.KeyID] = *k
 	return nil
 }
 
 func (f *fakeStoreAPIKeyRepo) Revoke(_ context.Context, storeID, id int64) error {
-	for _, k := range f.byKeyID {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for keyID, k := range f.byKeyID {
 		if k.ID == id && k.StoreID == storeID {
 			now := time.Now()
 			k.RevokedAt = &now
+			f.byKeyID[keyID] = k
 			return nil
 		}
 	}
@@ -115,9 +139,12 @@ func (f *fakeStoreAPIKeyRepo) Revoke(_ context.Context, storeID, id int64) error
 }
 
 func (f *fakeStoreAPIKeyRepo) TouchLastUsed(_ context.Context, id int64, at time.Time) error {
-	for _, k := range f.byKeyID {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for keyID, k := range f.byKeyID {
 		if k.ID == id {
 			k.LastUsedAt = &at
+			f.byKeyID[keyID] = k
 		}
 	}
 	return nil
@@ -131,7 +158,9 @@ func (f *fakeStoreAPIKeyRepo) add(k *domain.StoreAPIKey, plaintextSecret string)
 		k.KeyID = fmt.Sprintf("key-%d", k.ID)
 	}
 	k.KeyHash = sha256Hex(plaintextSecret)
-	f.byKeyID[k.KeyID] = k
+	f.mu.Lock()
+	f.byKeyID[k.KeyID] = *k
+	f.mu.Unlock()
 	return k.KeyID + "." + plaintextSecret
 }
 
