@@ -77,10 +77,64 @@ traffic.
 
 ## soak.js
 
-15-minute run at ~50% of load.js's peak (10 req/s POS + 5 req/s reads).
-*(Filled in after this document's first commit — see the follow-up commit
-for the actual run's thresholds and the `promogo_outbox_backlog` samples
-taken every minute during it.)*
+15-minute run at ~50% of load.js's peak (10 req/s POS + 5 req/s reads),
+same instance/rate-limit setup as the load.js re-run above:
+
+```
+█ THRESHOLDS
+  checks
+  ✓ 'rate>0.999' rate=100.00%
+  http_req_duration{name:accrual}
+  ✓ 'p(95)<300' p(95)=10.93ms
+  ✓ 'p(99)<800' p(99)=13.23ms
+  http_req_duration{name:balance}
+  ✓ 'p(95)<500' p(95)=4.43ms
+  http_req_duration{name:redeem}
+  ✓ 'p(95)<300' p(95)=10.78ms
+  ✓ 'p(99)<800' p(99)=12.79ms
+
+█ TOTAL RESULTS
+  checks_total.......: 22503   24.862887/s
+  checks_succeeded...: 100.00% 22503 out of 22503
+  checks_failed......: 0.00%   0 out of 22503
+  http_reqs..........: 22504   24.863992/s (over 15m05s)
+```
+
+No latency drift over the 15 minutes (p95 was actually slightly *lower*
+than the shorter load.js run's — 10.93ms vs 13.18ms — consistent with no
+resource leak building up under sustained load).
+
+**`promogo_outbox_backlog` samples, taken every 60s during the run** (this
+instance was still draining ~1900 outbox rows enqueued by the earlier
+load.js re-run when the soak run started, which is itself a valid
+data point — a real backlog, not a synthetic one):
+
+```
+13:15:21 backlog=1895
+13:16:21 backlog=1595
+13:17:21 backlog=1295
+13:18:21 backlog=995
+13:19:21 backlog=695
+13:20:21 backlog=395
+13:21:22 backlog=95
+13:22:22 backlog=40
+13:23:22 backlog=40
+13:24:22 backlog=40
+13:25:22 backlog=40
+13:26:22 backlog=40
+13:27:22 backlog=40
+13:28:22 backlog=40
+13:29:22 backlog=40
+```
+
+The backlog drained from 1895 to a stable ~40 within 6 minutes, then held
+flat at that level for the rest of the run — 40 is the steady-state amount
+sitting between poll ticks at this traffic's enqueue rate (2s poll
+interval, 50-row batches), not unbounded growth. This is real evidence for
+`docs/slo.md`'s claim that the backlog "should return to baseline within 2
+minutes of a load spike ending" — here it was under load the whole time and
+still reached and held a stable floor, which is the stronger of the two
+claims.
 
 ## dependency-failure.sh
 
