@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -252,4 +253,66 @@ func (c *blockingChannel) Name() string { return "blocking" }
 func (c *blockingChannel) Send(context.Context, int64, string) error {
 	c.onSend()
 	return nil
+}
+
+// slowChannel sleeps before sending, recording whether ctx was already
+// canceled by the time Send got the chance to check it.
+type slowChannel struct {
+	delay        time.Duration
+	sawCtxCancel atomic.Bool
+}
+
+func (c *slowChannel) Name() string { return "slow" }
+func (c *slowChannel) Send(ctx context.Context, _ int64, _ string) error {
+	select {
+	case <-time.After(c.delay):
+	case <-ctx.Done():
+		c.sawCtxCancel.Store(true)
+		return ctx.Err()
+	}
+	return nil
+}
+
+// TestOutboxWorker_InFlightPollSurvivesRunCtxCancellation verifies the fix
+// for a shutdown race: Run's ctx being canceled (App.Run does this the
+// moment HTTP shutdown completes) must not abort a poll that was already
+// claimed and is mid-delivery — see Run's doc comment. Without the
+// context.WithoutCancel detachment, this test's in-flight Send would
+// observe ctx.Done() and fail instead of completing.
+func TestOutboxWorker_InFlightPollSurvivesRunCtxCancellation(t *testing.T) {
+	outbox := newFakeOutboxRepo()
+	entry := outbox.add(&domain.NotificationOutboxEntry{ClientID: 1, Message: "hello", DedupeKey: "k1"})
+	channel := &slowChannel{delay: 150 * time.Millisecond}
+
+	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, OutboxWorkerConfig{
+		PollInterval: 10 * time.Millisecond, BatchSize: 10, MaxConcurrency: 4,
+		MaxAttempts: 3, BaseBackoff: time.Second, MaxBackoff: time.Minute,
+		DeliverTimeout: 2 * time.Second,
+	})
+
+	runCtx, cancelRun := context.WithCancel(context.Background())
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		w.Run(runCtx)
+	}()
+
+	// Give the ticker time to claim the entry and enter slowChannel.Send,
+	// then cancel Run's ctx mid-delivery.
+	time.Sleep(30 * time.Millisecond)
+	cancelRun()
+
+	select {
+	case <-runDone:
+	case <-time.After(time.Second):
+		t.Fatal("Run did not return after ctx cancellation")
+	}
+
+	if channel.sawCtxCancel.Load() {
+		t.Fatal("in-flight Send observed ctx cancellation; it should have run on a detached context")
+	}
+	got := outbox.get(entry.ID)
+	if got.Status != domain.NotificationOutboxDelivered {
+		t.Fatalf("status = %q, want delivered (in-flight poll should have completed despite Run's ctx being canceled)", got.Status)
+	}
 }

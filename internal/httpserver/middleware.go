@@ -70,7 +70,7 @@ func storeAPIKeyFromContext(ctx context.Context) (*domain.StoreAPIKey, bool) {
 // keyID) falls back to the legacy single-key stores.api_key_hash column so
 // a store that hasn't rotated onto the new table keeps authenticating
 // unchanged.
-func RequireStoreAPIKey(stores domain.StoreRepository, apiKeys domain.StoreAPIKeyRepository, log *slog.Logger) func(http.HandlerFunc) http.HandlerFunc {
+func RequireStoreAPIKey(stores domain.StoreRepository, apiKeys domain.StoreAPIKeyRepository, log *slog.Logger, bg *BackgroundTracker) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			key := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
@@ -98,11 +98,11 @@ func RequireStoreAPIKey(stores domain.StoreRepository, apiKeys domain.StoreAPIKe
 						return
 					}
 
-					go func() {
+					bg.Go(func() {
 						if err := apiKeys.TouchLastUsed(context.Background(), apiKey.ID, time.Now()); err != nil {
 							log.Warn("touch store api key last used", "key_id", apiKey.ID, "error", err)
 						}
-					}()
+					})
 
 					ctx := context.WithValue(r.Context(), storeContextKey{}, store)
 					ctx = context.WithValue(ctx, storeAPIKeyContextKey{}, apiKey)

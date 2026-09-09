@@ -61,6 +61,11 @@ type Deps struct {
 	// Ready is called on each /readyz request and should return an error if
 	// any dependency is unavailable.
 	Ready func(ctx context.Context) error
+
+	// Background tracks best-effort per-request goroutines (currently just
+	// RequireStoreAPIKey's TouchLastUsed) so graceful shutdown can wait for
+	// them instead of racing infrastructure teardown. Required.
+	Background *BackgroundTracker
 }
 
 // New builds the application's HTTP server.
@@ -84,7 +89,7 @@ type Deps struct {
 func New(deps Deps) *http.Server {
 	mux := http.NewServeMux()
 
-	requireStoreKey := RequireStoreAPIKey(deps.Stores, deps.StoreAPIKeys, deps.Log)
+	requireStoreKey := RequireStoreAPIKey(deps.Stores, deps.StoreAPIKeys, deps.Log, deps.Background)
 	requireCustomer := RequireCustomerSession(deps.CustomerAccessTokenSecret, deps.CustomerAccounts)
 	rl := ratelimit.NewMiddleware(deps.RateLimiter, deps.Log)
 

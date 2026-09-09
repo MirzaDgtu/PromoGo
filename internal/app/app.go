@@ -38,6 +38,7 @@ type App struct {
 	redis        *redis.Client
 	http         *http.Server
 	outboxWorker *service.OutboxWorker
+	background   *httpserver.BackgroundTracker
 }
 
 // New constructs an App and its dependencies: it connects to Postgres,
@@ -137,6 +138,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		MaxAttempts:    5,
 		BaseBackoff:    5 * time.Second,
 		MaxBackoff:     5 * time.Minute,
+		// Kept below App.Run's outboxDrainTimeout so a poll in flight at
+		// shutdown is normally bounded by this, not that.
+		DeliverTimeout: 30 * time.Second,
 	})
 
 	qrService := service.NewQRService(log, redisClient, service.QRConfig{
@@ -168,6 +172,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		log, staffUserRepo, staffMembershipRepo, auditEventRepo, oidcVerifier,
 		service.StaffAuthConfig{AccessTokenSecret: accessTokenSecret, AccessTokenTTL: cfg.Auth.AccessTokenTTL},
 	)
+
+	background := httpserver.NewBackgroundTracker()
 
 	httpServer := httpserver.New(httpserver.Deps{
 		App:  cfg.App,
@@ -209,18 +215,48 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 			}
 			return nil
 		},
+
+		Background: background,
 	})
 
-	return &App{log: log, pgPool: pgPool, redis: redisClient, http: httpServer, outboxWorker: outboxWorker}, nil
+	return &App{log: log, pgPool: pgPool, redis: redisClient, http: httpServer, outboxWorker: outboxWorker, background: background}, nil
 }
 
+// httpShutdownTimeout bounds how long a graceful HTTP shutdown waits for
+// in-flight requests to finish before forcibly closing their connections.
+// 1C's webhook SLA target is <300ms (Idea.md); this is a generous multiple
+// of that, not a budget any healthy request should need.
+const httpShutdownTimeout = 5 * time.Second
+
+// outboxDrainTimeout bounds how long Run waits, after stopping the outbox
+// worker's ticker, for a poll already in flight to finish delivering and
+// marking its claimed batch. Kept above OutboxWorkerConfig.DeliverTimeout
+// (see internal/service/outbox_worker.go) so that bound — not this one — is
+// normally what limits an in-flight poll.
+const outboxDrainTimeout = 35 * time.Second
+
+// backgroundDrainTimeout bounds how long Run waits for tracked best-effort
+// goroutines (see httpserver.BackgroundTracker) to finish after the HTTP
+// server itself has stopped accepting new requests.
+const backgroundDrainTimeout = 5 * time.Second
+
 // Run starts the HTTP server and the notification outbox worker, blocking
-// until ctx is canceled or the HTTP server fails. Both are stopped
-// together on shutdown.
+// until ctx is canceled or the HTTP server fails.
+//
+// Shutdown order matters: the HTTP server stops accepting new requests and
+// drains in-flight ones first, then the outbox worker's ticker is stopped
+// and any poll it already had in flight is given a bounded window to finish
+// (see OutboxWorker.Run), then tracked background goroutines (e.g.
+// TouchLastUsed) get their own bounded window — all before Run returns, so
+// Close (which closes Postgres/Redis) never races work that's still using
+// them.
 func (a *App) Run(ctx context.Context) error {
 	workerCtx, cancelWorker := context.WithCancel(context.Background())
-	defer cancelWorker()
-	go a.outboxWorker.Run(workerCtx)
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		a.outboxWorker.Run(workerCtx)
+	}()
 
 	errCh := make(chan error, 1)
 
@@ -233,18 +269,30 @@ func (a *App) Run(ctx context.Context) error {
 		errCh <- nil
 	}()
 
+	var runErr error
 	select {
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), httpShutdownTimeout)
 		if err := a.http.Shutdown(shutdownCtx); err != nil {
 			a.log.Error("http server shutdown", "error", err)
 		}
-		return nil
+		cancel()
 	case err := <-errCh:
-		return err
+		runErr = err
 	}
+
+	cancelWorker()
+	select {
+	case <-workerDone:
+	case <-time.After(outboxDrainTimeout):
+		a.log.Warn("outbox worker did not stop within drain timeout; proceeding with shutdown")
+	}
+
+	bgCtx, bgCancel := context.WithTimeout(context.Background(), backgroundDrainTimeout)
+	a.background.Wait(bgCtx)
+	bgCancel()
+
+	return runErr
 }
 
 // Close releases infrastructure resources. It must be called once after a

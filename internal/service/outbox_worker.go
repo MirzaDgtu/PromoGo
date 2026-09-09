@@ -28,6 +28,11 @@ type OutboxWorkerConfig struct {
 	// between retry attempts: attempt N waits min(BaseBackoff*2^(N-1), MaxBackoff).
 	BaseBackoff time.Duration
 	MaxBackoff  time.Duration
+	// DeliverTimeout bounds one poll's claim+deliver+mark work, independent
+	// of Run's ctx — see Run's doc comment for why a poll already underway
+	// must not be aborted by the same cancellation that stops scheduling
+	// new ones. Defaults to 30s if zero.
+	DeliverTimeout time.Duration
 }
 
 // OutboxWorker delivers domain.NotificationOutboxEntry rows queued by
@@ -55,8 +60,19 @@ func NewOutboxWorker(log *slog.Logger, outbox domain.NotificationOutboxRepositor
 	return &OutboxWorker{log: log, outbox: outbox, notifier: notifier, cfg: cfg}
 }
 
-// Run polls until ctx is canceled. Intended to be started in its own
-// goroutine by internal/app.
+// Run polls until ctx is canceled, then returns once any poll already
+// underway finishes. Intended to be started in its own goroutine by
+// internal/app, which should wait for Run to return (bounded by its own
+// timeout) before closing Postgres/Redis out from under a delivery that's
+// still writing to them.
+//
+// A poll already claimed from the outbox runs on a context detached from
+// ctx's cancellation (see deliverCtx below): canceling ctx stops the ticker
+// from starting a *new* poll, but must not abort in-flight
+// Send/MarkDelivered/MarkFailed calls mid-request, which would otherwise
+// turn a graceful shutdown into a batch of spurious delivery failures.
+// DeliverTimeout still bounds that detached work so a genuinely stuck call
+// can't hang shutdown forever.
 func (w *OutboxWorker) Run(ctx context.Context) {
 	ticker := time.NewTicker(w.cfg.PollInterval)
 	defer ticker.Stop()
@@ -66,9 +82,18 @@ func (w *OutboxWorker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			w.pollOnce(ctx)
+			deliverCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), w.deliverTimeout())
+			w.pollOnce(deliverCtx)
+			cancel()
 		}
 	}
+}
+
+func (w *OutboxWorker) deliverTimeout() time.Duration {
+	if w.cfg.DeliverTimeout > 0 {
+		return w.cfg.DeliverTimeout
+	}
+	return 30 * time.Second
 }
 
 // pollOnce claims one batch and delivers it with bounded concurrency,

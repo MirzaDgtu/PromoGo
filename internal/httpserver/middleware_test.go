@@ -147,7 +147,7 @@ func TestRequireStoreAPIKey_LegacyKeyStillWorks(t *testing.T) {
 	stores.addLegacy(&domain.Store{ID: 1, OrganizationID: 1, Name: "Legacy Store"}, "legacy-plaintext-key")
 
 	var sawStore *domain.Store
-	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(func(w http.ResponseWriter, r *http.Request) {
+	handler := RequireStoreAPIKey(stores, apiKeys, testLogger(), NewBackgroundTracker())(func(w http.ResponseWriter, r *http.Request) {
 		sawStore, _ = storeFromContext(r.Context())
 		w.WriteHeader(http.StatusOK)
 	})
@@ -172,7 +172,7 @@ func TestRequireStoreAPIKey_MultiKeyTakesPrecedenceOverLegacy(t *testing.T) {
 	stores.byID[2] = store
 	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 10, StoreID: 2, Scopes: []string{domain.ScopeTransactionsWrite}}, "new-plaintext-key")
 
-	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(okHandler())
+	handler := RequireStoreAPIKey(stores, apiKeys, testLogger(), NewBackgroundTracker())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
 	req.Header.Set("Authorization", "Bearer "+bearer)
@@ -191,7 +191,7 @@ func TestRequireStoreAPIKey_RevokedKeyRejected(t *testing.T) {
 	now := time.Now()
 	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 11, StoreID: 3, RevokedAt: &now}, "revoked-key")
 
-	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(okHandler())
+	handler := RequireStoreAPIKey(stores, apiKeys, testLogger(), NewBackgroundTracker())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
 	req.Header.Set("Authorization", "Bearer "+bearer)
@@ -210,7 +210,7 @@ func TestRequireStoreAPIKey_ExpiredKeyRejected(t *testing.T) {
 	past := time.Now().Add(-time.Hour)
 	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 12, StoreID: 4, ExpiresAt: &past}, "expired-key")
 
-	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(okHandler())
+	handler := RequireStoreAPIKey(stores, apiKeys, testLogger(), NewBackgroundTracker())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
 	req.Header.Set("Authorization", "Bearer "+bearer)
@@ -223,7 +223,7 @@ func TestRequireStoreAPIKey_ExpiredKeyRejected(t *testing.T) {
 }
 
 func TestRequireStoreAPIKey_MissingKeyRejected(t *testing.T) {
-	handler := RequireStoreAPIKey(newFakeStoreRepo(), newFakeStoreAPIKeyRepo(), testLogger())(okHandler())
+	handler := RequireStoreAPIKey(newFakeStoreRepo(), newFakeStoreAPIKeyRepo(), testLogger(), NewBackgroundTracker())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
 	rec := httptest.NewRecorder()
@@ -235,7 +235,7 @@ func TestRequireStoreAPIKey_MissingKeyRejected(t *testing.T) {
 }
 
 func TestRequireStoreAPIKey_UnknownKeyRejected(t *testing.T) {
-	handler := RequireStoreAPIKey(newFakeStoreRepo(), newFakeStoreAPIKeyRepo(), testLogger())(okHandler())
+	handler := RequireStoreAPIKey(newFakeStoreRepo(), newFakeStoreAPIKeyRepo(), testLogger(), NewBackgroundTracker())(okHandler())
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
 	req.Header.Set("Authorization", "Bearer nonexistent-key")
@@ -252,7 +252,7 @@ func TestRequireScope_LegacyKeyBypassesScopeCheck(t *testing.T) {
 	apiKeys := newFakeStoreAPIKeyRepo()
 	stores.addLegacy(&domain.Store{ID: 5, OrganizationID: 1, Name: "Legacy"}, "legacy-key-2")
 
-	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(
+	handler := RequireStoreAPIKey(stores, apiKeys, testLogger(), NewBackgroundTracker())(
 		requireScope(domain.ScopeTransactionsWrite)(okHandler()))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
@@ -271,7 +271,7 @@ func TestRequireScope_MissingScopeRejected(t *testing.T) {
 	stores.byID[6] = &domain.Store{ID: 6, OrganizationID: 1, Name: "Store"}
 	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 13, StoreID: 6, Scopes: []string{domain.ScopeClientsLookup}}, "scoped-key")
 
-	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(
+	handler := RequireStoreAPIKey(stores, apiKeys, testLogger(), NewBackgroundTracker())(
 		requireScope(domain.ScopeTransactionsWrite)(okHandler()))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)
@@ -290,7 +290,7 @@ func TestRequireScope_WithScopeAllowed(t *testing.T) {
 	stores.byID[7] = &domain.Store{ID: 7, OrganizationID: 1, Name: "Store"}
 	bearer := apiKeys.add(&domain.StoreAPIKey{ID: 14, StoreID: 7, Scopes: []string{domain.ScopeTransactionsWrite}}, "correctly-scoped-key")
 
-	handler := RequireStoreAPIKey(stores, apiKeys, testLogger())(
+	handler := RequireStoreAPIKey(stores, apiKeys, testLogger(), NewBackgroundTracker())(
 		requireScope(domain.ScopeTransactionsWrite)(okHandler()))
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", nil)

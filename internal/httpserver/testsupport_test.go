@@ -1055,6 +1055,8 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 		StaffAccessTokenSecret:    testStaffSecret,
 
 		Ready: func(context.Context) error { return nil },
+
+		Background: NewBackgroundTracker(),
 	}
 
 	return deps, &testFakes{
