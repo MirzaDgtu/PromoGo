@@ -269,27 +269,67 @@ tags:
 ## 9. Надёжность и эксплуатация
 
 - [ ] **Q-P0-083:** Какой SLO по availability и latency; измеряется ли требование
-  `<300 ms` по p95 или p99 и включает ли сеть до магазина?
+  `<300 ms` по p95 или p99 и включает ли сеть до магазина? **Предложенный
+  ответ (не согласован с бизнесом):** см. `docs/slo.md` — 99.5%
+  availability, p95<300ms/p99<800ms для POS webhook, проверяется
+  автоматически k6-порогами в `loadtest/load.js`/`soak.js` — см.
+  [[Decisions#DEC-016]]. Не включает сеть до магазина (не измеримо с этой
+  стороны интеграции).
 - [ ] **Q-P0-084:** Какие environments нужны и как данные/ключи изолируются между
   local, CI, sandbox, staging и production?
 - [ ] **Q-P0-085:** Где размещается сервис, кто выполняет deploy и какой процесс
-  zero-downtime migration/rollback?
+  zero-downtime migration/rollback? **Частично отвечено:** миграции
+  вынесены в отдельный шаг (`promogo migrate` + `AppConfig.
+  SkipStartupMigrations`), задокументирован expand/migrate/contract —
+  см. `docs/deployment.md`, [[Decisions#DEC-016]]. Где размещается сервис
+  и кто выполняет deploy — остаётся открытым (инфраструктурное решение
+  вне этого репозитория).
 - [ ] **Q-P0-086:** Какие метрики, структурированные логи и traces обязательны;
-  какие данные запрещено логировать?
+  какие данные запрещено логировать? Метрики (`GET /metrics`, Prometheus)
+  реализованы отдельной задачей этой же сессии (HTTP latency + бизнес-
+  метрики: idempotency conflicts, refund failures, OTP, QR, rate limit,
+  outbox). Traces — не реализованы, остаются открытыми.
 - [ ] **Q-P0-087:** Какие алерты нужны на ошибки транзакций, latency, queue lag,
-  расхождение балансов, PostgreSQL, Redis, FCM и SMS?
+  расхождение балансов, PostgreSQL, Redis, FCM и SMS? Метрики для этого
+  есть (`internal/metrics`), правила алертинга — не определены (нет
+  Alertmanager/аналога в этом репозитории).
 - [ ] **Q-P0-088:** Каковы RPO/RTO, расписание backup, retention, шифрование и
-  регулярность проверки восстановления?
+  регулярность проверки восстановления? **Предложенный ответ (не
+  согласован с бизнесом):** см. `docs/backup-restore.md` — RPO 24ч, RTO
+  <30мин (цель), реальный restore drill выполнен и запротоколирован
+  (`pg_dump`/`pg_restore` на одноразовых контейнерах, сверка row count,
+  успешный старт приложения на восстановленной БД) — см.
+  [[Decisions#DEC-016]]. Шифрование backup-файлов — не рассмотрено,
+  остаётся открытым.
 - [ ] **Q-P0-089:** Кто on-call, каков SLA поддержки пилота и канал эскалации
   кассиров/интегратора?
 - [ ] **Q-P0-090:** Что должен означать readiness: доступность PostgreSQL, Redis,
   миграций и внешних каналов; какие зависимости не должны блокировать продажи?
-- [ ] **Q-P0-091:** Как ограничиваются connection pools, request body, concurrency
-  и graceful shutdown во время deploy?
-- [ ] **Q-P1-092:** Нужны ли load/soak/chaos тесты и какие профили нагрузки
-  являются приёмочными?
+  Уже входит в `/readyz` (`internal/app/app.go`); при
+  `SkipStartupMigrations=true` readiness также подразумевает, что схема
+  БД проверена (`internal/migrate.Verify`) — см. `docs/deployment.md`.
+- [x] **Q-P0-091:** ~~Как ограничиваются connection pools, request body,
+  concurrency и graceful shutdown во время deploy?~~ — connection pool
+  ограничен (`Postgres.MaxConns`), request body — `http.MaxBytesHandler`
+  (1MB), graceful shutdown теперь дожидается outbox worker и background-
+  горутин с ограниченным таймаутом вместо гонки с закрытием пула (см.
+  коммит "Fix graceful shutdown..."). Дополнительно эта сессия нашла и
+  закрыла реальный пробел: запрос без ограничения по времени контекста
+  мог зависнуть навсегда при "заморозке" (не отказе) Postgres —
+  `requestTimeoutMW` (8с) теперь бьёт по контексту каждого запроса — см.
+  [[Decisions#DEC-016]].
+- [x] **Q-P1-092:** ~~Нужны ли load/soak/chaos тесты и какие профили нагрузки
+  являются приёмочными?~~ — да, реализованы и воспроизводимы:
+  `loadtest/{smoke,load,soak}.js` (k6) и `loadtest/dependency-failure.sh`
+  (Redis/Postgres outage через `docker compose pause`/`unpause`), плюс
+  `.github/workflows/load-test.yml` (on-demand CI). Профили нагрузки —
+  предложены в `docs/slo.md`, требуют подтверждения бизнесом. См.
+  [[Decisions#DEC-016]].
 - [ ] **Q-P1-093:** Как очищаются старые данные и контролируется рост таблиц,
-  индексов, WAL и backups?
+  индексов, WAL и backups? Частично касается `docs/backup-restore.md`
+  (retention backup — 30 дней, предложено), retention самих business-
+  данных (транзакции/аудит) — увязан с юридическим минимумом, см. Phase 5
+  в `docs/audit-remediation-prompt.md`.
 
 ## 10. Качество и выпуск
 

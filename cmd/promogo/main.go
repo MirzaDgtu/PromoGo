@@ -22,8 +22,11 @@ func main() {
 		case "migrate":
 			runMigrate()
 			return
+		case "loadtest-seed":
+			runLoadtestSeed(os.Args[2:])
+			return
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  promogo                  run the HTTP server\n  promogo bootstrap-admin  create the first platform_admin (see -h)\n  promogo migrate          apply pending schema migrations and exit\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  promogo                  run the HTTP server\n  promogo bootstrap-admin  create the first platform_admin (see -h)\n  promogo migrate          apply pending schema migrations and exit\n  promogo loadtest-seed    seed a throwaway store/api-key for load testing (see -h)\n", os.Args[1])
 			os.Exit(2)
 		}
 	}
