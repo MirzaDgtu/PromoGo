@@ -303,7 +303,7 @@ tags:
   остаётся открытым.
 - [ ] **Q-P0-089:** Кто on-call, каков SLA поддержки пилота и канал эскалации
   кассиров/интегратора?
-- [ ] **Q-P0-090:** Что должен означать readiness: доступность PostgreSQL, Redis,
+- [x] **Q-P0-090:** Что должен означать readiness: доступность PostgreSQL, Redis,
   миграций и внешних каналов; какие зависимости не должны блокировать продажи?
   Уже входит в `/readyz` (`internal/app/app.go`); при
   `SkipStartupMigrations=true` readiness также подразумевает, что схема
@@ -333,15 +333,33 @@ tags:
 
 ## 10. Качество и выпуск
 
-- [ ] **Q-P0-094:** Какие проверки обязательны в CI: format, vet/lint, unit,
+- [x] **Q-P0-094:** Какие проверки обязательны в CI: format, vet/lint, unit,
   integration с PostgreSQL, migrations up/down, race, security и container scan?
+  — реализовано в `.github/workflows/ci.yml`: gofmt/vet/staticcheck/
+  govulncheck, unit+integration тесты, `migration-deploy-model` (up/down +
+  запуск нескольких реплик), Trivy image scan + Syft SBOM, gitleaks secret
+  scan (см. [[Decisions#DEC-016]]).
 - [ ] **Q-P0-095:** Какой минимальный набор end-to-end тестов доказывает флоу
-  1С → начисление → приложение → списание → возврат?
+  1С → начисление → приложение → списание → возврат? Остаётся открытым —
+  см. раздел 14 (Q-P0-095, Group J): требуется реальный pilot E2E тест
+  (1С/POS событие → начисление → видимость в приложении → QR/телефон
+  идентификация → списание → offline retry → duplicate delivery), пока не
+  реализован.
 - [ ] **Q-P0-096:** Где хранятся API contract tests и тестовые fixtures 1С?
-- [ ] **Q-P0-097:** Как seed-ить первый магазин, API-ключ, конфигурацию и тестовых
-  клиентов без ручного SQL?
+  Зависит от факта интеграции с реальным 1С — см. раздел 14, Group D.
+- [x] **Q-P0-097:** Как seed-ить первый магазин, API-ключ, конфигурацию и тестовых
+  клиентов без ручного SQL? — `promogo bootstrap-admin` (первый
+  `platform_admin`, [[Decisions#DEC-009]]) + `promogo loadtest-seed`
+  (`cmd/promogo/loadtest_seed.go`: organization/store/api-key/loyalty-config
+  одной командой, см. [[Decisions#DEC-016]]) закрывают это для dev/CI;
+  `loadtest-seed` explicitly не предназначен для production-данных.
 - [ ] **Q-P0-098:** Какова стратегия миграций при partial failure, несовместимом
-  приложении и rollback схемы?
+  приложении и rollback схемы? Частично отвечено: `docs/runbooks.md` #4
+  ("migration failure on deploy") + `docs/deployment.md`'s expand/migrate/
+  contract дисциплина + `promogo migrate`/`AppConfig.SkipStartupMigrations`
+  разделение ([[Decisions#DEC-016]]). Формального теста partial-failure
+  сценария (миграция падает на середине) нет — остаётся открытым, см.
+  раздел 14, Group J.
 - [ ] **Q-P0-099:** Как версионируются backend, mobile, configurator и 1С-модуль;
   нужен ли единый release manifest?
 - [ ] **Q-P1-100:** Какие code coverage и review requirements применяются к
@@ -419,10 +437,15 @@ tags:
 
 ## 12. Архитектура после пилота
 
-- [ ] **Q-P1-113:** Когда принять решение SaaS multi-tenancy vs отдельные
-  deployments и какие факты пилота будут критерием?
-- [ ] **Q-P1-114:** Если SaaS, что является tenant, network и store; где проходит
-  граница изоляции и нужен ли PostgreSQL RLS?
+- [x] **Q-P1-113:** Когда принять решение SaaS multi-tenancy vs отдельные
+  deployments и какие факты пилота будут критерием? — см.
+  `docs/adr/0003-multi-tenant-deployment.md` (proposed): shared SaaS для
+  пилота, dedicated-tier как будущая опция; требует business sign-off.
+- [x] **Q-P1-114:** Если SaaS, что является tenant, network и store; где проходит
+  граница изоляции и нужен ли PostgreSQL RLS? — `Organization` = tenant
+  (уже так, DEC-004); `network`/`isolated` balance modes — см.
+  `docs/adr/0002-balance-modes.md`; PostgreSQL RLS отмечен как
+  defense-in-depth рекомендация в ADR-0003, не решён окончательно.
 - [ ] **Q-P1-115:** Нужны ли несколько программ/валют баллов у одного ритейлера и
   перенос баланса между магазинами?
 - [ ] **Q-P1-116:** Как эволюционирует интерфейс `Mechanic`: композиция правил,
@@ -448,6 +471,142 @@ tags:
   удаление, retention и подтверждение удаления?
 - [ ] **Q-P1-125:** Какие документы нужны для продажи: договор, DPA/поручение на
   обработку ПДн, SLA, оферта участника и инструкция интегратора?
+
+## 14. Явные отсрочки P0/P1 (Phase 5, 2026-09-09)
+
+Per `docs/audit-remediation-prompt.md` Phase 5: каждый ещё открытый P0/P1
+пункт из разделов 1–13 либо закрыт inline-пометкой `[x]` выше, либо явно
+отложен здесь с owner/риском/milestone — ни один не остаётся без решения
+молча. Группировка — по общему owner/rationale, а не по одному владельцу
+на вопрос, там где это оправдано: вопросы внутри одной группы генуинно
+разделяют причину отсрочки.
+
+**Group A — факты пилота** (Q-P0-001–006, Q-P1-007–008). *Owner:* product/
+business owner (отношения с ритейлером). *Rationale:* не решается
+инженерно — нужен реальный пилотный ритейлер, договор, дата. *Risk:*
+высокий — блокирует старт sandbox и весь график пилота. *Milestone:* до
+kickoff пилота.
+
+**Group B — экономика баллов** (Q-P0-009–015, Q-P1-018–019). *Owner:*
+product + бизнес-стейкхолдер ритейлера. *Rationale:* проценты начисления/
+списания, округление, исключённые категории — коммерческие условия
+программы лояльности конкретного ритейлера, не инженерное решение;
+`LoyaltyConfig` уже поддерживает их как runtime-настройку
+(`internal/domain/loyalty_config.go`), так что инженерно ничего не
+блокируется. *Risk:* средний — пилот не может стартовать со значениями по
+умолчанию/плейсхолдерами. *Milestone:* до финализации `LoyaltyConfig`
+пилотного магазина (pre go-live).
+
+**Group C — контракт API, зависящий от реального 1С** (Q-P0-021–030,
+Q-P1-033–035, за вычетом уже закрытых). *Owner:* владелец интеграции 1С
+совместно с backend. *Rationale:* корректные значения (`external_tx_id`,
+идентификатор клиента, кодирование денег, обязательность timestamp/кассы/
+смены) зависят от того, что реально может отдать конкретная конфигурация
+1С — нельзя финализировать абстрактно. *Risk:* высокий — неверные
+допущения здесь всплывут как баги идемпотентности/дедупликации только на
+реальных данных 1С. *Milestone:* до/во время подключения 1С sandbox
+(зависит от Q-P0-042).
+
+**Group D — операционные детали интеграции 1С/кассы** (Q-P0-036–044,
+Q-P1-045, Q-P0-096). *Owner:* интегратор 1С (внешняя сторона). *Rationale:*
+полностью зависит от фактов о развёртывании 1С у пилотного ритейлера,
+неизвестных до вовлечения этого ритейлера/интегратора. *Risk:* высокий для
+графика запуска, но нулевой текущий инженерный риск — уже реализованный
+backend-контракт webhook ничем из этой группы не блокируется. *Milestone:*
+kickoff интеграции с 1С.
+
+**Group E — идентификация клиента, уточнения** (Q-P0-051, Q-P0-053,
+Q-P1-054–055). *Owner:* product + legal (Q-P0-053 упирается в удаление
+аккаунта/152-ФЗ, см. `docs/legal-minimum.md` gap #3). *Rationale:* маскирование
+телефона для кассира — решение UX support-инструментов; восстановление/
+объединение/удаление аккаунта требует сначала закрыть legal-minimum gaps.
+*Risk:* средний. *Milestone:* Q-P0-051 — до появления кассирского UI
+поиска по телефону; Q-P0-053 — до pilot go-live (вместе с legal-minimum
+gap #3).
+
+**Group F — продукт/дизайн мобильного приложения** (Q-P0-056–058,
+Q-P0-062, Q-P1-063–064). *Owner:* product/design. *Rationale:* мобильное
+приложение explicitly вне скоупа этого репозитория (Phase 5 remediation:
+"keep the backend contract ready... do not pretend to implement"). *Risk:*
+низкий для backend (контракт уже версионирован через OpenAPI); высокий для
+срока поставки самого приложения, но это отслеживается там, где ведётся
+работа над приложением, не здесь. *Milestone:* kickoff мобильного
+workstream (отдельный).
+
+**Group G — конфигуратор/admin UX** (Q-P0-068–069, Q-P1-070–071). *Owner:*
+product/design. *Rationale:* React-конфигуратор не реализован (explicitly
+вне скоупа этого репозитория); backend admin API (DEC-005/DEC-008) уже
+покрывает фактические операционные нужды пилота вручную. *Risk:* низкий
+сейчас. *Milestone:* kickoff workstream конфигуратора.
+
+**Group H — 152-ФЗ/безопасность** (Q-P0-072–076, Q-P0-080–082). *Owner и
+milestone:* см. соответствующие gaps в `docs/legal-minimum.md` (072→gap #6,
+073→gap #7, 074→gap #4, 075→gap #3, 076→gap #8, 080 частично отвечено —
+секреты через env/config, не YAML/логи, прод secret store не выбран, 081/
+082→legal/security, до pilot go-live).
+
+**Group H2 — Q-P0-078 (API-ключ vs HMAC/mTLS)**. *Решение (proposed):* API
+key + идемпотентность + rate limiting достаточны для масштаба пилота
+(один ритейлер, без враждебного multi-tenant окружения); replay уже
+смягчён идемпотентностью, не подписью запроса. *Owner:* security
+engineering. *Risk:* низкий для текущего threat model пилота. *Milestone:*
+пересмотреть перед первым dedicated/enterprise клиентом
+(`docs/adr/0003-multi-tenant-deployment.md`).
+
+**Group H3 — Q-P0-079 (rate limits)**. Частично отвечено: лимиты accrual/
+OTP/QR реализованы и конфигурируемы (`internal/ratelimit`,
+`AuthConfig.OTP*`, [[Decisions#DEC-007]], [[Decisions#DEC-016]]). Лимиты
+для phone-lookup и admin API не определены. *Owner:* backend. *Risk:*
+низкий. *Milestone:* до появления публичного phone-lookup endpoint
+(вместе с Q-P0-051).
+
+**Group I — эксплуатация** (Q-P0-084, Q-P0-087, Q-P0-089). *Owner:*
+084 — infra/ops (зависит от выбора платформы,
+`docs/adr/0003-multi-tenant-deployment.md`); 087 — backend/ops; 089 —
+business/ops. *Rationale:* 087 — метрики есть (`internal/metrics`), но
+никто не оповещается при инциденте; runbooks (`docs/runbooks.md`)
+предполагают, что что-то их триггерит. *Risk:* средний-высокий (087 —
+пропущенный инцидент/backlog spike без алерта). *Milestone:* до pilot
+go-live.
+
+**Group J — качество/релиз** (Q-P0-095, Q-P0-098 остаток, Q-P0-099,
+Q-P1-100). *Owner:* backend (095/098) / eng leadership (099/100).
+*Rationale:* Q-P0-095 (pilot E2E тест) — реальный, признанный пробел:
+ничего сейчас не доказывает полную цепочку 1С→начисление→приложение→
+списание→возврат→offline retry→duplicate delivery целиком; это следующий
+конкретный шаг Phase 5 после этой ревизии backlog. Q-P0-098 остаток —
+тест partial-failure миграции (падение на середине) не написан. Q-P0-099 —
+единый release manifest не нужен, пока существует только backend.
+*Risk:* Q-P0-095 — высокий (go-live без доказанного E2E — это именно тот
+риск, ради которого весь `docs/audit-remediation-prompt.md` был написан);
+остальные — низкий/средний. *Milestone:* Q-P0-095/098 — до pilot go-live;
+Q-P0-099/100 — когда появится второй компонент (mobile/configurator).
+
+**Group K — архитектура после пилота** (Q-P1-115–118). *Owner:* product/
+architecture. *Rationale:* Q-P1-113/114 закрыты через
+`docs/adr/0002-balance-modes.md` и `0003-multi-tenant-deployment.md`;
+115–118 остаются открытыми, но не блокируют пилот (single-store,
+single-tenant-in-practice). *Risk:* низкий сейчас. *Milestone:* после
+пилота, только при появлении факта, влияющего на ближайший релиз (см.
+"Порядок разбора" п.4 ниже — это правило уже существовало для этого
+раздела).
+
+**Group L — коммерция** (Q-P1-121–125). *Owner:* business/sales/legal.
+*Risk:* средний-высокий для выручки, нулевой текущий инженерный риск.
+*Milestone:* до подписания первого платного контракта; Q-P1-124
+(offboarding: отзыв ключей/экспорт/удаление) технически уже частично
+покрыт (API-ключи отзываемы — DEC-008; удаление аккаунта — см.
+legal-minimum gap #3), но процесс offboarding как таковой не описан.
+
+**Q-LICENSE (новый, вне нумерации P0/P1 backlog'а)** — файл `LICENSE`
+отсутствует; README (`README.md:310`) уже корректно фиксирует "лицензия
+пока не указана, права принадлежат правообладателю" — создавать
+proprietary LICENSE без явного решения владельца прав не нужно (явно
+уточнено в этой сессии, заменяет более категоричную формулировку из
+`docs/audit-remediation-prompt.md`). *Owner:* владелец репозитория/бизнес.
+*Risk:* низкий (README уже не вводит в заблуждение). *Milestone:* до
+первого внешнего распространения кода (публичный репозиторий, передача
+третьей стороне) или по решению владельца.
 
 ## Порядок разбора
 

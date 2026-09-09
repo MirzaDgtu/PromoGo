@@ -546,6 +546,76 @@ tags:
   росте за рамки одного пилотного магазина), alerting-правила поверх уже
   существующих метрик, retention данных с точки зрения 152-ФЗ (Phase 5).
 
+### DEC-017 — Phase 5, первая часть: ADR по CustomerAccount/balance-modes/tenancy, legal minimum, ревизия backlog
+
+- Статус: предложено (все три ADR и юридический минимум помечены `proposed`,
+  требуют product/legal/business sign-off — ничего здесь не зафиксировано
+  окончательно)
+- Дата: 2026-09-09
+- Владелец: backend (ADR-драфты), product/legal (sign-off)
+- Связанные вопросы: `Q-P1-113`, `Q-P1-114` (закрыты через ADR), `Q-P0-072`
+  `Q-P0-073` `Q-P0-074` `Q-P0-075` `Q-P0-076` (адресованы через
+  `docs/legal-minimum.md`, но не закрыты — там же gaps с owner/target),
+  весь новый раздел 14 `knowledge/Project Questions.md` ("Явные отсрочки
+  P0/P1")
+- Контекст: `docs/audit-remediation-prompt.md` Phase 5 требует решений,
+  сильнее всего влияющих на модель данных, прежде чем добавлять новые
+  механики или контракты: глобальность `CustomerAccount`, режимы баланса
+  сети, SaaS vs dedicated deployments, юридический минимум пилота, и
+  полную ревизию backlog `Project Questions.md` (закрыть или явно
+  отложить каждый открытый P0/P1 с owner/риском/milestone).
+- Решение:
+  - `docs/adr/0001-customer-account-scoping.md` — Option C (рекомендация):
+    единая identity аутентификации (одна `CustomerAccount` на телефон,
+    один логин), но видимость данных и согласие (`CustomerConsent`)
+    строго по организации; `linkExistingClients` не меняется, так как
+    именно он даёт "один логин везде".
+  - `docs/adr/0002-balance-modes.md` — Option C: `isolated` (текущее
+    поведение, per-`Client`) остаётся единственным реализованным режимом
+    для пилота; `network` (per-`(organization_id, customer_account_id)`)
+    спроектирован, но не реализован — `balance_mode` enum на
+    `loyalty_configs` резервирует место в схеме.
+  - `docs/adr/0003-multi-tenant-deployment.md` — Option C (форма
+    платформы): shared multi-tenant SaaS сейчас (это и есть фактический
+    пилот), dedicated-tier как будущая опция для enterprise-клиентов,
+    тем же кодом/схемой. Firebase ADC/workload identity официально
+    остаётся отложенным до выбора облачной платформы (уже было
+    задокументировано в коде как deferred, комментарий в
+    `internal/notification/fcmchannel/fcmchannel.go:67-68`) — этот ADR
+    лишь фиксирует, что выбор платформы и миграция на workload identity
+    — одно решение, не два.
+  - `docs/legal-minimum.md` — что уже реализовано (`CustomerConsent`,
+    append-only audit trail) и что является пробелом с owner/target
+    (export/deletion workflow, retention periods, публичный текст
+    политики/оферты, роль оператора/обработчика ПДн, data residency,
+    field-level encryption scope). Явно НЕ включает публикацию самого
+    текста политики — это продуктовый/юридический артефакт, не код.
+  - Лицензия: пункт remediation-промта про "add or correct the LICENSE
+    file" скорректирован пользователем в этой же сессии — proprietary
+    LICENSE не создаётся без явного решения владельца прав; README уже
+    корректно не заявляет никакой лицензии. Зафиксировано как открытый
+    пункт `Q-LICENSE` в `Project Questions.md` с owner = владелец
+    репозитория, а не закрыто engineering-решением.
+  - `knowledge/Project Questions.md` — новый раздел 14: каждый остававшийся
+    открытым P0/P1 либо закрыт inline (`Q-P0-090`, `Q-P0-094`, `Q-P0-097`,
+    `Q-P1-113`, `Q-P1-114` — уже были фактически отвечены реализацией,
+    просто не помечены), либо сгруппирован в одну из 12 групп (A–L) с
+    общим owner/rationale/риском/milestone — вопросы внутри группы
+    действительно разделяют причину отсрочки, а не отложены скопом ради
+    скорости.
+- Альтернативы: рассмотрены в каждом ADR по отдельности (см. файлы) —
+  глобальная/tenant-scoped identity, isolated-only/network-only/mixed
+  balance modes, чисто shared/чисто dedicated deployment.
+- Последствия и миграция: см. "Consequences / migration plan" в каждом
+  ADR-файле. Ничего из этого не блокирует пилот (single-store,
+  single-organization уже соответствует самому консервативному варианту
+  каждого ADR), но откладывать дальше схемные решения (`balance_mode`
+  колонка, `customer_consents.organization_id`) до появления реальных
+  production-данных было бы дороже, чем добавить их сейчас неиспользуемыми.
+  Открыто и не решено этой задачей: сам pilot E2E тест (`Q-P0-095`,
+  Phase 5 пункт 5) и версионированные API-контракты для Flutter/React/1С —
+  следующий шаг Phase 5.
+
 ## Шаблон нового решения
 
 ### DEC-NNN — Короткое название
