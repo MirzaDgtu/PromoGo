@@ -141,6 +141,8 @@ var routeTable = []routeMeta{
 	{Method: http.MethodPatch, Path: "/api/v1/admin/organizations/{orgID}/staff/{membershipID}", OperationID: "updateStaffMembership",
 		Contour: contourStaff, StaffPermission: domain.PermStaffManage, StaffScope: staffScopeOrg, RateLimitProfile: rlProfileAdmin},
 
+	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/clients", OperationID: "adminListClients",
+		Contour: contourStaff, StaffPermission: domain.PermClientsRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/clients/lookup", OperationID: "adminLookupClient",
 		Contour: contourStaff, StaffPermission: domain.PermClientsRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/clients/{clientID}/transactions", OperationID: "adminListClientTransactions",
@@ -238,6 +240,8 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 		return handleCreateStaffMembership(deps.StaffUsers, deps.StaffMemberships, deps.AuditEvents, deps.Log)
 	case "updateStaffMembership":
 		return handleUpdateStaffMembership(deps.StaffMemberships, deps.AuditEvents, deps.Log)
+	case "adminListClients":
+		return handleAdminListClients(deps.Stores, deps.Clients, deps.Balances, deps.Log)
 	case "adminLookupClient":
 		return handleAdminLookupClient(deps.Stores, deps.Clients, deps.Balances, deps.Log)
 	case "adminListClientTransactions":

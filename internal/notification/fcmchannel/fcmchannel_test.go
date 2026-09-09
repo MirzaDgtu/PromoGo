@@ -34,6 +34,9 @@ func (f *fakeClientRepo) LinkCustomerAccount(context.Context, int64, int64) erro
 func (f *fakeClientRepo) ListByCustomerAccount(context.Context, int64) ([]*domain.Client, error) {
 	return nil, nil
 }
+func (f *fakeClientRepo) ListByStore(context.Context, int64, int, int64) ([]*domain.Client, error) {
+	return nil, nil
+}
 
 type fakeDeviceRepo struct {
 	active  map[int64][]*domain.CustomerDevice

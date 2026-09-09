@@ -45,4 +45,11 @@ type ClientRepository interface {
 	// ListByCustomerAccount returns every Client row (across stores) linked
 	// to customerAccountID, for the customer-facing /me endpoints.
 	ListByCustomerAccount(ctx context.Context, customerAccountID int64) ([]*Client, error)
+	// ListByStore returns up to limit Client rows for storeID, ordered by id
+	// ascending, with id > afterID (afterID 0 selects the first page). Used
+	// by the paginated admin client list; a stable ordering on an indexed,
+	// monotonically increasing column is enough for keyset pagination here —
+	// no secondary sort key is needed since id alone is already unique and
+	// ordered.
+	ListByStore(ctx context.Context, storeID int64, limit int, afterID int64) ([]*Client, error)
 }

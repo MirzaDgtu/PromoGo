@@ -112,6 +112,22 @@ func (f *fakeFullClientRepo) ListByCustomerAccount(_ context.Context, customerAc
 	return out, nil
 }
 
+func (f *fakeFullClientRepo) ListByStore(_ context.Context, storeID int64, limit int, afterID int64) ([]*domain.Client, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []*domain.Client
+	for _, c := range f.byID {
+		if c.StoreID == storeID && c.ID > afterID {
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 // seed inserts c directly (bypassing the (storeID, phone) conflict check)
 // and assigns it an ID, for test setup.
 func (f *fakeFullClientRepo) seed(c *domain.Client) *domain.Client {

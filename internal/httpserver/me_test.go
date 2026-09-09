@@ -34,6 +34,9 @@ func (f *fakeMeClientRepo) LinkCustomerAccount(context.Context, int64, int64) er
 func (f *fakeMeClientRepo) ListByCustomerAccount(_ context.Context, customerAccountID int64) ([]*domain.Client, error) {
 	return f.byCustomerAccount[customerAccountID], nil
 }
+func (f *fakeMeClientRepo) ListByStore(context.Context, int64, int, int64) ([]*domain.Client, error) {
+	return nil, nil
+}
 
 // fakeMeTransactionRepo is an in-memory domain.TransactionRepository for
 // me.go tests. ListByClientIDs replicates the Postgres query's semantics

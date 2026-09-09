@@ -100,6 +100,32 @@ func (r *ClientRepository) ListUnlinkedByPhone(ctx context.Context, phone string
 	return clients, nil
 }
 
+// ListByStore returns up to limit clients for storeID with id > afterID,
+// ordered by id ascending.
+func (r *ClientRepository) ListByStore(ctx context.Context, storeID int64, limit int, afterID int64) ([]*domain.Client, error) {
+	query := `SELECT ` + clientColumns + ` FROM clients WHERE store_id = $1 AND id > $2 ORDER BY id ASC LIMIT $3`
+
+	rows, err := r.pool.Query(ctx, query, storeID, afterID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list clients for store %d: %w", storeID, err)
+	}
+	defer rows.Close()
+
+	var clients []*domain.Client
+	for rows.Next() {
+		client, err := scanClient(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan client for store %d: %w", storeID, err)
+		}
+		clients = append(clients, client)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list clients for store %d: %w", storeID, err)
+	}
+
+	return clients, nil
+}
+
 func (r *ClientRepository) LinkCustomerAccount(ctx context.Context, clientID, customerAccountID int64) error {
 	const query = `UPDATE clients SET customer_account_id = $2 WHERE id = $1`
 

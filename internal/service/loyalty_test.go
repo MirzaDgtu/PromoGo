@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sort"
 	"testing"
 	"time"
 
@@ -85,6 +86,20 @@ func (f *fakeClientRepo) ListByCustomerAccount(_ context.Context, customerAccoun
 		if c.CustomerAccountID != nil && *c.CustomerAccountID == customerAccountID {
 			out = append(out, c)
 		}
+	}
+	return out, nil
+}
+
+func (f *fakeClientRepo) ListByStore(_ context.Context, storeID int64, limit int, afterID int64) ([]*domain.Client, error) {
+	var out []*domain.Client
+	for _, c := range f.byID {
+		if c.StoreID == storeID && c.ID > afterID {
+			out = append(out, c)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	if len(out) > limit {
+		out = out[:limit]
 	}
 	return out, nil
 }

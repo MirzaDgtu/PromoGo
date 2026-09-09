@@ -1,7 +1,9 @@
 package httpserver
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -10,6 +12,51 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
+
+const (
+	defaultAdminClientsLimit = 50
+	maxAdminClientsLimit     = 200
+)
+
+// parseAdminClientsLimit parses the ?limit= query param, defaulting and
+// clamping rather than rejecting — a display knob, not input that can
+// corrupt state (see parseTransactionsLimit in me.go for the same pattern).
+func parseAdminClientsLimit(raw string) int {
+	if raw == "" {
+		return defaultAdminClientsLimit
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return defaultAdminClientsLimit
+	}
+	if n > maxAdminClientsLimit {
+		return maxAdminClientsLimit
+	}
+	return n
+}
+
+// encodeAdminClientCursor and decodeAdminClientCursor turn the last row's id
+// into an opaque cursor string. A bad cursor fails loudly (400) rather than
+// silently restarting from the top — see decodeTransactionCursor in me.go
+// for the same rule applied to the customer-facing pagination.
+func encodeAdminClientCursor(id int64) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(strconv.FormatInt(id, 10)))
+}
+
+func decodeAdminClientCursor(raw string) (int64, error) {
+	if raw == "" {
+		return 0, nil
+	}
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return 0, fmt.Errorf("decode cursor: %w", err)
+	}
+	id, err := strconv.ParseInt(string(decoded), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("malformed cursor: %w", err)
+	}
+	return id, nil
+}
 
 type adminClientResponseBody struct {
 	ClientID int64  `json:"client_id"`
@@ -60,6 +107,66 @@ func handleAdminLookupClient(stores domain.StoreRepository, clients domain.Clien
 		writeJSON(w, http.StatusOK, adminClientResponseBody{
 			ClientID: client.ID, Phone: maskPhoneIf(client.Phone, masked), Balance: balance.Points,
 		})
+	}
+}
+
+// handleAdminListClients returns a handler for GET
+// /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients — a
+// keyset-paginated ("?limit=&cursor=", cursor = the previous page's last
+// client id) list of every client in the store, with balance and the same
+// support_viewer phone masking as handleAdminLookupClient. Must run behind
+// RequireStaff(clients.read, storeScopeFromPath).
+func handleAdminListClients(stores domain.StoreRepository, clients domain.ClientRepository, balances domain.BalanceRepository, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		store, orgID, ok := resolveScopedStore(w, r, stores, log)
+		if !ok {
+			return
+		}
+
+		limit := parseAdminClientsLimit(r.URL.Query().Get("limit"))
+		afterID, err := decodeAdminClientCursor(r.URL.Query().Get("cursor"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid cursor")
+			return
+		}
+
+		// Fetch one extra row to detect whether a next page exists.
+		list, err := clients.ListByStore(r.Context(), store.ID, limit+1, afterID)
+		if err != nil {
+			log.ErrorContext(r.Context(), "list clients", "store_id", store.ID, "error", err)
+			writeError(w, http.StatusInternalServerError, "list clients")
+			return
+		}
+
+		var nextCursor string
+		if len(list) > limit {
+			nextCursor = encodeAdminClientCursor(list[limit-1].ID)
+			list = list[:limit]
+		}
+
+		masked := false
+		if principal, ok := staffFromContext(r.Context()); ok {
+			masked = principal.IsSupportViewerOnly(orgID, &store.ID)
+		}
+
+		out := make([]adminClientResponseBody, 0, len(list))
+		for _, client := range list {
+			balance, err := balances.Get(r.Context(), client.ID)
+			if err != nil {
+				log.ErrorContext(r.Context(), "load balance", "client_id", client.ID, "error", err)
+				writeError(w, http.StatusInternalServerError, "load clients")
+				return
+			}
+			out = append(out, adminClientResponseBody{
+				ClientID: client.ID, Phone: maskPhoneIf(client.Phone, masked), Balance: balance.Points,
+			})
+		}
+
+		resp := map[string]any{"clients": out}
+		if nextCursor != "" {
+			resp["next_cursor"] = nextCursor
+		}
+		writeJSON(w, http.StatusOK, resp)
 	}
 }
 

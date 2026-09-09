@@ -668,6 +668,112 @@ func TestHandleRevokeStoreAPIKey_CrossStoreRejected(t *testing.T) {
 
 // --- admin_clients.go ---
 
+func TestHandleAdminListClients_PaginatesWithNextCursor(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	c1 := fakes.Clients.seed(&domain.Client{StoreID: store.ID, Phone: "+79261111111"})
+	c2 := fakes.Clients.seed(&domain.Client{StoreID: store.ID, Phone: "+79262222222"})
+	_ = fakes.Clients.seed(&domain.Client{StoreID: store.ID, Phone: "+79263333333"})
+	fakes.Balances.set(c1.ID, 10)
+	fakes.Balances.set(c2.ID, 20)
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/clients?limit=2", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Clients    []adminClientResponseBody `json:"clients"`
+		NextCursor string                    `json:"next_cursor"`
+	}
+	decodeJSON(t, rec, &body)
+	if len(body.Clients) != 2 {
+		t.Fatalf("clients = %+v, want 2 (page size)", body.Clients)
+	}
+	if body.NextCursor == "" {
+		t.Fatalf("next_cursor = empty, want a cursor since a third client exists")
+	}
+
+	// Second page, using the cursor from the first.
+	req2 := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/clients?limit=2&cursor="+body.NextCursor, token, nil)
+	req2.SetPathValue("orgID", itoa(org.ID))
+	req2.SetPathValue("storeID", itoa(store.ID))
+	rec2 := doRequest(handler, req2)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec2.Code, rec2.Body.String())
+	}
+	var body2 struct {
+		Clients    []adminClientResponseBody `json:"clients"`
+		NextCursor string                    `json:"next_cursor"`
+	}
+	decodeJSON(t, rec2, &body2)
+	if len(body2.Clients) != 1 {
+		t.Fatalf("clients (page 2) = %+v, want 1 (last remaining client)", body2.Clients)
+	}
+	if body2.NextCursor != "" {
+		t.Fatalf("next_cursor (page 2) = %q, want empty (no more pages)", body2.NextCursor)
+	}
+}
+
+func TestHandleAdminListClients_MaskedForSupportViewer(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	fakes.Clients.seed(&domain.Client{StoreID: store.ID, Phone: "+79261234567"})
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleSupportViewer)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/clients", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Clients []adminClientResponseBody `json:"clients"`
+	}
+	decodeJSON(t, rec, &body)
+	if len(body.Clients) != 1 || body.Clients[0].Phone == "+79261234567" {
+		t.Fatalf("clients = %+v, want masked phone for support_viewer", body.Clients)
+	}
+}
+
+func TestHandleAdminListClients_CrossStoreRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	storeA := seedStore(fakes, org.ID, "Store A")
+	storeB := seedStore(fakes, org.ID, "Store B")
+	fakes.Clients.seed(&domain.Client{StoreID: storeB.ID, Phone: "+79261234567"})
+	token := issueStaffToken(t, fakes, 1, org.ID, &storeA.ID, domain.RoleStoreManager)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(storeB.ID)+"/clients", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(storeB.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 (store A's manager must not list store B's clients)", rec.Code)
+	}
+}
+
+func TestHandleAdminListClients_InvalidCursorRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/clients?cursor=not-valid-base64!!", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (malformed cursor)", rec.Code)
+	}
+}
+
 func TestHandleAdminLookupClient_MaskedForSupportViewer(t *testing.T) {
 	handler, fakes := newTestServer(t)
 	org := seedOrganization(fakes, "Acme")

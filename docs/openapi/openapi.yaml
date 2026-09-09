@@ -843,6 +843,47 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients:
+    get:
+      operationId: adminListClients
+      tags: [Admin - Clients]
+      summary: List clients in a store, paginated
+      description: >
+        Requires `clients.read`. Keyset-paginated via `?limit=&cursor=`
+        (cursor is the previous page's last client id). Phone is masked
+        (e.g. "********4567") for a caller whose only membership in this
+        scope is support_viewer. Advanced filters are out of scope for this
+        endpoint until the client-list filter/masking UX decision
+        (Q-P1-070) is made — this is exact pagination only.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clients:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminClient" }
+                  next_cursor: { type: string }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
   /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients/lookup:
     get:
       operationId: adminLookupClient
