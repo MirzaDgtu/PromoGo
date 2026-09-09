@@ -64,4 +64,8 @@ type NotificationOutboxRepository interface {
 	// MarkDeadLetter records a delivery that has exhausted its retry
 	// budget — status becomes dead_letter and it's never claimed again.
 	MarkDeadLetter(ctx context.Context, id int64, lastErr string) error
+	// CountPending returns how many rows are currently pending or
+	// processing (i.e. not yet delivered or dead-lettered) — feeds the
+	// outbox backlog gauge (see internal/metrics).
+	CountPending(ctx context.Context) (int64, error)
 }

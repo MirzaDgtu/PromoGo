@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
+	"github.com/MirzaDgtu/PromoGo/internal/metrics"
 )
 
 // OutboxWorkerConfig bounds OutboxWorker's polling, batching, concurrency,
@@ -101,6 +102,12 @@ func (w *OutboxWorker) deliverTimeout() time.Duration {
 // MaxConcurrency also bounds how many deliveries are ever in flight at
 // once, not just how many per batch.
 func (w *OutboxWorker) pollOnce(ctx context.Context) {
+	if n, err := w.outbox.CountPending(ctx); err != nil {
+		w.log.WarnContext(ctx, "count pending notification outbox entries", "error", err)
+	} else {
+		metrics.OutboxBacklog.Set(float64(n))
+	}
+
 	entries, err := w.outbox.ClaimBatch(ctx, w.cfg.BatchSize)
 	if err != nil {
 		w.log.WarnContext(ctx, "claim notification outbox batch", "error", err)
@@ -134,6 +141,7 @@ func (w *OutboxWorker) deliver(ctx context.Context, entry *domain.NotificationOu
 		if markErr := w.outbox.MarkDelivered(ctx, entry.ID); markErr != nil {
 			w.log.WarnContext(ctx, "mark notification outbox entry delivered", "id", entry.ID, "error", markErr)
 		}
+		metrics.OutboxDeliveryOutcomes.WithLabelValues("delivered").Inc()
 		w.log.InfoContext(ctx, "notification delivered", "id", entry.ID, "template_id", entry.TemplateID, "attempts", entry.Attempts+1)
 		return
 	}
@@ -143,6 +151,7 @@ func (w *OutboxWorker) deliver(ctx context.Context, entry *domain.NotificationOu
 		if markErr := w.outbox.MarkDeadLetter(ctx, entry.ID, err.Error()); markErr != nil {
 			w.log.WarnContext(ctx, "mark notification outbox entry dead-lettered", "id", entry.ID, "error", markErr)
 		}
+		metrics.OutboxDeliveryOutcomes.WithLabelValues("dead_letter").Inc()
 		w.log.ErrorContext(ctx, "notification dead-lettered", "id", entry.ID, "template_id", entry.TemplateID, "attempts", attempts, "error", err)
 		return
 	}
@@ -151,6 +160,7 @@ func (w *OutboxWorker) deliver(ctx context.Context, entry *domain.NotificationOu
 	if markErr := w.outbox.MarkFailed(ctx, entry.ID, err.Error(), time.Now().Add(backoff)); markErr != nil {
 		w.log.WarnContext(ctx, "mark notification outbox entry failed", "id", entry.ID, "error", markErr)
 	}
+	metrics.OutboxDeliveryOutcomes.WithLabelValues("retried").Inc()
 	w.log.WarnContext(ctx, "notification delivery failed, will retry", "id", entry.ID, "template_id", entry.TemplateID, "attempts", attempts, "retry_in", backoff, "error", err)
 }
 

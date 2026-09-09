@@ -14,6 +14,7 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 	"github.com/MirzaDgtu/PromoGo/internal/mechanicbuild"
+	"github.com/MirzaDgtu/PromoGo/internal/metrics"
 	"github.com/MirzaDgtu/PromoGo/internal/notifytemplates"
 )
 
@@ -208,12 +209,14 @@ func (s *LoyaltyService) replayedAccrue(ctx context.Context, storeID int64, exte
 
 	client, err := s.clients.GetByPhone(ctx, storeID, phone)
 	if errors.Is(err, domain.ErrNotFound) {
+		metrics.IdempotencyConflicts.WithLabelValues("accrue").Inc()
 		return nil, domain.ErrIdempotencyConflict
 	}
 	if err != nil {
 		return nil, fmt.Errorf("accrue: check idempotency: resolve client: %w", err)
 	}
 	if existing.RequestFingerprint != accrualFingerprint(client.ID, amount) {
+		metrics.IdempotencyConflicts.WithLabelValues("accrue").Inc()
 		return nil, domain.ErrIdempotencyConflict
 	}
 
@@ -362,6 +365,7 @@ func (s *LoyaltyService) replayedRedeem(ctx context.Context, storeID int64, exte
 		return nil, fmt.Errorf("redeem: check idempotency: %w", err)
 	}
 	if existing.RequestFingerprint != redeemFingerprint(clientID, amount, points) {
+		metrics.IdempotencyConflicts.WithLabelValues("redeem").Inc()
 		return nil, domain.ErrIdempotencyConflict
 	}
 
@@ -411,6 +415,9 @@ func refundFingerprint(originalTransactionID int64, amount decimal.Decimal) stri
 func (s *LoyaltyService) Refund(ctx context.Context, req RefundRequest) (*RefundResult, error) {
 	original, err := s.resolveOriginalTransaction(ctx, req.StoreID, req.OriginalExternalTxID, req.OriginalType)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			metrics.RefundFailures.WithLabelValues("original_not_found").Inc()
+		}
 		return nil, err
 	}
 
@@ -438,6 +445,10 @@ func (s *LoyaltyService) Refund(ctx context.Context, req RefundRequest) (*Refund
 	posted, updatedOriginal, balance, err := s.ledger.PostRefund(ctx, refundTx, buildNotify)
 	if errors.Is(err, domain.ErrConflict) {
 		return s.replayedRefund(ctx, req.StoreID, req.ExternalTxID, original.ID, req.Amount)
+	}
+	if errors.Is(err, domain.ErrOverRefund) {
+		metrics.RefundFailures.WithLabelValues("over_refund").Inc()
+		return nil, err
 	}
 	if err != nil {
 		return nil, fmt.Errorf("refund: post transaction: %w", err)
@@ -503,6 +514,7 @@ func (s *LoyaltyService) replayedRefund(ctx context.Context, storeID int64, exte
 		return nil, fmt.Errorf("refund: check idempotency: %w", err)
 	}
 	if existing.RequestFingerprint != refundFingerprint(originalTransactionID, amount) {
+		metrics.IdempotencyConflicts.WithLabelValues("refund").Inc()
 		return nil, domain.ErrIdempotencyConflict
 	}
 

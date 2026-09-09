@@ -90,6 +90,18 @@ func (f *fakeOutboxRepo) MarkDeadLetter(_ context.Context, id int64, lastErr str
 	return nil
 }
 
+func (f *fakeOutboxRepo) CountPending(_ context.Context) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var n int64
+	for _, e := range f.entries {
+		if e.Status == domain.NotificationOutboxPending || e.Status == "processing" {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (f *fakeOutboxRepo) get(id int64) *domain.NotificationOutboxEntry {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/MirzaDgtu/PromoGo/internal/metrics"
 )
 
 // Rule is one dimension a profile is rate-limited by (e.g. "by caller IP",
@@ -73,6 +75,7 @@ func (m *Middleware) Wrap(profile string, rules ...Rule) func(http.HandlerFunc) 
 					w.Header().Set("Retry-After", strconv.Itoa(seconds))
 					m.log.WarnContext(r.Context(), "rate limit exceeded",
 						"profile", profile, "rule", rule.Name, "retry_after_seconds", seconds)
+					metrics.RateLimitRejections.WithLabelValues(profile).Inc()
 					writeError(w, http.StatusTooManyRequests, "rate limit exceeded")
 					return
 				}

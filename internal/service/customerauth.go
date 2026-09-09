@@ -11,6 +11,7 @@ import (
 
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
+	"github.com/MirzaDgtu/PromoGo/internal/metrics"
 )
 
 // Errors returned by CustomerAuthService. Handlers map these to HTTP status
@@ -113,6 +114,7 @@ func (s *CustomerAuthService) RequestOTP(ctx context.Context, rawPhone, ip strin
 	}
 
 	if err := s.otp.acquireCooldown(ctx, phone); err != nil {
+		metrics.OTPIssued.WithLabelValues("rate_limited").Inc()
 		return ErrOTPCooldown
 	}
 
@@ -120,15 +122,18 @@ func (s *CustomerAuthService) RequestOTP(ctx context.Context, rawPhone, ip strin
 		if relErr := s.otp.releaseCooldown(ctx, phone); relErr != nil {
 			s.log.WarnContext(ctx, "release otp cooldown after rate limit", "error", relErr)
 		}
+		metrics.OTPIssued.WithLabelValues("rate_limited").Inc()
 		return ErrOTPRateLimited
 	}
 
 	code, err := auth.GenerateOTPCode()
 	if err != nil {
+		metrics.OTPIssued.WithLabelValues("error").Inc()
 		return fmt.Errorf("request otp: generate code: %w", err)
 	}
 
 	if err := s.otp.store(ctx, phone, code); err != nil {
+		metrics.OTPIssued.WithLabelValues("error").Inc()
 		return fmt.Errorf("request otp: store challenge: %w", err)
 	}
 
@@ -136,9 +141,11 @@ func (s *CustomerAuthService) RequestOTP(ctx context.Context, rawPhone, ip strin
 		if relErr := s.otp.releaseCooldown(ctx, phone); relErr != nil {
 			s.log.WarnContext(ctx, "release otp cooldown after sms failure", "error", relErr)
 		}
+		metrics.OTPIssued.WithLabelValues("error").Inc()
 		return fmt.Errorf("request otp: send sms: %w", err)
 	}
 
+	metrics.OTPIssued.WithLabelValues("success").Inc()
 	s.auditLog(ctx, domain.AuditActorSystem, nil, domain.AuditActionCustomerOTPRequested, nil, ip, "")
 	return nil
 }
@@ -170,17 +177,21 @@ func (s *CustomerAuthService) VerifyOTP(ctx context.Context, req VerifyOTPReques
 		s.auditLog(ctx, domain.AuditActorSystem, nil, domain.AuditActionCustomerOTPFailed, nil, req.IP, req.UserAgent)
 		switch {
 		case errors.Is(err, errOTPLocked):
+			metrics.OTPVerified.WithLabelValues("locked").Inc()
 			return nil, nil, ErrOTPLocked
 		default:
+			metrics.OTPVerified.WithLabelValues("invalid").Inc()
 			return nil, nil, ErrOTPInvalid
 		}
 	}
 
 	account, err := s.resolveOrCreateAccount(ctx, phone)
 	if err != nil {
+		metrics.OTPVerified.WithLabelValues("error").Inc()
 		return nil, nil, fmt.Errorf("verify otp: resolve account: %w", err)
 	}
 	if account.Status != domain.CustomerAccountActive {
+		metrics.OTPVerified.WithLabelValues("blocked").Inc()
 		return nil, nil, ErrAccountBlocked
 	}
 
@@ -208,6 +219,7 @@ func (s *CustomerAuthService) VerifyOTP(ctx context.Context, req VerifyOTPReques
 
 	accountID := account.ID
 	s.auditLog(ctx, domain.AuditActorCustomer, &accountID, domain.AuditActionCustomerLogin, nil, req.IP, req.UserAgent)
+	metrics.OTPVerified.WithLabelValues("success").Inc()
 	return tokens, account, nil
 }
 

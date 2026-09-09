@@ -100,3 +100,12 @@ func (r *NotificationOutboxRepository) MarkDeadLetter(ctx context.Context, id in
 	}
 	return nil
 }
+
+func (r *NotificationOutboxRepository) CountPending(ctx context.Context) (int64, error) {
+	const query = `SELECT count(*) FROM notification_outbox WHERE status = 'pending' OR status = 'processing'`
+	var n int64
+	if err := r.pool.QueryRow(ctx, query).Scan(&n); err != nil {
+		return 0, fmt.Errorf("count pending notification outbox entries: %w", err)
+	}
+	return n, nil
+}

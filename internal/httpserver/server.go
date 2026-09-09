@@ -10,6 +10,8 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/MirzaDgtu/PromoGo/internal/config"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 	"github.com/MirzaDgtu/PromoGo/internal/ratelimit"
@@ -95,6 +97,7 @@ func New(deps Deps) *http.Server {
 
 	for _, route := range routeTable {
 		h := handlerFor(route.OperationID, deps)
+		h = metricsMW(route.OperationID, route.Method)(h)
 
 		// Post-auth rate-limit rules (by staff user, store API key, ...)
 		// need the principal that auth middleware is about to set in the
@@ -130,6 +133,10 @@ func New(deps Deps) *http.Server {
 
 		mux.HandleFunc(route.Method+" "+route.Path, h)
 	}
+
+	// Not in routeTable/OpenAPI: an internal scrape endpoint, not part of
+	// the public API surface the parity test enforces.
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	var handler http.Handler = mux
 	handler = recoverMW(deps.Log)(handler)

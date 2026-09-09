@@ -71,6 +71,21 @@ func TestReadyz_Healthy(t *testing.T) {
 	}
 }
 
+func TestMetrics_Served(t *testing.T) {
+	handler, _ := newTestServer(t)
+	// A HistogramVec has no samples until a label combination is first
+	// observed, so exercise one instrumented route before scraping.
+	doRequest(handler, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+
+	rec := doRequest(handler, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "promogo_http_request_duration_seconds") {
+		t.Fatalf("response did not include the promogo_http_request_duration_seconds metric family; body=%s", rec.Body.String())
+	}
+}
+
 func TestReadyz_DependencyDown(t *testing.T) {
 	deps, _ := newTestDeps(t)
 	deps.Ready = func(context.Context) error { return errors.New("postgres: connection refused") }

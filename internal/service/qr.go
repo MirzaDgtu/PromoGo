@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
+	"github.com/MirzaDgtu/PromoGo/internal/metrics"
 )
 
 // Exported QR errors — see qr_store.go's unexported errQR* for the
@@ -105,12 +106,15 @@ func (s *QRService) ResolveQR(ctx context.Context, storeID int64, payload, consu
 
 	customerAccountID, tokenHash, err := s.store.claim(ctx, payload)
 	if errors.Is(err, errQRMalformed) {
+		metrics.QRConsume.WithLabelValues("business_failure").Inc()
 		return nil, nil, ErrQRMalformed
 	}
 	if errors.Is(err, errQRGone) {
+		metrics.QRConsume.WithLabelValues("business_failure").Inc()
 		return nil, nil, ErrQRGone
 	}
 	if err != nil {
+		metrics.QRConsume.WithLabelValues("transient_failure").Inc()
 		return nil, nil, fmt.Errorf("resolve qr: claim token: %w", err)
 	}
 
@@ -119,12 +123,14 @@ func (s *QRService) ResolveQR(ctx context.Context, storeID int64, payload, consu
 	// that retrying can't fix) or release (a transient/infrastructure
 	// failure — the same QR should still be usable on retry). See
 	// qrStore.claim's doc comment.
-	finalize := func() {
+	finalize := func(result string) {
+		metrics.QRConsume.WithLabelValues(result).Inc()
 		if err := s.store.finalize(ctx, tokenHash); err != nil {
 			s.log.WarnContext(ctx, "finalize claimed qr token", "error", err)
 		}
 	}
 	release := func() {
+		metrics.QRConsume.WithLabelValues("transient_failure").Inc()
 		if err := s.store.release(ctx, tokenHash); err != nil {
 			s.log.WarnContext(ctx, "release claimed qr token", "error", err)
 		}
@@ -135,7 +141,7 @@ func (s *QRService) ResolveQR(ctx context.Context, storeID int64, payload, consu
 		// The token was valid, but the account it named no longer exists —
 		// as safe and uninformative to the caller as any other gone token.
 		// This will never succeed on retry, so finalize rather than release.
-		finalize()
+		finalize("business_failure")
 		return nil, nil, ErrQRGone
 	}
 	if err != nil {
@@ -143,7 +149,7 @@ func (s *QRService) ResolveQR(ctx context.Context, storeID int64, payload, consu
 		return nil, nil, fmt.Errorf("resolve qr: load customer account: %w", err)
 	}
 	if account.Status != domain.CustomerAccountActive {
-		finalize()
+		finalize("business_failure")
 		return nil, nil, ErrQRGone
 	}
 
@@ -159,7 +165,7 @@ func (s *QRService) ResolveQR(ctx context.Context, storeID int64, payload, consu
 		return nil, nil, fmt.Errorf("resolve qr: load balance: %w", err)
 	}
 
-	finalize()
+	finalize("success")
 
 	if s.audit != nil {
 		clientID := client.ID
