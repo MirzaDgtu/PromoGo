@@ -43,7 +43,7 @@ go run ./cmd/promogo loadtest-seed
 # {
 #   "organization_id": 2,
 #   "store_id": 1,
-#   "api_key": "ZbNvWO6SVHc.LocuRtIK4HS8_uJC9xxMx7YGJO6ctVUiyWHr9foqitg"
+#   "api_key": "<key-id>.<secret>"  # e.g. "kid_example.secret_example_not_a_real_key"
 # }
 export API_KEY='<the api_key value above>'
 ```

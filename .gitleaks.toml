@@ -3,10 +3,30 @@ title = "promogo gitleaks config"
 [extend]
 useDefault = true
 
+# gitleaks v8.21 only supports a single top-level [allowlist] table (an
+# [[allowlists]] array was tried and silently dropped everything but the
+# path/commit-based entry — see the 2026-09-09 CI baseline notes for
+# Q-P0-127), so every allowlisted false positive lives in these two arrays.
+# Conditions in different categories (paths/regexes/commits) are OR'd, so
+# each entry below is written to stand on its own without widening what any
+# other entry allows.
+[allowlist]
+description = "Doc placeholder API keys — not real credentials"
+
 # `curl-auth-header` false-positives on the literal placeholder used in this
 # skill's example commands ("Authorization: Bearer test-api-key") — not a
 # real credential, never was.
-[allowlist]
-description = "Doc placeholder API key in dev-stack skill examples"
 paths = ['''\.claude/skills/dev-stack/SKILL\.md''']
-regexes = ['''Bearer test-api-key''']
+
+regexes = [
+  '''Bearer test-api-key''',
+  # Q-P0-127 (2026-09-09 clean-checkout CI baseline): docs/load-testing.md
+  # used to show a real `loadtest-seed` output as an example api_key. The
+  # current tree replaces it with an explicit placeholder (see
+  # docs/load-testing.md), but this exact literal string is still present
+  # in the git history gitleaks scans (commit 82399bb6). It was a
+  # throwaway dev-stand key seeded by `loadtest-seed` against a disposable
+  # database, never a real credential — matched here by its exact literal
+  # value only, so nothing else in that commit or file is allowlisted.
+  '''ZbNvWO6SVHc\.LocuRtIK4HS8_uJC9xxMx7YGJO6ctVUiyWHr9foqitg''',
+]
