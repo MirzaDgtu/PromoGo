@@ -20,7 +20,15 @@ type LedgerRepository interface {
 	// (tx.StoreID, tx.ExternalTxID) — a race between two concurrent
 	// deliveries of the same webhook; the common idempotent-replay path is
 	// detected earlier via TransactionRepository.GetByExternalID.
-	Post(ctx context.Context, tx *Transaction) (*Transaction, *Balance, error)
+	//
+	// If notify is non-nil, its NotificationOutboxEntry is inserted in the
+	// SAME database transaction as tx — the transactional-outbox guarantee
+	// (Phase 3 of docs/audit-remediation-prompt.md): a notification is
+	// queued if and only if the ledger write it describes actually
+	// committed. Pass nil to post without queuing anything (e.g. a
+	// zero-point accrual, which the caller decides isn't worth notifying
+	// about).
+	Post(ctx context.Context, tx *Transaction, notify *NotificationOutboxEntry) (*Transaction, *Balance, error)
 
 	// PostRefund atomically posts a refund against
 	// refund.OriginalTransactionID. refund.PointsDelta on input is ignored —
@@ -51,7 +59,16 @@ type LedgerRepository interface {
 	// TransactionRefund, refund.ExternalTxID). original is returned
 	// post-update so the caller can report refunded_amount_total and
 	// fully_refunded without a second query.
-	PostRefund(ctx context.Context, refund *Transaction) (posted *Transaction, original *Transaction, balance *Balance, err error)
+	//
+	// Unlike Post/PostRedeemChecked, the notification here is a builder
+	// function, not a pre-built entry: PostRefund's point delta is only
+	// known after this method computes it under the original row's lock
+	// (see above), so the caller cannot render a message like "reversed N
+	// points" before calling this. buildNotify is invoked with the final
+	// pointsDelta once computed, still inside the same transaction as
+	// everything else — its return value (nil to skip) is enqueued exactly
+	// as Post's notify parameter is. May be nil to skip entirely.
+	PostRefund(ctx context.Context, refund *Transaction, buildNotify func(pointsDelta int64) *NotificationOutboxEntry) (posted *Transaction, original *Transaction, balance *Balance, err error)
 
 	// PostRedeemChecked is Post for the redemption path, with atomic
 	// anti-fraud and eligibility checks added: it locks the balance row,
@@ -65,6 +82,6 @@ type LedgerRepository interface {
 	// domain.ErrDailyRedeemLimitExceeded if tx.PointsDelta (negative) would
 	// push that rolling-window total past dailyLimit. Refund rows are
 	// excluded from the window sum (refunds don't consume the daily limit,
-	// per DEC-013).
-	PostRedeemChecked(ctx context.Context, tx *Transaction, minBalance, dailyLimit int64, window time.Duration) (*Transaction, *Balance, error)
+	// per DEC-013). notify behaves as in Post.
+	PostRedeemChecked(ctx context.Context, tx *Transaction, minBalance, dailyLimit int64, window time.Duration, notify *NotificationOutboxEntry) (*Transaction, *Balance, error)
 }

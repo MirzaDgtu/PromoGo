@@ -154,9 +154,27 @@ type fakeLedgerRepo struct {
 	txs      *fakeTxRepo
 	balances *fakeBalanceRepo
 	nextID   int64
+	outbox   []*domain.NotificationOutboxEntry
 }
 
-func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domain.Transaction, *domain.Balance, error) {
+// enqueueOutbox mirrors insertOutboxEntry's dedupe-on-conflict semantics
+// (see internal/repository/postgres/ledger_repository.go) — a nil notify
+// or a DedupeKey already present is a no-op.
+func (f *fakeLedgerRepo) enqueueOutbox(notify *domain.NotificationOutboxEntry) {
+	if notify == nil {
+		return
+	}
+	for _, e := range f.outbox {
+		if e.DedupeKey == notify.DedupeKey {
+			return
+		}
+	}
+	entry := *notify
+	entry.Status = domain.NotificationOutboxPending
+	f.outbox = append(f.outbox, &entry)
+}
+
+func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	for _, existing := range f.txs.all {
 		if existing.StoreID == tx.StoreID && existing.Type == tx.Type && existing.ExternalTxID == tx.ExternalTxID {
 			return nil, nil, domain.ErrConflict
@@ -175,6 +193,7 @@ func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domai
 	posted.BalanceAfter = newPoints
 	posted.CreatedAt = time.Now()
 	f.txs.all = append(f.txs.all, &posted)
+	f.enqueueOutbox(notify)
 
 	return &posted, &domain.Balance{ClientID: tx.ClientID, Points: newPoints}, nil
 }
@@ -182,7 +201,7 @@ func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domai
 // PostRedeemChecked mirrors the real repository's atomic daily-limit check
 // (see internal/repository/postgres/ledger_repository.go), summing this
 // fake store's own redeem history in the trailing window.
-func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	if f.balances.points[tx.ClientID] < minBalance {
 		return nil, nil, domain.ErrInsufficientBalance
 	}
@@ -198,13 +217,13 @@ func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Trans
 			return nil, nil, domain.ErrDailyRedeemLimitExceeded
 		}
 	}
-	return f.Post(ctx, tx)
+	return f.Post(ctx, tx, notify)
 }
 
 // PostRefund mirrors the real repository's atomic refund posting (see
 // internal/repository/postgres/ledger_repository.go's PostRefund) against
 // this fake store's in-memory transactions/balances.
-func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transaction) (*domain.Transaction, *domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transaction, buildNotify func(pointsDelta int64) *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Transaction, *domain.Balance, error) {
 	for _, existing := range f.txs.all {
 		if existing.StoreID == refund.StoreID && existing.Type == domain.TransactionRefund && existing.ExternalTxID == refund.ExternalTxID {
 			return nil, nil, nil, domain.ErrConflict
@@ -278,6 +297,9 @@ func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transactio
 	posted.RefundCumulativeAmount = newRefundedAmount
 	posted.RefundFullyRefunded = newRefundedAmount.Equal(original.Amount)
 	f.txs.all = append(f.txs.all, &posted)
+	if buildNotify != nil {
+		f.enqueueOutbox(buildNotify(pointsDelta))
+	}
 
 	return &posted, original, &domain.Balance{ClientID: original.ClientID, Points: newBalance}, nil
 }
@@ -311,6 +333,7 @@ type testDeps struct {
 	txs      *fakeTxRepo
 	balances *fakeBalanceRepo
 	configs  *fakeConfigRepo
+	ledger   *fakeLedgerRepo
 }
 
 func newTestService(cfg *domain.LoyaltyConfig) *testDeps {
@@ -332,11 +355,12 @@ func newTestServiceWithAntiFraud(cfg *domain.LoyaltyConfig, antiFraud AntiFraudC
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	return &testDeps{
-		svc:      New(log, clients, txs, balances, ledger, configs, nil, antiFraud),
+		svc:      New(log, clients, txs, balances, ledger, configs, antiFraud),
 		clients:  clients,
 		txs:      txs,
 		balances: balances,
 		configs:  configs,
+		ledger:   ledger,
 	}
 }
 
@@ -390,6 +414,97 @@ func TestAccrueAndRedeem_StampRuleVersionFromEffectiveConfig(t *testing.T) {
 	}
 	if redeem.RuleVersion == nil || *redeem.RuleVersion != 7 {
 		t.Fatalf("redeem RuleVersion = %v, want 7", redeem.RuleVersion)
+	}
+}
+
+// TestAccrueRedeemRefund_EnqueueTransactionalOutboxNotification guards
+// Phase 3's transactional-outbox requirement (docs/audit-remediation-
+// prompt.md): accrual, redemption, and refund must each queue their
+// notification via LedgerRepository (transactionally, alongside the ledger
+// write), not call a domain.NotificationChannel synchronously from the
+// service layer.
+func TestAccrueRedeemRefund_EnqueueTransactionalOutboxNotification(t *testing.T) {
+	deps := newTestService(pointsConfig(1))
+	ctx := context.Background()
+
+	if _, err := deps.svc.Accrue(ctx, AccrueRequest{
+		StoreID: 1, ExternalTxID: "rcpt-ob-1", Phone: "+70000000210", Amount: decimal.NewFromInt(100),
+	}); err != nil {
+		t.Fatalf("Accrue() error = %v", err)
+	}
+	if len(deps.ledger.outbox) != 1 {
+		t.Fatalf("outbox after Accrue = %d entries, want 1", len(deps.ledger.outbox))
+	}
+	if deps.ledger.outbox[0].Message != "Вам начислено 10 баллов" {
+		t.Errorf("accrual outbox message = %q, want %q", deps.ledger.outbox[0].Message, "Вам начислено 10 баллов")
+	}
+	if deps.ledger.outbox[0].TemplateID == "" {
+		t.Errorf("accrual outbox entry has empty TemplateID")
+	}
+
+	client, err := deps.clients.GetByPhone(ctx, 1, "+70000000210")
+	if err != nil {
+		t.Fatalf("GetByPhone: %v", err)
+	}
+	if _, err := deps.svc.Redeem(ctx, RedeemRequest{
+		StoreID: 1, ExternalTxID: "redeem-ob-1", ClientID: client.ID, Points: 4, Amount: decimal.NewFromInt(40),
+	}); err != nil {
+		t.Fatalf("Redeem() error = %v", err)
+	}
+	if len(deps.ledger.outbox) != 2 {
+		t.Fatalf("outbox after Redeem = %d entries, want 2", len(deps.ledger.outbox))
+	}
+	if deps.ledger.outbox[1].Message != "Списано 4 баллов" {
+		t.Errorf("redeem outbox message = %q, want %q", deps.ledger.outbox[1].Message, "Списано 4 баллов")
+	}
+
+	if _, err := deps.svc.Refund(ctx, RefundRequest{
+		StoreID: 1, ExternalTxID: "refund-ob-1", OriginalExternalTxID: "rcpt-ob-1", Amount: decimal.NewFromInt(100),
+	}); err != nil {
+		t.Fatalf("Refund() error = %v", err)
+	}
+	if len(deps.ledger.outbox) != 3 {
+		t.Fatalf("outbox after Refund = %d entries, want 3", len(deps.ledger.outbox))
+	}
+	if deps.ledger.outbox[2].Message != "Возврат: скорректировано -10 баллов" {
+		t.Errorf("refund outbox message = %q, want %q", deps.ledger.outbox[2].Message, "Возврат: скорректировано -10 баллов")
+	}
+}
+
+// TestAccrue_ZeroPointsEarnedDoesNotEnqueueNotification matches the prior
+// synchronous behavior's "pointsEarned > 0" guard: a purchase too small to
+// earn any points shouldn't notify the customer about earning zero.
+func TestAccrue_ZeroPointsEarnedDoesNotEnqueueNotification(t *testing.T) {
+	cfg := pointsConfig(1)
+	cfg.MinPurchaseAmount = decimal.NewFromInt(1000) // purchase below this earns nothing
+	deps := newTestService(cfg)
+	ctx := context.Background()
+
+	if _, err := deps.svc.Accrue(ctx, AccrueRequest{
+		StoreID: 1, ExternalTxID: "rcpt-ob-2", Phone: "+70000000211", Amount: decimal.NewFromInt(10),
+	}); err != nil {
+		t.Fatalf("Accrue() error = %v", err)
+	}
+	if len(deps.ledger.outbox) != 0 {
+		t.Fatalf("outbox after a zero-point accrual = %d entries, want 0", len(deps.ledger.outbox))
+	}
+}
+
+// TestAccrue_ReplayDoesNotDoubleEnqueueNotification: a replayed webhook
+// must not queue a second notification for the same logical write.
+func TestAccrue_ReplayDoesNotDoubleEnqueueNotification(t *testing.T) {
+	deps := newTestService(pointsConfig(1))
+	ctx := context.Background()
+
+	body := AccrueRequest{StoreID: 1, ExternalTxID: "rcpt-ob-3", Phone: "+70000000212", Amount: decimal.NewFromInt(100)}
+	if _, err := deps.svc.Accrue(ctx, body); err != nil {
+		t.Fatalf("first Accrue() error = %v", err)
+	}
+	if _, err := deps.svc.Accrue(ctx, body); err != nil {
+		t.Fatalf("replayed Accrue() error = %v", err)
+	}
+	if len(deps.ledger.outbox) != 1 {
+		t.Fatalf("outbox after replay = %d entries, want 1 (no double-enqueue)", len(deps.ledger.outbox))
 	}
 }
 

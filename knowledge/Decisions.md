@@ -385,6 +385,64 @@ tags:
   агностичные каналы; outbox — нет, явно вынесен в отдельный бэклог-пункт
   `Q-P0-103-outbox`).
 
+### DEC-015 — Transactional outbox для accrual/redeem/refund-уведомлений; батч-доставка FCM; QR claim/finalize/release
+
+- Статус: реализовано
+- Дата: 2026-09-09
+- Связанные вопросы: `Q-P0-103-outbox` (закрыт этой задачей), `Q-P0-062`
+  (остаётся открытым — локализация/deep link)
+- Контекст: DEC-014 сознательно отложил transactional outbox. Аудит
+  (`docs/audit-remediation-prompt.md`, Phase 3) потребовал: (1) убрать
+  синхронный вызов FCM из пути accrual/redeem/refund, (2) не делать
+  unbounded последовательный вызов на устройство, (3) не терять QR-токен
+  из-за GETDEL до успешного завершения БД-работы, (4) throttling QR
+  consume — по фактическому API-ключу, а не по store.
+- Решение:
+  - `notification_outbox` (миграция `00028`): `LedgerRepository.Post/
+    PostRedeemChecked/PostRefund` принимают `*domain.
+    NotificationOutboxEntry` (для `PostRefund` — builder-функцию,
+    поскольку итоговый `pointsDelta` известен только под локом внутри
+    метода) и вставляют строку в ТОЙ ЖЕ транзакции, что и сам ledger-write
+    — уведомление ставится в очередь тогда и только тогда, когда
+    транзакция закоммитилась. `LoyaltyService` больше не хранит
+    `domain.NotificationChannel` и никогда не вызывает `Send` напрямую.
+  - `internal/notifytemplates`: три шаблона (`accrual_credited`,
+    `redeem_debited`, `refund_adjusted`) с `TemplateID`+`Version`,
+    заменившие inline `fmt.Sprintf` на русском внутри `loyalty.go`.
+    Локализация/deep link — не реализованы, остаются за `Q-P0-062`.
+  - `internal/service.OutboxWorker`: поллинг + `ClaimBatch` (atomic
+    `UPDATE ... FROM (SELECT ... FOR UPDATE SKIP LOCKED)`, статус
+    `processing` с lease-TTL для самовосстановления после краша воркера —
+    паттерн, аналогичный `qrStore.claim`), bounded concurrency,
+    экспоненциальный backoff, dead-letter после исчерпания попыток.
+    Метрики — пока структурированные логи (Prometheus/OTel — предмет
+    Phase 4, отдельной инфраструктуры метрик этот пакет не имеет).
+  - `fcmchannel.Channel.Send`: переход с последовательного цикла
+    (`Send` на устройство, до 5с каждый) на `SendEach` — SDK сам
+    параллелит с ограниченной конкурентностью вместо unbounded
+    последовательных вызовов; классификация невалидных токенов — из
+    `BatchResponse.Responses[i].Error`.
+  - QR (`qrStore`): `issue`/`checkConsumeCooldown` теперь `SET NX`
+    (атомарный acquire, закрывает TOCTOU-гонку); `consume` (GETDEL)
+    заменён на `claim`/`finalize`/`release` — токен не удаляется
+    безвозвратно до успешного завершения БД-работы, при транзиентной
+    ошибке возвращается в оборот, при бизнес-отказе (аккаунт не найден/не
+    активен) — финализируется. Throttling-принципал consume-cooldown —
+    `resolveQRConsumePrincipal` в httpserver: KeyID реального API-ключа,
+    если он резолвится через `store_api_keys`, иначе store-scoped fallback
+    для legacy `stores.api_key_hash`.
+- Альтернативы: брокер сообщений (Kafka/RabbitMQ) вместо Postgres-таблицы
+  — отклонён, избыточен для текущего объёма и добавляет отдельную
+  инфраструктурную зависимость; Postgres уже source of truth для ledger.
+- Последствия и миграция: `Q-P0-103-outbox` закрыт. Redis outage для
+  security-sensitive контуров (OTP/QR/rate-limit) и POS-транзакций уже
+  fail-closed (503) во всех местах, где используется Redis — см.
+  `internal/ratelimit/middleware.go`, `otpStore`/`qrStore`; это
+  подразумевает, что Redis-инцидент делает POS accrual/redeem/refund
+  недоступным, пока 1С-очередь offline-retry не реализована и не
+  протестирована end-to-end (1С-интеграция вне скоупа этого репозитория
+  — см. `Q-P1-...` для 1С-контракта).
+
 ## Шаблон нового решения
 
 ### DEC-NNN — Короткое название

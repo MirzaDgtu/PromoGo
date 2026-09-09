@@ -33,10 +33,11 @@ import (
 // and owns their lifecycle. Callers must call Close when New succeeds,
 // regardless of whether Run is called.
 type App struct {
-	log    *slog.Logger
-	pgPool *pgxpool.Pool
-	redis  *redis.Client
-	http   *http.Server
+	log          *slog.Logger
+	pgPool       *pgxpool.Pool
+	redis        *redis.Client
+	http         *http.Server
+	outboxWorker *service.OutboxWorker
 }
 
 // New constructs an App and its dependencies: it connects to Postgres,
@@ -78,6 +79,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	txRepo := postgres.NewTransactionRepository(pgPool)
 	ledgerRepo := postgres.NewLedgerRepository(pgPool)
 	configRepo := postgres.NewLoyaltyConfigRepository(pgPool)
+	outboxRepo := postgres.NewNotificationOutboxRepository(pgPool)
 
 	orgRepo := postgres.NewOrganizationRepository(pgPool)
 	customerAccountRepo := postgres.NewCustomerAccountRepository(pgPool)
@@ -117,9 +119,24 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		notifier = logchannel.New(log)
 	}
 
-	loyaltyService := service.New(log, clientRepo, txRepo, balanceRepo, ledgerRepo, configRepo, notifier, service.AntiFraudConfig{
+	loyaltyService := service.New(log, clientRepo, txRepo, balanceRepo, ledgerRepo, configRepo, service.AntiFraudConfig{
 		DailyRedeemPointsLimit: cfg.AntiFraud.DailyRedeemPointsLimit,
 		DailyRedeemWindow:      cfg.AntiFraud.DailyRedeemWindow,
+	})
+
+	// Accrual/redeem/refund notifications are queued transactionally by
+	// ledgerRepo (see domain.LedgerRepository's doc comment) and delivered
+	// here, off the request path — DEC-014's outbox, now implemented (see
+	// docs/audit-remediation-prompt.md Phase 3). The worker outlives any
+	// single request; Run starts/stops it alongside the HTTP server (see
+	// App.Run/Close).
+	outboxWorker := service.NewOutboxWorker(log, outboxRepo, notifier, service.OutboxWorkerConfig{
+		PollInterval:   2 * time.Second,
+		BatchSize:      50,
+		MaxConcurrency: 10,
+		MaxAttempts:    5,
+		BaseBackoff:    5 * time.Second,
+		MaxBackoff:     5 * time.Minute,
 	})
 
 	qrService := service.NewQRService(log, redisClient, service.QRConfig{
@@ -194,12 +211,17 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		},
 	})
 
-	return &App{log: log, pgPool: pgPool, redis: redisClient, http: httpServer}, nil
+	return &App{log: log, pgPool: pgPool, redis: redisClient, http: httpServer, outboxWorker: outboxWorker}, nil
 }
 
-// Run starts the HTTP server, blocking until ctx is canceled or the HTTP
-// server fails.
+// Run starts the HTTP server and the notification outbox worker, blocking
+// until ctx is canceled or the HTTP server fails. Both are stopped
+// together on shutdown.
 func (a *App) Run(ctx context.Context) error {
+	workerCtx, cancelWorker := context.WithCancel(context.Background())
+	defer cancelWorker()
+	go a.outboxWorker.Run(workerCtx)
+
 	errCh := make(chan error, 1)
 
 	go func() {

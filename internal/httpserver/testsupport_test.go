@@ -212,19 +212,37 @@ type fakeLedgerRepo struct {
 	txs      *fakeFullTransactionRepo
 	balances *fakeBalanceRepo
 	nextID   int64
+	outbox   []*domain.NotificationOutboxEntry
 }
 
-func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction) (*domain.Transaction, *domain.Balance, error) {
+// enqueueOutbox mirrors insertOutboxEntry's dedupe-on-conflict semantics
+// (see internal/repository/postgres/ledger_repository.go). Callers must
+// already hold f.mu.
+func (f *fakeLedgerRepo) enqueueOutbox(notify *domain.NotificationOutboxEntry) {
+	if notify == nil {
+		return
+	}
+	for _, e := range f.outbox {
+		if e.DedupeKey == notify.DedupeKey {
+			return
+		}
+	}
+	entry := *notify
+	entry.Status = domain.NotificationOutboxPending
+	f.outbox = append(f.outbox, &entry)
+}
+
+func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.postLocked(tx)
+	return f.postLocked(tx, notify)
 }
 
 // postLocked is Post's body factored out so PostRedeemChecked can perform
 // its extra checks and the resulting write under a single critical section
 // (one f.mu.Lock() call), matching the real repository's SELECT ... FOR
 // UPDATE transaction. Callers must already hold f.mu.
-func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction) (*domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	f.txs.mu.Lock()
 	for _, existing := range f.txs.all {
 		if existing.StoreID == tx.StoreID && existing.Type == tx.Type && existing.ExternalTxID == tx.ExternalTxID {
@@ -252,6 +270,7 @@ func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction) (*domain.Transaction
 	f.txs.mu.Lock()
 	f.txs.all = append(f.txs.all, &posted)
 	f.txs.mu.Unlock()
+	f.enqueueOutbox(notify)
 
 	return &posted, &domain.Balance{ClientID: tx.ClientID, Points: newPoints}, nil
 }
@@ -265,7 +284,7 @@ func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction) (*domain.Transaction
 // section, or two concurrent redemptions could both pass the checks against
 // a balance neither of their writes has applied yet (see
 // TestRedeem_ConcurrentRedemptionsRespectMinBalance in transactions_route_test.go).
-func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -289,13 +308,13 @@ func (f *fakeLedgerRepo) PostRedeemChecked(ctx context.Context, tx *domain.Trans
 			return nil, nil, domain.ErrDailyRedeemLimitExceeded
 		}
 	}
-	return f.postLocked(tx)
+	return f.postLocked(tx, notify)
 }
 
 // PostRefund mirrors the real repository's atomic refund posting
 // (internal/repository/postgres/ledger_repository.go's PostRefund) against
 // this fake store's in-memory transactions/balances.
-func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transaction) (*domain.Transaction, *domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transaction, buildNotify func(pointsDelta int64) *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Transaction, *domain.Balance, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -375,7 +394,12 @@ func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transactio
 	posted.BalanceAfter = newBalance
 	posted.CreatedAt = time.Now()
 	posted.OriginalTransactionID = &original.ID
+	posted.RefundCumulativeAmount = newRefundedAmount
+	posted.RefundFullyRefunded = newRefundedAmount.Equal(original.Amount)
 	f.txs.all = append(f.txs.all, &posted)
+	if buildNotify != nil {
+		f.enqueueOutbox(buildNotify(pointsDelta))
+	}
 
 	return &posted, original, &domain.Balance{ClientID: original.ClientID, Points: newBalance}, nil
 }
@@ -828,11 +852,6 @@ func (f *fakeAuditEventRepo) ListByOrganization(_ context.Context, organizationI
 
 // --- Notification / SMS ---
 
-type fakeNotifier struct{}
-
-func (fakeNotifier) Name() string                              { return "fake" }
-func (fakeNotifier) Send(context.Context, int64, string) error { return nil }
-
 type fakeSMSSender struct {
 	mu   sync.Mutex
 	sent []string
@@ -972,7 +991,7 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 
 	log := testLogger()
 
-	loyaltySvc := service.New(log, clients, txs, balances, ledger, configs, fakeNotifier{}, service.AntiFraudConfig{
+	loyaltySvc := service.New(log, clients, txs, balances, ledger, configs, service.AntiFraudConfig{
 		DailyRedeemPointsLimit: 1_000_000,
 		DailyRedeemWindow:      24 * time.Hour,
 	})

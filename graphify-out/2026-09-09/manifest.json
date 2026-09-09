@@ -180,8 +180,8 @@
     "semantic_hash": ""
   },
   "internal/service/loyalty_test.go": {
-    "mtime": 1788918933.8610537,
-    "ast_hash": "b4c6e998b787636dfca8c6998ca222bb",
+    "mtime": 1788939584.4808378,
+    "ast_hash": "61f5ba23141d8b741daf9e7fadea3874",
     "semantic_hash": ""
   },
   "migrations/embed.go": {
@@ -750,8 +750,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/qr.go": {
-    "mtime": 1785407758.2260978,
-    "ast_hash": "3a58be8dbcc8934b791193ec9a94819e",
+    "mtime": 1788939496.784519,
+    "ast_hash": "fd63f328ebcc4d1a1800bee9ff331e7d",
     "semantic_hash": ""
   },
   "internal/httpserver/refund.go": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/refund_qr_devices_route_test.go": {
-    "mtime": 1788901087.3979802,
-    "ast_hash": "db2ba1d115a262b3aa8fe0031de3d0b6",
+    "mtime": 1788939646.1391652,
+    "ast_hash": "be0477be5afc5f6209c5514638009cee",
     "semantic_hash": ""
   },
   "internal/notification/fcmchannel/fcmchannel.go": {
@@ -785,18 +785,18 @@
     "semantic_hash": ""
   },
   "internal/service/qr.go": {
-    "mtime": 1785407723.475464,
-    "ast_hash": "1576ef10e13acde60aa87f696b537f92",
+    "mtime": 1788939486.1531255,
+    "ast_hash": "05e5c750c03c66d3d52be7cd1ebf435f",
     "semantic_hash": ""
   },
   "internal/service/qr_store.go": {
-    "mtime": 1785407688.4731724,
-    "ast_hash": "a8974e37f26c8b50880ffee7c5b044b4",
+    "mtime": 1788939549.0314548,
+    "ast_hash": "607edcd46fcb9ecc322d72fdccb7ec91",
     "semantic_hash": ""
   },
   "internal/service/qr_test.go": {
-    "mtime": 1785408780.485727,
-    "ast_hash": "98cb535a5035d10572ae1afc10d68345",
+    "mtime": 1788939604.772849,
+    "ast_hash": "e8e39ef9a6098a80e9c525cd60db0b7c",
     "semantic_hash": ""
   },
   "migrations/sql/00022_transaction_refunds.sql": {

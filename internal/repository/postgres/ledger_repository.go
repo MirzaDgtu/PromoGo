@@ -24,6 +24,26 @@ func NewLedgerRepository(pool *pgxpool.Pool) *LedgerRepository {
 	return &LedgerRepository{pool: pool}
 }
 
+// insertOutboxEntry inserts notify inside the caller's already-open dbTx —
+// the transactional-outbox guarantee lives entirely in this being called
+// before dbTx.Commit, never after. ON CONFLICT (dedupe_key) DO NOTHING
+// makes a double-call with the same DedupeKey a harmless no-op rather than
+// a constraint-violation error, since the ledger write it accompanies is
+// itself already idempotent on the same logical key.
+func insertOutboxEntry(ctx context.Context, dbTx pgx.Tx, notify *domain.NotificationOutboxEntry) error {
+	if notify == nil {
+		return nil
+	}
+	const insert = `
+		INSERT INTO notification_outbox (client_id, template_id, template_version, message, dedupe_key)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (dedupe_key) DO NOTHING`
+	if _, err := dbTx.Exec(ctx, insert, notify.ClientID, notify.TemplateID, notify.TemplateVersion, notify.Message, notify.DedupeKey); err != nil {
+		return fmt.Errorf("enqueue notification outbox entry: %w", err)
+	}
+	return nil
+}
+
 // Post implements domain.LedgerRepository: inserting the transaction and
 // adjusting the balance happen in one database transaction, so the two can
 // never diverge (see domain.LedgerRepository's doc comment).
@@ -37,7 +57,7 @@ func NewLedgerRepository(pool *pgxpool.Pool) *LedgerRepository {
 // negative delta alone (confirmed against Postgres 16). Ensuring the row
 // exists first, then applying the delta with a plain UPDATE, checks the
 // constraint against the real post-update value instead.
-func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*domain.Transaction, *domain.Balance, error) {
+func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	dbTx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("post transaction %d/%s: begin tx: %w", tx.StoreID, tx.ExternalTxID, err)
@@ -86,6 +106,10 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 	}
 	tx.BalanceAfter = balance.Points
 
+	if err := insertOutboxEntry(ctx, dbTx, notify); err != nil {
+		return nil, nil, fmt.Errorf("post transaction %d/%s: %w", tx.StoreID, tx.ExternalTxID, err)
+	}
+
 	if err := dbTx.Commit(ctx); err != nil {
 		return nil, nil, fmt.Errorf("post transaction %d/%s: commit: %w", tx.StoreID, tx.ExternalTxID, err)
 	}
@@ -111,7 +135,7 @@ func scanTransactionRow(row pgx.Row) (*domain.Transaction, error) {
 // comment for the full contract. All point-delta math happens here, under
 // the original row's lock, rather than in the caller: it depends on
 // refunded_amount, which is only safe to read at the moment of writing.
-func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transaction) (*domain.Transaction, *domain.Transaction, *domain.Balance, error) {
+func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transaction, buildNotify func(pointsDelta int64) *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Transaction, *domain.Balance, error) {
 	dbTx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("post refund %d/%s: begin tx: %w", refund.StoreID, refund.ExternalTxID, err)
@@ -229,6 +253,14 @@ func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transa
 	refund.RefundCumulativeAmount = newRefundedAmount
 	refund.RefundFullyRefunded = fullyRefunded
 
+	var notify *domain.NotificationOutboxEntry
+	if buildNotify != nil {
+		notify = buildNotify(pointsDelta)
+	}
+	if err := insertOutboxEntry(ctx, dbTx, notify); err != nil {
+		return nil, nil, nil, fmt.Errorf("post refund %d/%s: %w", refund.StoreID, refund.ExternalTxID, err)
+	}
+
 	if err := dbTx.Commit(ctx); err != nil {
 		return nil, nil, nil, fmt.Errorf("post refund %d/%s: commit: %w", refund.StoreID, refund.ExternalTxID, err)
 	}
@@ -243,7 +275,7 @@ func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transa
 // check and the write atomic together: without the explicit lock, two
 // concurrent redemptions could both read a window sum below the limit
 // before either commits.
-func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration) (*domain.Transaction, *domain.Balance, error) {
+func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Transaction, minBalance, dailyLimit int64, window time.Duration, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	dbTx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("post redeem %d/%s: begin tx: %w", tx.StoreID, tx.ExternalTxID, err)
@@ -306,6 +338,10 @@ func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Tra
 		return nil, nil, fmt.Errorf("post redeem %d/%s: insert: %w", tx.StoreID, tx.ExternalTxID, err)
 	}
 	tx.BalanceAfter = balance.Points
+
+	if err := insertOutboxEntry(ctx, dbTx, notify); err != nil {
+		return nil, nil, fmt.Errorf("post redeem %d/%s: %w", tx.StoreID, tx.ExternalTxID, err)
+	}
 
 	if err := dbTx.Commit(ctx); err != nil {
 		return nil, nil, fmt.Errorf("post redeem %d/%s: commit: %w", tx.StoreID, tx.ExternalTxID, err)

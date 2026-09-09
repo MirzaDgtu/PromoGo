@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-09T07:45:13.133544+00:00",
+  "generated_at": "2026-09-09T07:46:02.616491+00:00",
   "nodes": {
     "claude_planned_architecture": {
       "code_fingerprint": "6504f257867ecfadad92669ef97b52a66cd8dedda1fe43b95448f31a9f59d3f2",
@@ -12,7 +12,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.376052104,
+      "score": 0.376047128,
       "source_file": "CLAUDE.md",
       "status": "tentative",
       "uses": 1
@@ -38,7 +38,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 2.354369459,
+      "score": 2.354338304,
       "source_file": "internal/config/config.go",
       "status": "preferred",
       "uses": 3
@@ -54,13 +54,13 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 0.376052104,
+      "score": 0.376047128,
       "source_file": "configs/config.yaml",
       "status": "tentative",
       "uses": 1
     },
     "deployments_docker_compose_app_service": {
-      "code_fingerprint": "3c0c54d8185205a5c4cbcb889b697673b8d6e5f0c9e1afb35eb0f495d89da9cc",
+      "code_fingerprint": "ed6f65686c230f5de76c3e4bb103d27cf767355fc29154ee01ee9d465e3c9d79",
       "label": "PromoGo Application Service",
       "last": "2026-09-09T07:41:54.364822+00:00",
       "provenance": [
@@ -70,13 +70,13 @@
           "q": "Почему такая ошибка при make redeploy? Error response from daemon: failed to set up container networking: Bind for 0.0.0.0:8080 failed: port is already allocated"
         }
       ],
-      "score": 0.999946847,
+      "score": 0.999933615,
       "source_file": "deployments/docker-compose.yml",
       "status": "tentative",
       "uses": 1
     },
     "deployments_docker_compose_local_stack": {
-      "code_fingerprint": "3c0c54d8185205a5c4cbcb889b697673b8d6e5f0c9e1afb35eb0f495d89da9cc",
+      "code_fingerprint": "ed6f65686c230f5de76c3e4bb103d27cf767355fc29154ee01ee9d465e3c9d79",
       "label": "Docker Compose Local Stack",
       "last": "2026-09-09T07:41:54.364822+00:00",
       "provenance": [
@@ -96,7 +96,7 @@
           "q": "Создай для нашего проекта README.md"
         }
       ],
-      "score": 2.365305051,
+      "score": 2.365273752,
       "source_file": "deployments/docker-compose.yml",
       "status": "preferred",
       "uses": 3
@@ -117,7 +117,7 @@
           "q": "Давай обсудим данные дополнения. На мой взгляд это необходимо сделать"
         }
       ],
-      "score": 0.759726407,
+      "score": 0.759716354,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -138,7 +138,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.759222475,
+      "score": 0.759212429,
       "source_file": "Full-scope.md",
       "status": "preferred",
       "uses": 2
@@ -154,7 +154,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.384382921,
+      "score": 0.384377834,
       "source_file": "Idea.md",
       "status": "tentative",
       "uses": 1
@@ -170,7 +170,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.9893061,
+      "score": 0.989293009,
       "source_file": "internal/domain/rbac.go",
       "status": "tentative",
       "uses": 1
@@ -196,7 +196,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 1.739657161,
+      "score": 1.739634141,
       "source_file": "internal/httpserver/middleware.go",
       "status": "preferred",
       "uses": 3
@@ -212,7 +212,7 @@
           "q": "Давай поднимем версию Golang. Так же составь промт по все изменениям, которые ты ранее выявил и предложил."
         }
       ],
-      "score": 0.9893061,
+      "score": 0.989293009,
       "source_file": "internal/httpserver/openapi_parity_test.go",
       "status": "tentative",
       "uses": 1
@@ -233,7 +233,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.750645906,
+      "score": 0.750635973,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -254,7 +254,7 @@
           "q": "Есть ли на данный момент регистрация и авторизация? Роли пользователей?"
         }
       ],
-      "score": 0.750645906,
+      "score": 0.750635973,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -275,7 +275,7 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 0.759222475,
+      "score": 0.759212429,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
@@ -296,13 +296,13 @@
           "q": "Что на данный момент не хватает в нашем проекте?"
         }
       ],
-      "score": 1.364145655,
+      "score": 1.364127604,
       "source_file": "knowledge/Project Questions.md",
       "status": "preferred",
       "uses": 2
     },
     "readme_api": {
-      "code_fingerprint": "c3abc9ac3ac000e181c08f2c7ccf0f0a6d375f65b40f2fe81c5abbc1d396fcb3",
+      "code_fingerprint": "12087324386db5346aaef33052602d0a8bd2531cdaa47aeb58127e9a85b22bce",
       "label": "API",
       "last": "2026-07-29T22:35:50.165372+00:00",
       "provenance": [
@@ -312,13 +312,13 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 0.384382921,
+      "score": 0.384377834,
       "source_file": "README.md",
       "status": "tentative",
       "uses": 1
     },
     "readme_promogo": {
-      "code_fingerprint": "c3abc9ac3ac000e181c08f2c7ccf0f0a6d375f65b40f2fe81c5abbc1d396fcb3",
+      "code_fingerprint": "12087324386db5346aaef33052602d0a8bd2531cdaa47aeb58127e9a85b22bce",
       "label": "PromoGo",
       "last": "2026-09-08T20:16:33.656954+00:00",
       "provenance": [
@@ -333,7 +333,7 @@
           "q": "Расскажи про наш проект для инвесторов. Попробуй донести цель данного проекта. Постарайся сделать это кратко. Расскажи что сделано, что планируется в будущем"
         }
       ],
-      "score": 1.373394175,
+      "score": 1.373376002,
       "source_file": "README.md",
       "status": "preferred",
       "uses": 2

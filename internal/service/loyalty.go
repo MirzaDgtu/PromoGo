@@ -14,7 +14,16 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 	"github.com/MirzaDgtu/PromoGo/internal/mechanicbuild"
+	"github.com/MirzaDgtu/PromoGo/internal/notifytemplates"
 )
+
+// outboxDedupeKey mirrors the ledger's own idempotency key
+// (store, type, external_tx_id) — see domain.TransactionRepository —
+// so a notification can never be enqueued twice for the same logical
+// ledger write, the same way the write itself can never be posted twice.
+func outboxDedupeKey(storeID int64, txType domain.TransactionType, externalTxID string) string {
+	return fmt.Sprintf("%d:%s:%s", storeID, txType, externalTxID)
+}
 
 // AntiFraudConfig bounds LoyaltyService's redemption-side anti-fraud check
 // (see DEC-013). It is a deliberately narrow view of the application-wide
@@ -31,9 +40,12 @@ type AntiFraudConfig struct {
 }
 
 // LoyaltyService is the core loyalty-engine use case: it loads state, runs
-// the store's configured domain.Mechanic, posts the transaction and balance
-// change atomically via LedgerRepository, and best-effort notifies the
-// client.
+// the store's configured domain.Mechanic, and posts the transaction,
+// balance change, and any resulting notification atomically via
+// LedgerRepository — see domain.LedgerRepository's doc comment for the
+// transactional-outbox guarantee this relies on instead of calling a
+// domain.NotificationChannel directly (an outboxWorker delivers queued
+// notifications independently; see internal/service/outbox_worker.go).
 type LoyaltyService struct {
 	log       *slog.Logger
 	clients   domain.ClientRepository
@@ -41,7 +53,6 @@ type LoyaltyService struct {
 	balances  domain.BalanceRepository
 	ledger    domain.LedgerRepository
 	configs   domain.LoyaltyConfigRepository
-	notifier  domain.NotificationChannel
 	antiFraud AntiFraudConfig
 }
 
@@ -53,7 +64,6 @@ func New(
 	balances domain.BalanceRepository,
 	ledger domain.LedgerRepository,
 	configs domain.LoyaltyConfigRepository,
-	notifier domain.NotificationChannel,
 	antiFraud AntiFraudConfig,
 ) *LoyaltyService {
 	return &LoyaltyService{
@@ -63,7 +73,6 @@ func New(
 		balances:  balances,
 		ledger:    ledger,
 		configs:   configs,
-		notifier:  notifier,
 		antiFraud: antiFraud,
 	}
 }
@@ -154,20 +163,22 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 	}
 	tx.PointsDelta = pointsEarned
 
-	posted, balance, err := s.ledger.Post(ctx, tx)
+	var notify *domain.NotificationOutboxEntry
+	if pointsEarned > 0 {
+		rendered := notifytemplates.AccrualCredited(pointsEarned)
+		notify = &domain.NotificationOutboxEntry{
+			ClientID: client.ID, TemplateID: rendered.TemplateID, TemplateVersion: rendered.Version, Message: rendered.Message,
+			DedupeKey: outboxDedupeKey(req.StoreID, domain.TransactionAccrual, req.ExternalTxID),
+		}
+	}
+
+	posted, balance, err := s.ledger.Post(ctx, tx, notify)
 	if errors.Is(err, domain.ErrConflict) {
 		// Lost a race with a concurrent replay of the same webhook.
 		return s.replayedAccrue(ctx, req.StoreID, req.ExternalTxID, req.Phone, req.Amount)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("accrue: post transaction: %w", err)
-	}
-
-	if pointsEarned > 0 && s.notifier != nil {
-		msg := fmt.Sprintf("Вам начислено %d баллов", pointsEarned)
-		if err := s.notifier.Send(ctx, client.ID, msg); err != nil {
-			s.log.WarnContext(ctx, "send accrual notification", "client_id", client.ID, "error", err)
-		}
 	}
 
 	return &AccrueResult{ClientID: client.ID, PointsEarned: posted.PointsDelta, Balance: balance.Points}, nil
@@ -313,19 +324,18 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 		RuleVersion:        &cfg.Version,
 	}
 
-	posted, newBalance, err := s.ledger.PostRedeemChecked(ctx, tx, cfg.MinBalanceToRedeem, s.antiFraud.DailyRedeemPointsLimit, s.antiFraud.DailyRedeemWindow)
+	redeemRendered := notifytemplates.RedeemDebited(points)
+	notify := &domain.NotificationOutboxEntry{
+		ClientID: req.ClientID, TemplateID: redeemRendered.TemplateID, TemplateVersion: redeemRendered.Version, Message: redeemRendered.Message,
+		DedupeKey: outboxDedupeKey(req.StoreID, domain.TransactionRedeem, req.ExternalTxID),
+	}
+
+	posted, newBalance, err := s.ledger.PostRedeemChecked(ctx, tx, cfg.MinBalanceToRedeem, s.antiFraud.DailyRedeemPointsLimit, s.antiFraud.DailyRedeemWindow, notify)
 	if errors.Is(err, domain.ErrConflict) {
 		return s.replayedRedeem(ctx, req.StoreID, req.ExternalTxID, req.ClientID, req.Amount, req.Points)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("redeem: post transaction: %w", err)
-	}
-
-	if s.notifier != nil {
-		msg := fmt.Sprintf("Списано %d баллов", -posted.PointsDelta)
-		if err := s.notifier.Send(ctx, req.ClientID, msg); err != nil {
-			s.log.WarnContext(ctx, "send redeem notification", "client_id", req.ClientID, "error", err)
-		}
 	}
 
 	return &RedeemResult{PointsRedeemed: -posted.PointsDelta, Balance: newBalance.Points}, nil
@@ -417,19 +427,20 @@ func (s *LoyaltyService) Refund(ctx context.Context, req RefundRequest) (*Refund
 		OriginalTransactionID: &original.ID,
 	}
 
-	posted, updatedOriginal, balance, err := s.ledger.PostRefund(ctx, refundTx)
+	buildNotify := func(pointsDelta int64) *domain.NotificationOutboxEntry {
+		rendered := notifytemplates.RefundAdjusted(pointsDelta)
+		return &domain.NotificationOutboxEntry{
+			ClientID: original.ClientID, TemplateID: rendered.TemplateID, TemplateVersion: rendered.Version, Message: rendered.Message,
+			DedupeKey: outboxDedupeKey(req.StoreID, domain.TransactionRefund, req.ExternalTxID),
+		}
+	}
+
+	posted, updatedOriginal, balance, err := s.ledger.PostRefund(ctx, refundTx, buildNotify)
 	if errors.Is(err, domain.ErrConflict) {
 		return s.replayedRefund(ctx, req.StoreID, req.ExternalTxID, original.ID, req.Amount)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("refund: post transaction: %w", err)
-	}
-
-	if s.notifier != nil {
-		msg := fmt.Sprintf("Возврат: скорректировано %d баллов", posted.PointsDelta)
-		if err := s.notifier.Send(ctx, posted.ClientID, msg); err != nil {
-			s.log.WarnContext(ctx, "send refund notification", "client_id", posted.ClientID, "error", err)
-		}
 	}
 
 	return &RefundResult{
