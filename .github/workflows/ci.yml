@@ -154,6 +154,121 @@ jobs:
       - name: re-apply migrations
         run: go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR postgres "$DATABASE_URL" up
 
+  migration-deploy-model:
+    name: migrations as a separate deploy step (expand/migrate/contract)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: promogo
+          POSTGRES_PASSWORD: promogo
+          POSTGRES_DB: promogo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U promogo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MIGRATIONS_DIR: migrations/sql
+      DATABASE_URL: postgres://promogo:promogo@localhost:5432/promogo?sslmode=disable
+      GOOSE_VERSION: v3.27.3
+      PROMOGO_POSTGRES_HOST: localhost
+      PROMOGO_POSTGRES_PORT: "5432"
+      PROMOGO_POSTGRES_USER: promogo
+      PROMOGO_POSTGRES_PASSWORD: promogo
+      PROMOGO_POSTGRES_DBNAME: promogo
+      PROMOGO_REDIS_ADDR: localhost:6379
+      PROMOGO_APP_SKIP_STARTUP_MIGRATIONS: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build promogo
+        run: go build -o /tmp/promogo ./cmd/promogo
+
+      # This is the deploy-time step: applies the schema exactly once, out
+      # of band, before any replica of the new version starts — the
+      # decoupling this job exists to prove (see AppConfig.
+      # SkipStartupMigrations and docs/deployment.md).
+      - name: promogo migrate (the separate deploy step)
+        run: /tmp/promogo migrate
+
+      # A replica started with SkipStartupMigrations=true must never
+      # attempt to apply the schema itself — it only verifies the schema
+      # migrate already applied is current (internal/migrate.Verify) and
+      # serves traffic. Two replicas starting concurrently against an
+      # already-migrated schema, both passing /readyz with no migration
+      # attempted by either, is the concrete "no re-migration race"
+      # guarantee this job checks.
+      - name: start two replicas concurrently against the already-migrated schema
+        run: |
+          PROMOGO_HTTP_PORT=18081 /tmp/promogo > /tmp/replica1.log 2>&1 &
+          echo $! > /tmp/replica1.pid
+          PROMOGO_HTTP_PORT=18082 /tmp/promogo > /tmp/replica2.log 2>&1 &
+          echo $! > /tmp/replica2.pid
+
+          for port in 18081 18082; do
+            for i in $(seq 1 20); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$port/readyz" || true)
+              [ "$code" = "200" ] && break
+              sleep 0.5
+            done
+            if [ "$code" != "200" ]; then
+              echo "replica on port $port never became ready (last status: $code)"
+              echo "--- replica1.log ---"; cat /tmp/replica1.log
+              echo "--- replica2.log ---"; cat /tmp/replica2.log
+              exit 1
+            fi
+            echo "replica on port $port: /readyz 200"
+          done
+
+          kill "$(cat /tmp/replica1.pid)" "$(cat /tmp/replica2.pid)"
+
+      - name: verify a stale schema fails startup instead of serving silently
+        run: |
+          go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR postgres "$DATABASE_URL" down
+
+          set +e
+          PROMOGO_HTTP_PORT=18083 /tmp/promogo > /tmp/stale.log 2>&1
+          code=$?
+          set -e
+
+          if [ "$code" -eq 0 ]; then
+            echo "expected promogo to fail startup against a schema with a pending migration, but it exited 0"
+            cat /tmp/stale.log
+            exit 1
+          fi
+          if ! grep -q "pending migrations exist" /tmp/stale.log; then
+            echo "expected the pending-migrations error, got:"
+            cat /tmp/stale.log
+            exit 1
+          fi
+          echo "startup correctly refused a stale schema:"
+          cat /tmp/stale.log
+
+          # Restore for a clean job (belt-and-suspenders; the service
+          # container is discarded with the job regardless).
+          go run github.com/pressly/goose/v3/cmd/goose@${{ env.GOOSE_VERSION }} -dir $MIGRATIONS_DIR postgres "$DATABASE_URL" up
+
   container:
     name: container build / image scan / SBOM
     runs-on: ubuntu-latest

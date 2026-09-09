@@ -19,8 +19,11 @@ func main() {
 		case "bootstrap-admin":
 			runBootstrapAdmin(os.Args[2:])
 			return
+		case "migrate":
+			runMigrate()
+			return
 		default:
-			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  promogo                  run the HTTP server\n  promogo bootstrap-admin  create the first platform_admin (see -h)\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "unknown command %q\n\nusage:\n  promogo                  run the HTTP server\n  promogo bootstrap-admin  create the first platform_admin (see -h)\n  promogo migrate          apply pending schema migrations and exit\n", os.Args[1])
 			os.Exit(2)
 		}
 	}

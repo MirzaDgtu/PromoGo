@@ -33,6 +33,17 @@ type Config struct {
 type AppConfig struct {
 	Name string `mapstructure:"name"`
 	Env  string `mapstructure:"env"`
+
+	// SkipStartupMigrations, when true, makes app.New verify the schema has
+	// no pending migrations (internal/migrate.Verify) instead of applying
+	// them (internal/migrate.Run). Required for a multi-replica production
+	// deployment: migrations become a separate step (`promogo migrate`, run
+	// once before any replica of the new version starts — see
+	// docs/deployment.md) instead of a race every replica independently
+	// enters at startup. Defaults to false so a single-instance/dev
+	// deployment (docker-compose) keeps auto-migrating, matching this
+	// repo's existing behavior.
+	SkipStartupMigrations bool `mapstructure:"skip_startup_migrations"`
 }
 
 // HTTPConfig configures the application's HTTP server.
@@ -394,6 +405,7 @@ func loadDotEnv(path string) error {
 func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.name", "promogo")
 	v.SetDefault("app.env", "development")
+	v.SetDefault("app.skip_startup_migrations", false)
 
 	v.SetDefault("http.host", "0.0.0.0")
 	v.SetDefault("http.port", 8080)

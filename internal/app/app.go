@@ -59,9 +59,22 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("connect postgres: %w", err)
 	}
 
-	if err := migrate.Run(ctx, cfg.Postgres.DSN()); err != nil {
-		pgPool.Close()
-		return nil, fmt.Errorf("run migrations: %w", err)
+	// SkipStartupMigrations (production/multi-replica deployments — see
+	// AppConfig's doc comment) means schema changes are applied once, out
+	// of band, by `promogo migrate` before any replica of this version
+	// starts; this replica only verifies that already happened rather than
+	// re-running it. Development (docker-compose, the default) keeps the
+	// original single-instance behavior of applying inline.
+	if cfg.App.SkipStartupMigrations {
+		if err := migrate.Verify(ctx, cfg.Postgres.DSN()); err != nil {
+			pgPool.Close()
+			return nil, fmt.Errorf("verify migrations: %w", err)
+		}
+	} else {
+		if err := migrate.Run(ctx, cfg.Postgres.DSN()); err != nil {
+			pgPool.Close()
+			return nil, fmt.Errorf("run migrations: %w", err)
+		}
 	}
 
 	redisOpts := &redis.Options{Addr: cfg.Redis.Addr, Password: cfg.Redis.Password, DB: cfg.Redis.DB}

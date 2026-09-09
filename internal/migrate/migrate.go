@@ -1,6 +1,11 @@
 // Package migrate applies PromoGo's embedded goose SQL migrations against
-// Postgres at startup, so a successful app.New (and therefore a healthy
-// /readyz) implies the schema is actually current — see internal/app/app.go.
+// Postgres. Run is the historical startup-coupled path (still the default —
+// see internal/app/app.go and AppConfig.SkipStartupMigrations); Verify is
+// the read-only counterpart a replica uses instead when migrations are
+// applied as a separate deployment step (`promogo migrate`, see
+// cmd/promogo/migrate.go) — expand/migrate/contract deployments need the
+// schema change to land once, out of band, before any replica serving the
+// new code starts, not re-applied redundantly by every replica.
 package migrate
 
 import (
@@ -45,6 +50,37 @@ func Run(ctx context.Context, dsn string) error {
 
 	if _, err := provider.Up(ctx); err != nil {
 		return fmt.Errorf("apply migrations: %w", err)
+	}
+
+	return nil
+}
+
+// Verify reports an error if the database at dsn has any pending migration
+// this binary knows about — i.e. the schema was not brought current by a
+// separate `promogo migrate` step before this replica started. It takes no
+// lock and applies nothing; a replica that fails this check should fail
+// startup (and therefore /readyz) rather than serve traffic against a
+// schema it doesn't match, the same safety Run's callers relied on when
+// migrations were applied inline.
+func Verify(ctx context.Context, dsn string) error {
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return fmt.Errorf("open migration connection: %w", err)
+	}
+	defer db.Close()
+
+	provider, err := goose.NewProvider(goose.DialectPostgres, db, migrations.FS)
+	if err != nil {
+		return fmt.Errorf("create migration provider: %w", err)
+	}
+	defer provider.Close()
+
+	pending, err := provider.HasPending(ctx)
+	if err != nil {
+		return fmt.Errorf("check pending migrations: %w", err)
+	}
+	if pending {
+		return fmt.Errorf("database schema is behind: pending migrations exist (run `promogo migrate` first)")
 	}
 
 	return nil
