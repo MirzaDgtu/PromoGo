@@ -840,6 +840,37 @@ tags:
   review/rollout-checklist sign-off выполняются людьми и фиксируются
   отдельными DEC по мере завершения каждого пункта.
 
+### DEC-024 — Explicit override DEC-023 для отдельного цикла Admin Web
+
+- Статус: принято
+- Дата: 2026-09-10
+- Владелец: владелец проекта (явный запрос в сессии 2026-09-10)
+- Связанные вопросы: [[#DEC-023]], `docs/admin-web-plan.md`,
+  `docs/admin-web-implementation-prompt.md`
+- Контекст: [[#DEC-023]] запрещает начинать новую функциональность до
+  закрытия release gate (ADR 0001-0003 sign-off, legal-minimum.md,
+  human security review verdict, rollout-checklist thresholds). Ни один
+  из этих четырёх пунктов на момент этого решения не закрыт. Владелец
+  проекта явно запросил начать реализацию `docs/admin-web-implementation-prompt.md`
+  и подтвердил это как отдельный, специально разрешённый цикл разработки,
+  не дожидаясь закрытия остальных пунктов release gate для core loyalty.
+- Решение: freeze по [[#DEC-023]] остаётся в силе для core loyalty
+  функциональности (release gate для RC pilot). Для работ по Admin Web,
+  описанных в `docs/admin-web-plan.md` и
+  `docs/admin-web-implementation-prompt.md`, freeze явно снят как
+  отдельное исключение, разрешённое владельцем проекта. Ограничения
+  из implementation-prompt (не трогать mobile/Flutter, не принимать
+  решения владельца проекта за него, останавливаться на нерешённых
+  Q-P0/Q-P1 вопросах вместо угадывания) остаются в силе.
+- Альтернативы: дождаться закрытия всех 4 пунктов release gate —
+  отклонено самим владельцем проекта, так как Admin Web не пересекается
+  с core loyalty кодом, ушедшим на review, и не увеличивает diff
+  относительно того, что реально проверяется в rounds 1-3.
+- Последствия и миграция: Admin Web milestone работы могут начинаться
+  немедленно по `docs/admin-web-implementation-prompt.md`. Milestone 3
+  (equipment/1С) и любые изменения core loyalty кода по-прежнему требуют
+  снятия [[#DEC-023]] или отдельного явного разрешения.
+
 ## Шаблон нового решения
 
 ### DEC-NNN — Короткое название
