@@ -205,6 +205,46 @@ func TestHandleIssueQR_CooldownReturns429WithRetryAfter(t *testing.T) {
 	}
 }
 
+// TestResolveQRConsumePrincipal_PerKeyNotPerStore guards Phase 3's
+// consume-throttling-identity requirement (docs/audit-remediation-prompt.md):
+// two different rotatable API keys for the same store must throttle
+// independently (a per-key principal, not a per-store one that would let
+// one key's cooldown block a completely different key), while a legacy
+// stores.api_key_hash-authenticated request — which has no per-key
+// identity — falls back to a store-scoped principal.
+func TestResolveQRConsumePrincipal_PerKeyNotPerStore(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/clients/resolve-qr", nil)
+
+	keyA := &domain.StoreAPIKey{ID: 1, StoreID: 1, KeyID: "key-a"}
+	keyB := &domain.StoreAPIKey{ID: 2, StoreID: 1, KeyID: "key-b"}
+
+	ctxA := context.WithValue(req.Context(), storeAPIKeyContextKey{}, keyA)
+	ctxB := context.WithValue(req.Context(), storeAPIKeyContextKey{}, keyB)
+	principalA := resolveQRConsumePrincipal(req.WithContext(ctxA), 1)
+	principalB := resolveQRConsumePrincipal(req.WithContext(ctxB), 1)
+	if principalA == principalB {
+		t.Fatalf("two different API keys for the same store produced the same consume principal %q — throttling would be per-store, not per-key", principalA)
+	}
+
+	// Same key, same store, called again: must be the same principal (so
+	// its own cooldown actually applies to repeat use of that key).
+	principalAAgain := resolveQRConsumePrincipal(req.WithContext(ctxA), 1)
+	if principalAAgain != principalA {
+		t.Fatalf("resolveQRConsumePrincipal not stable for the same key: %q vs %q", principalA, principalAAgain)
+	}
+
+	// Legacy (no multi-key StoreAPIKey resolved): falls back to per-store.
+	ctxLegacy := context.WithValue(req.Context(), storeAPIKeyContextKey{}, (*domain.StoreAPIKey)(nil))
+	legacyStore1 := resolveQRConsumePrincipal(req.WithContext(ctxLegacy), 1)
+	legacyStore2 := resolveQRConsumePrincipal(req.WithContext(ctxLegacy), 2)
+	if legacyStore1 == legacyStore2 {
+		t.Fatalf("legacy-authenticated requests for two different stores produced the same principal %q", legacyStore1)
+	}
+	if legacyStore1 == principalA {
+		t.Fatalf("legacy store-scoped principal collided with a per-key principal: %q", legacyStore1)
+	}
+}
+
 func TestHandleResolveQR_Success(t *testing.T) {
 	handler, fakes := newTestServer(t)
 	fakes.Stores.byID[1] = &domain.Store{ID: 1, OrganizationID: 1, Name: "Store"}

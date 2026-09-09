@@ -79,9 +79,14 @@ func (s *QRService) IssueQR(ctx context.Context, customerAccountID int64) (paylo
 // ResolveQR atomically consumes payload and returns the store-scoped
 // Client and Balance for the CustomerAccount it was issued to, creating and
 // linking the Client if this is the first time that account has
-// transacted at storeID. consumePrincipal identifies the calling store
-// credential for ResolveQR's own cooldown (independent of the token's
-// one-time-use property) — pass the store API key's KeyID.
+// transacted at storeID. consumePrincipal identifies the calling credential
+// for ResolveQR's own cooldown (independent of the token's one-time-use
+// property) — throttling is per API key when the caller authenticated via
+// a specific rotatable store_api_keys row (multiple keys for the same
+// store are throttled independently), falling back to per-store for a
+// request authenticated via the legacy stores.api_key_hash column, which
+// has no per-key identity to throttle on (see httpserver's
+// resolveQRConsumePrincipal, the only caller).
 //
 // IDOR analysis (DEC-011): payload encodes nothing but an opaque token; the
 // CustomerAccountID it maps to exists only in Redis, keyed by the token's
@@ -98,7 +103,7 @@ func (s *QRService) ResolveQR(ctx context.Context, storeID int64, payload, consu
 		return nil, nil, fmt.Errorf("resolve qr: check consume cooldown: %w", err)
 	}
 
-	customerAccountID, err := s.store.consume(ctx, payload)
+	customerAccountID, tokenHash, err := s.store.claim(ctx, payload)
 	if errors.Is(err, errQRMalformed) {
 		return nil, nil, ErrQRMalformed
 	}
@@ -106,31 +111,55 @@ func (s *QRService) ResolveQR(ctx context.Context, storeID int64, payload, consu
 		return nil, nil, ErrQRGone
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("resolve qr: consume token: %w", err)
+		return nil, nil, fmt.Errorf("resolve qr: claim token: %w", err)
+	}
+
+	// Every return path from here on must resolve the claim exactly once:
+	// finalize (permanently consumed — success, or a business-logic reason
+	// that retrying can't fix) or release (a transient/infrastructure
+	// failure — the same QR should still be usable on retry). See
+	// qrStore.claim's doc comment.
+	finalize := func() {
+		if err := s.store.finalize(ctx, tokenHash); err != nil {
+			s.log.WarnContext(ctx, "finalize claimed qr token", "error", err)
+		}
+	}
+	release := func() {
+		if err := s.store.release(ctx, tokenHash); err != nil {
+			s.log.WarnContext(ctx, "release claimed qr token", "error", err)
+		}
 	}
 
 	account, err := s.customerAccounts.GetByID(ctx, customerAccountID)
 	if errors.Is(err, domain.ErrNotFound) {
 		// The token was valid, but the account it named no longer exists —
 		// as safe and uninformative to the caller as any other gone token.
+		// This will never succeed on retry, so finalize rather than release.
+		finalize()
 		return nil, nil, ErrQRGone
 	}
 	if err != nil {
+		release()
 		return nil, nil, fmt.Errorf("resolve qr: load customer account: %w", err)
 	}
 	if account.Status != domain.CustomerAccountActive {
+		finalize()
 		return nil, nil, ErrQRGone
 	}
 
 	client, err := s.resolveOrCreateClientForAccount(ctx, storeID, account)
 	if err != nil {
+		release()
 		return nil, nil, fmt.Errorf("resolve qr: resolve client: %w", err)
 	}
 
 	balance, err := s.balances.Get(ctx, client.ID)
 	if err != nil {
+		release()
 		return nil, nil, fmt.Errorf("resolve qr: load balance: %w", err)
 	}
+
+	finalize()
 
 	if s.audit != nil {
 		clientID := client.ID

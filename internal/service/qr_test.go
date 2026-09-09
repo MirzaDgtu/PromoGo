@@ -255,6 +255,89 @@ func TestQR_StoreIsolation_SameAccountDifferentStoresGetDifferentClients(t *test
 	}
 }
 
+// TestQR_TransientFailureReleasesTokenForRetry guards Phase 3's
+// claim/finalize/release requirement (docs/audit-remediation-prompt.md):
+// a QR must not be irreversibly destroyed by a GETDEL-style consume before
+// the database work behind it succeeds. A transient failure partway
+// through resolving (here, BalanceRepository.Get) must release the claimed
+// token back to usable rather than losing it, so retrying with the exact
+// same QR succeeds.
+func TestQR_TransientFailureReleasesTokenForRetry(t *testing.T) {
+	svc, _, accounts, balances, _, _ := newQRTestService(t, QRConfig{TTL: time.Minute, IssueCooldown: 0, ConsumeCooldown: 0})
+	acc := seedActiveAccount(t, accounts, "+79261111119")
+
+	payload, _, _, err := svc.IssueQR(context.Background(), acc.ID)
+	if err != nil {
+		t.Fatalf("IssueQR() error = %v", err)
+	}
+
+	balances.failNextGet = errors.New("simulated transient database failure")
+	_, _, err = svc.ResolveQR(context.Background(), 1, payload, "p1")
+	if err == nil || errors.Is(err, ErrQRGone) {
+		t.Fatalf("first ResolveQR() (simulated failure): error = %v, want a non-ErrQRGone error", err)
+	}
+
+	// The same QR must still work — the failure was transient, not the QR
+	// being consumed.
+	client, balance, err := svc.ResolveQR(context.Background(), 1, payload, "p2")
+	if err != nil {
+		t.Fatalf("retry ResolveQR() after transient failure: error = %v, want success (token should have been released, not consumed)", err)
+	}
+	if client == nil || balance == nil {
+		t.Fatalf("retry ResolveQR() returned nil client/balance")
+	}
+}
+
+// TestQR_BusinessFailureFinalizesTokenNoRetry is the counterpart to
+// TestQR_TransientFailureReleasesTokenForRetry: a definitive business-logic
+// rejection (the account the token names is blocked) must finalize
+// (permanently consume) the claim rather than release it — retrying can
+// never succeed, and leaving the QR usable would just let a caller keep
+// probing a blocked account's token.
+func TestQR_BusinessFailureFinalizesTokenNoRetry(t *testing.T) {
+	svc, _, accounts, _, _, _ := newQRTestService(t, QRConfig{TTL: time.Minute, IssueCooldown: 0, ConsumeCooldown: 0})
+	acc := seedActiveAccount(t, accounts, "+79261111120")
+
+	payload, _, _, err := svc.IssueQR(context.Background(), acc.ID)
+	if err != nil {
+		t.Fatalf("IssueQR() error = %v", err)
+	}
+	acc.Status = domain.CustomerAccountBlocked
+
+	_, _, err = svc.ResolveQR(context.Background(), 1, payload, "p1")
+	if !errors.Is(err, ErrQRGone) {
+		t.Fatalf("first ResolveQR() for blocked account: error = %v, want ErrQRGone", err)
+	}
+
+	acc.Status = domain.CustomerAccountActive
+	_, _, err = svc.ResolveQR(context.Background(), 1, payload, "p2")
+	if !errors.Is(err, ErrQRGone) {
+		t.Fatalf("retry ResolveQR() after account reactivated: error = %v, want ErrQRGone (token was finalized, not released, on the first attempt)", err)
+	}
+}
+
+// TestQR_RedisDownReturnsErrorNotPanic guards the Redis-failure case Phase
+// 3 requires test coverage for: every qrStore operation must surface a
+// plain error when Redis is unreachable, not panic or hang.
+func TestQR_RedisDownReturnsErrorNotPanic(t *testing.T) {
+	svc, _, accounts, _, _, mr := newQRTestService(t, defaultQRConfig())
+	acc := seedActiveAccount(t, accounts, "+79261111121")
+
+	payload, _, _, err := svc.IssueQR(context.Background(), acc.ID)
+	if err != nil {
+		t.Fatalf("IssueQR() error = %v", err)
+	}
+
+	mr.Close()
+
+	if _, _, _, err := svc.IssueQR(context.Background(), acc.ID); err == nil {
+		t.Fatal("IssueQR() with Redis down: error = nil, want an error")
+	}
+	if _, _, err := svc.ResolveQR(context.Background(), 1, payload, "p1"); err == nil {
+		t.Fatal("ResolveQR() with Redis down: error = nil, want an error")
+	}
+}
+
 func TestQR_GoneAccountDoesNotLeakExistence(t *testing.T) {
 	svc, _, accounts, _, _, _ := newQRTestService(t, defaultQRConfig())
 	acc := seedActiveAccount(t, accounts, "+79261111118")

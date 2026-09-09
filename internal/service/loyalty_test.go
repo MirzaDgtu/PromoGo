@@ -120,9 +120,13 @@ func (f *fakeTxRepo) ListByClientIDs(context.Context, []int64, int, *domain.Tran
 	return nil, nil
 }
 
-// fakeBalanceRepo is an in-memory domain.BalanceRepository.
+// fakeBalanceRepo is an in-memory domain.BalanceRepository. failNextGet, if
+// set, is returned once by the next Get call (then cleared) — lets a test
+// simulate a single transient infrastructure failure (e.g. QR resolve's
+// release-and-retry path) without a real database.
 type fakeBalanceRepo struct {
-	points map[int64]int64
+	points      map[int64]int64
+	failNextGet error
 }
 
 func newFakeBalanceRepo() *fakeBalanceRepo {
@@ -130,6 +134,11 @@ func newFakeBalanceRepo() *fakeBalanceRepo {
 }
 
 func (f *fakeBalanceRepo) Get(_ context.Context, clientID int64) (*domain.Balance, error) {
+	if f.failNextGet != nil {
+		err := f.failNextGet
+		f.failNextGet = nil
+		return nil, err
+	}
 	return &domain.Balance{ClientID: clientID, Points: f.points[clientID]}, nil
 }
 

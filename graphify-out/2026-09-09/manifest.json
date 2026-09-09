@@ -50,8 +50,8 @@
     "semantic_hash": ""
   },
   "internal/domain/loyalty_config.go": {
-    "mtime": 1788908103.5192003,
-    "ast_hash": "7b59630822b8bfaafdb9745c87e91acf",
+    "mtime": 1788918639.081715,
+    "ast_hash": "69be226f3d19fd357af6aa2720526489",
     "semantic_hash": ""
   },
   "internal/domain/mechanic.go": {
@@ -70,8 +70,8 @@
     "semantic_hash": "3047f87958cf6a107e2400dc175f32b1"
   },
   "internal/domain/transaction.go": {
-    "mtime": 1788907803.786539,
-    "ast_hash": "b8e3e94cc9eed5d42b83af1ae260f125",
+    "mtime": 1788918667.4519737,
+    "ast_hash": "ae7f41f4e31853b57f1f6f1e702ceceb",
     "semantic_hash": ""
   },
   "internal/httpserver/clients.go": {
@@ -150,14 +150,14 @@
     "semantic_hash": ""
   },
   "internal/repository/postgres/ledger_repository.go": {
-    "mtime": 1788907912.7533388,
-    "ast_hash": "dc7b417df82640e7ff72dc99a1917abe",
+    "mtime": 1788918694.4148934,
+    "ast_hash": "5f7b53e35dd6826421b6c007a52016b3",
     "semantic_hash": ""
   },
   "internal/repository/postgres/loyalty_config_repository.go": {
-    "mtime": 1785228217.714832,
-    "ast_hash": "ee3ef8f83a515ce0fb9c26975f6293e7",
-    "semantic_hash": "ee3ef8f83a515ce0fb9c26975f6293e7"
+    "mtime": 1788918661.3987174,
+    "ast_hash": "97285bf983b1dfc7539bfdf1575f6785",
+    "semantic_hash": ""
   },
   "internal/repository/postgres/postgres.go": {
     "mtime": 1785228126.6346238,
@@ -175,13 +175,13 @@
     "semantic_hash": ""
   },
   "internal/service/loyalty.go": {
-    "mtime": 1788907925.055983,
-    "ast_hash": "73dbf62471c270e38cb3cc6ee41de0cb",
+    "mtime": 1788918711.0561018,
+    "ast_hash": "191709593f9d81682699cff687a1da16",
     "semantic_hash": ""
   },
   "internal/service/loyalty_test.go": {
-    "mtime": 1788907946.372212,
-    "ast_hash": "93843bc7c854d3749ba8dd51d16af249",
+    "mtime": 1788918933.8610537,
+    "ast_hash": "b4c6e998b787636dfca8c6998ca222bb",
     "semantic_hash": ""
   },
   "migrations/embed.go": {
@@ -375,8 +375,8 @@
     "semantic_hash": ""
   },
   "internal/domain/audit.go": {
-    "mtime": 1785407729.7253335,
-    "ast_hash": "b7c7f0de10d87781d2b748bcab5e4864",
+    "mtime": 1788918773.3365023,
+    "ast_hash": "bded5968e4167ec613f1b5b0e4ee1834",
     "semantic_hash": ""
   },
   "internal/domain/customer.go": {
@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/admin_loyaltyconfig.go": {
-    "mtime": 1788908121.509833,
-    "ast_hash": "71af7082e1a8cc27136c98819b165375",
+    "mtime": 1788918773.3365023,
+    "ast_hash": "c2929f68ad9be9974778b2423b97e483",
     "semantic_hash": ""
   },
   "internal/httpserver/admin_organizations.go": {
@@ -660,8 +660,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/admin_route_test.go": {
-    "mtime": 1788908159.138327,
-    "ast_hash": "1b178c3a418608803ca101eb09cab6e2",
+    "mtime": 1788918911.110579,
+    "ast_hash": "cc80e5925b64f7ebd005c83dc9a0147a",
     "semantic_hash": ""
   },
   "internal/httpserver/auth_customer_route_test.go": {
@@ -690,8 +690,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/routes.go": {
-    "mtime": 1785408282.611406,
-    "ast_hash": "9989621b6d7512054ea7212fcd1dabbd",
+    "mtime": 1788918787.2792594,
+    "ast_hash": "55e1234b9682c3d7a9b84b92e4d17e3f",
     "semantic_hash": ""
   },
   "internal/httpserver/server_test.go": {
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/testsupport_test.go": {
-    "mtime": 1788908018.9264228,
-    "ast_hash": "37036dcc73d1e3b2a7ee9bbce4592a16",
+    "mtime": 1788918832.2768793,
+    "ast_hash": "92e25b53c93b44a457c3ad2ce37fc660",
     "semantic_hash": ""
   },
   "internal/httpserver/transactions_route_test.go": {
@@ -735,8 +735,8 @@
     "semantic_hash": ""
   },
   "docs/openapi/openapi.yaml": {
-    "mtime": 1788900589.5269217,
-    "ast_hash": "d7afe0f15cfcc4971466dba086852f22",
+    "mtime": 1788918870.8453872,
+    "ast_hash": "ca03ad950aa18677cd2ace76bb64ccd2",
     "semantic_hash": ""
   },
   "internal/domain/customer_device.go": {
@@ -852,6 +852,11 @@
   "migrations/sql/00025_refund_replay_snapshot.sql": {
     "mtime": 1788907798.5472505,
     "ast_hash": "b301cacbd97425b4fc823a314270f847",
+    "semantic_hash": ""
+  },
+  "migrations/sql/00026_loyalty_config_versioning.sql": {
+    "mtime": 1788918604.4307227,
+    "ast_hash": "b3805376d269ce29ff091bce320cad4c",
     "semantic_hash": ""
   }
 }

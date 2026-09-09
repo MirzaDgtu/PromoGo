@@ -50,6 +50,21 @@ func handleIssueQR(qr *service.QRService, log *slog.Logger) http.HandlerFunc {
 	}
 }
 
+// resolveQRConsumePrincipal returns the identity ResolveQR's consume
+// cooldown throttles on (DEC-011 / docs/audit-remediation-prompt.md Phase
+// 3): the authenticating store API key's KeyID when the request used a
+// specific rotatable key from store_api_keys — so two different keys for
+// the same store are throttled independently, matching per-key intent —
+// or a store-scoped fallback for a request authenticated via the legacy
+// stores.api_key_hash column, which carries no per-key identity to
+// throttle on.
+func resolveQRConsumePrincipal(r *http.Request, storeID int64) string {
+	if apiKey, ok := storeAPIKeyFromContext(r.Context()); ok && apiKey != nil {
+		return "key:" + apiKey.KeyID
+	}
+	return "store:" + strconv.FormatInt(storeID, 10)
+}
+
 type resolveQRRequestBody struct {
 	Payload string `json:"payload"`
 }
@@ -79,7 +94,7 @@ func handleResolveQR(qr *service.QRService, log *slog.Logger) http.HandlerFunc {
 			return
 		}
 
-		client, balance, err := qr.ResolveQR(r.Context(), store.ID, body.Payload, strconv.FormatInt(store.ID, 10))
+		client, balance, err := qr.ResolveQR(r.Context(), store.ID, body.Payload, resolveQRConsumePrincipal(r, store.ID))
 		switch {
 		case errors.Is(err, service.ErrQRMalformed):
 			writeErrorCode(w, http.StatusBadRequest, "qr_malformed", "malformed qr payload")
