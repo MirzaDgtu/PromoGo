@@ -43,6 +43,14 @@ type Transaction struct {
 	// ID was reused for a materially different request.
 	RequestFingerprint string
 	CreatedAt          time.Time
+	// RuleVersion is the LoyaltyConfig.Version in effect when this
+	// accrual/redeem was posted (see LoyaltyConfigRepository.Upsert and
+	// internal/service/loyalty.go's Accrue/Redeem) — resolvable back to the
+	// exact configuration via LoyaltyConfigRepository.ListHistory, so a past
+	// calculation stays reconstructable after later config changes. nil on
+	// refund rows, which don't consult the mechanic config (see
+	// LedgerRepository.PostRefund).
+	RuleVersion *int64
 
 	// OriginalTransactionID is set only when Type is TransactionRefund: the
 	// ID of the accrual/redeem transaction this refund reverses. nil for

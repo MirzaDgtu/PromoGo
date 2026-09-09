@@ -384,10 +384,11 @@ func (f *fakeLedgerRepo) PostRefund(_ context.Context, refund *domain.Transactio
 type fakeLoyaltyConfigRepo struct {
 	mu      sync.Mutex
 	byStore map[int64]*domain.LoyaltyConfig
+	history map[int64][]*domain.LoyaltyConfigVersion
 }
 
 func newFakeLoyaltyConfigRepo() *fakeLoyaltyConfigRepo {
-	return &fakeLoyaltyConfigRepo{byStore: map[int64]*domain.LoyaltyConfig{}}
+	return &fakeLoyaltyConfigRepo{byStore: map[int64]*domain.LoyaltyConfig{}, history: map[int64][]*domain.LoyaltyConfigVersion{}}
 }
 
 func (f *fakeLoyaltyConfigRepo) GetByStore(_ context.Context, storeID int64) (*domain.LoyaltyConfig, error) {
@@ -400,11 +401,28 @@ func (f *fakeLoyaltyConfigRepo) GetByStore(_ context.Context, storeID int64) (*d
 	return cfg, nil
 }
 
-func (f *fakeLoyaltyConfigRepo) Upsert(_ context.Context, cfg *domain.LoyaltyConfig) error {
+func (f *fakeLoyaltyConfigRepo) Upsert(_ context.Context, cfg *domain.LoyaltyConfig, changedBy *int64) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	var currentVersion int64
+	if existing, ok := f.byStore[cfg.StoreID]; ok {
+		currentVersion = existing.Version
+	}
+	cfg.Version = currentVersion + 1
 	f.byStore[cfg.StoreID] = cfg
+	f.history[cfg.StoreID] = append([]*domain.LoyaltyConfigVersion{{
+		StoreID: cfg.StoreID, Version: cfg.Version, Mechanic: cfg.Mechanic,
+		AccrualPercent: cfg.AccrualPercent, MinPurchaseAmount: cfg.MinPurchaseAmount,
+		MinBalanceToRedeem: cfg.MinBalanceToRedeem, MaxRedeemPercent: cfg.MaxRedeemPercent,
+		PointsExchangeRate: cfg.PointsExchangeRate, ChangedByStaffUserID: changedBy, CreatedAt: time.Now(),
+	}}, f.history[cfg.StoreID]...)
 	return nil
+}
+
+func (f *fakeLoyaltyConfigRepo) ListHistory(_ context.Context, storeID int64) ([]*domain.LoyaltyConfigVersion, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.history[storeID], nil
 }
 
 // --- Organization ---

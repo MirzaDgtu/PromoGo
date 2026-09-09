@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -32,6 +33,33 @@ type LoyaltyConfig struct {
 	// PointsExchangeRate is how much currency one point is worth when
 	// redeemed (e.g. 1 point = 1.00 currency unit).
 	PointsExchangeRate decimal.Decimal
+
+	// Version increments on every Upsert (starting at 1 on first write).
+	// Transaction.RuleVersion snapshots this at accrual/redemption time, so
+	// a past calculation stays reconstructable after later config changes.
+	// Set by LoyaltyConfigRepository.Upsert; ignored on input.
+	Version int64
+}
+
+// LoyaltyConfigVersion is one historical snapshot of a store's
+// LoyaltyConfig, appended by Upsert every time the config changes (see
+// loyalty_config_history). It's the audit/history trail Phase 2 requires:
+// "provide audit, history and rollback for configuration changes."
+type LoyaltyConfigVersion struct {
+	StoreID int64
+	Version int64
+
+	Mechanic           string
+	AccrualPercent     decimal.Decimal
+	MinPurchaseAmount  decimal.Decimal
+	MinBalanceToRedeem int64
+	MaxRedeemPercent   decimal.Decimal
+	PointsExchangeRate decimal.Decimal
+
+	// ChangedByStaffUserID is nil if the write that produced this version
+	// wasn't attributable to a staff principal (e.g. a system migration).
+	ChangedByStaffUserID *int64
+	CreatedAt            time.Time
 }
 
 // Validate checks the numeric invariants a LoyaltyConfig must satisfy
@@ -65,5 +93,16 @@ type LoyaltyConfigRepository interface {
 	// GetByStore returns domain.ErrNotFound if storeID has no configured
 	// loyalty mechanic yet.
 	GetByStore(ctx context.Context, storeID int64) (*LoyaltyConfig, error)
-	Upsert(ctx context.Context, cfg *LoyaltyConfig) error
+	// Upsert writes cfg as storeID's new effective configuration, assigning
+	// it the next Version (1 on first write) and appending this same new
+	// configuration to history under that version — atomically, so a
+	// version is never skipped or duplicated under concurrent writes, and a
+	// transaction's RuleVersion can always be resolved via ListHistory even
+	// after later Upserts change the live row. changedBy is nil if the
+	// write isn't attributable to a staff principal. cfg.Version is set to
+	// the newly assigned version on return.
+	Upsert(ctx context.Context, cfg *LoyaltyConfig, changedBy *int64) error
+	// ListHistory returns storeID's configuration history, newest version
+	// first.
+	ListHistory(ctx context.Context, storeID int64) ([]*LoyaltyConfigVersion, error)
 }

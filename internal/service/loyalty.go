@@ -145,6 +145,7 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 		Amount:             req.Amount,
 		Type:               domain.TransactionAccrual,
 		RequestFingerprint: accrualFingerprint(client.ID, req.Amount),
+		RuleVersion:        &cfg.Version,
 	}
 
 	pointsEarned, err := mechanic.Accrue(ctx, tx, cfg, balanceBefore)
@@ -309,6 +310,7 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 		Type:               domain.TransactionRedeem,
 		PointsDelta:        -points,
 		RequestFingerprint: redeemFingerprint(req.ClientID, req.Amount, req.Points),
+		RuleVersion:        &cfg.Version,
 	}
 
 	posted, newBalance, err := s.ledger.PostRedeemChecked(ctx, tx, cfg.MinBalanceToRedeem, s.antiFraud.DailyRedeemPointsLimit, s.antiFraud.DailyRedeemWindow)

@@ -286,9 +286,14 @@ func (f *fakeConfigRepo) GetByStore(_ context.Context, storeID int64) (*domain.L
 	return f.cfg, nil
 }
 
-func (f *fakeConfigRepo) Upsert(_ context.Context, cfg *domain.LoyaltyConfig) error {
+func (f *fakeConfigRepo) Upsert(_ context.Context, cfg *domain.LoyaltyConfig, _ *int64) error {
+	cfg.Version++
 	f.cfg = cfg
 	return nil
+}
+
+func (f *fakeConfigRepo) ListHistory(_ context.Context, storeID int64) ([]*domain.LoyaltyConfigVersion, error) {
+	return nil, nil
 }
 
 type testDeps struct {
@@ -335,6 +340,47 @@ func pointsConfig(storeID int64) *domain.LoyaltyConfig {
 		MinBalanceToRedeem: 0,
 		MaxRedeemPercent:   decimal.NewFromInt(50),
 		PointsExchangeRate: decimal.NewFromInt(1),
+	}
+}
+
+// TestAccrueAndRedeem_StampRuleVersionFromEffectiveConfig guards Phase 2's
+// rule-versioning requirement (docs/audit-remediation-prompt.md): a posted
+// transaction must record which LoyaltyConfig.Version was in effect, so the
+// calculation stays reconstructable after later config changes.
+func TestAccrueAndRedeem_StampRuleVersionFromEffectiveConfig(t *testing.T) {
+	cfg := pointsConfig(1)
+	cfg.Version = 7
+	deps := newTestService(cfg)
+	ctx := context.Background()
+
+	if _, err := deps.svc.Accrue(ctx, AccrueRequest{
+		StoreID: 1, ExternalTxID: "rcpt-rv-1", Phone: "+70000000200", Amount: decimal.NewFromInt(100),
+	}); err != nil {
+		t.Fatalf("Accrue() error = %v", err)
+	}
+	accrual, err := deps.txs.GetByExternalID(ctx, 1, domain.TransactionAccrual, "rcpt-rv-1")
+	if err != nil {
+		t.Fatalf("GetByExternalID(accrual): %v", err)
+	}
+	if accrual.RuleVersion == nil || *accrual.RuleVersion != 7 {
+		t.Fatalf("accrual RuleVersion = %v, want 7", accrual.RuleVersion)
+	}
+
+	client, err := deps.clients.GetByPhone(ctx, 1, "+70000000200")
+	if err != nil {
+		t.Fatalf("GetByPhone: %v", err)
+	}
+	if _, err := deps.svc.Redeem(ctx, RedeemRequest{
+		StoreID: 1, ExternalTxID: "redeem-rv-1", ClientID: client.ID, Points: 5, Amount: decimal.NewFromInt(50),
+	}); err != nil {
+		t.Fatalf("Redeem() error = %v", err)
+	}
+	redeem, err := deps.txs.GetByExternalID(ctx, 1, domain.TransactionRedeem, "redeem-rv-1")
+	if err != nil {
+		t.Fatalf("GetByExternalID(redeem): %v", err)
+	}
+	if redeem.RuleVersion == nil || *redeem.RuleVersion != 7 {
+		t.Fatalf("redeem RuleVersion = %v, want 7", redeem.RuleVersion)
 	}
 }
 

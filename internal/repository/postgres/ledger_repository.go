@@ -69,10 +69,10 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 	}
 
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, rule_version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint).
+	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint, tx.RuleVersion).
 		Scan(&tx.ID, &tx.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -90,13 +90,13 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 	return tx, balance, nil
 }
 
-const selectTransactionColumns = `id, store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refunded_amount, refunded_points, refund_cumulative_amount, refund_fully_refunded`
+const selectTransactionColumns = `id, store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refunded_amount, refunded_points, refund_cumulative_amount, refund_fully_refunded, rule_version`
 
 func scanTransactionRow(row pgx.Row) (*domain.Transaction, error) {
 	tx := &domain.Transaction{}
 	err := row.Scan(
 		&tx.ID, &tx.StoreID, &tx.ClientID, &tx.ExternalTxID, &tx.Amount, &tx.Type, &tx.PointsDelta, &tx.BalanceAfter, &tx.RequestFingerprint, &tx.CreatedAt,
-		&tx.OriginalTransactionID, &tx.RefundedAmount, &tx.RefundedPoints, &tx.RefundCumulativeAmount, &tx.RefundFullyRefunded,
+		&tx.OriginalTransactionID, &tx.RefundedAmount, &tx.RefundedPoints, &tx.RefundCumulativeAmount, &tx.RefundFullyRefunded, &tx.RuleVersion,
 	)
 	if err != nil {
 		return nil, err
@@ -286,10 +286,10 @@ func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Tra
 	}
 
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, rule_version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint).
+	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint, tx.RuleVersion).
 		Scan(&tx.ID, &tx.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError

@@ -139,6 +139,10 @@ var routeTable = []routeMeta{
 		Contour: contourStaff, StaffPermission: domain.PermLoyaltyConfigRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodPut, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config", OperationID: "putLoyaltyConfig",
 		Contour: contourStaff, StaffPermission: domain.PermLoyaltyConfigWrite, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
+	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config/history", OperationID: "listLoyaltyConfigHistory",
+		Contour: contourStaff, StaffPermission: domain.PermLoyaltyConfigRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
+	{Method: http.MethodPost, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config/rollback", OperationID: "rollbackLoyaltyConfig",
+		Contour: contourStaff, StaffPermission: domain.PermLoyaltyConfigWrite, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
 
 	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys", OperationID: "listStoreAPIKeys",
 		Contour: contourStaff, StaffPermission: domain.PermAPIKeysRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
@@ -224,7 +228,11 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 	case "getLoyaltyConfig":
 		return handleGetLoyaltyConfig(deps.Stores, deps.LoyaltyConfigs, deps.Log)
 	case "putLoyaltyConfig":
-		return handlePutLoyaltyConfig(deps.Stores, deps.LoyaltyConfigs, deps.Log)
+		return handlePutLoyaltyConfig(deps.Stores, deps.LoyaltyConfigs, deps.AuditEvents, deps.Log)
+	case "listLoyaltyConfigHistory":
+		return handleListLoyaltyConfigHistory(deps.Stores, deps.LoyaltyConfigs, deps.Log)
+	case "rollbackLoyaltyConfig":
+		return handleRollbackLoyaltyConfig(deps.Stores, deps.LoyaltyConfigs, deps.AuditEvents, deps.Log)
 	case "listStoreAPIKeys":
 		return handleListStoreAPIKeys(deps.Stores, deps.StoreAPIKeys, deps.Log)
 	case "createStoreAPIKey":

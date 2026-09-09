@@ -39,6 +39,13 @@ const (
 	// (DEC-011) — TargetType "client", TargetID the resolved Client's ID.
 	// No QR token material or CustomerAccount PII is recorded.
 	AuditActionQRResolved = "qr.resolved"
+
+	// AuditActionLoyaltyConfigChanged/RolledBack are recorded on every
+	// loyalty-config write (see LoyaltyConfigRepository.Upsert) — TargetType
+	// "loyalty_config", TargetID the store's ID. The full before/after
+	// values live in loyalty_config_history, not on the audit event itself.
+	AuditActionLoyaltyConfigChanged    = "loyalty_config.changed"
+	AuditActionLoyaltyConfigRolledBack = "loyalty_config.rolled_back"
 )
 
 // AuditEvent is one append-only record in the security audit trail. Never

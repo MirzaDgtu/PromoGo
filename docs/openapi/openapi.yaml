@@ -884,6 +884,76 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config/history:
+    get:
+      operationId: listLoyaltyConfigHistory
+      tags: [Admin - Loyalty Config]
+      summary: List a store's loyalty configuration history
+      description: >
+        Requires `loyalty_config.read`. Newest version first — every prior
+        effective configuration, for audit and reconstruction of past
+        accrual/redemption calculations.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items: { $ref: "#/components/schemas/LoyaltyConfigVersion" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/loyalty-config/rollback:
+    post:
+      operationId: rollbackLoyaltyConfig
+      tags: [Admin - Loyalty Config]
+      summary: Roll back to a prior loyalty configuration version
+      description: >
+        Requires `loyalty_config.write`. Re-applies a past version's values
+        as a new version (forward-only, like git revert) — history is never
+        rewritten.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoyaltyConfig" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: Version not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
   /api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys:
     get:
       operationId: listStoreAPIKeys
@@ -1309,6 +1379,21 @@ components:
         min_balance_to_redeem: { type: integer, format: int64, example: 0 }
         max_redeem_percent: { type: string, format: decimal, example: "100" }
         points_exchange_rate: { type: string, format: decimal, example: "1" }
+        version: { type: integer, format: int64, readOnly: true, description: "Increments on every write. See /loyalty-config/history." }
+
+    LoyaltyConfigVersion:
+      type: object
+      required: [version, mechanic, accrual_percent, min_purchase_amount, min_balance_to_redeem, max_redeem_percent, points_exchange_rate, created_at]
+      properties:
+        version: { type: integer, format: int64 }
+        mechanic: { type: string, example: points }
+        accrual_percent: { type: string, format: decimal, example: "10" }
+        min_purchase_amount: { type: string, format: decimal, example: "0" }
+        min_balance_to_redeem: { type: integer, format: int64, example: 0 }
+        max_redeem_percent: { type: string, format: decimal, example: "100" }
+        points_exchange_rate: { type: string, format: decimal, example: "1" }
+        changed_by_staff_user_id: { type: integer, format: int64, nullable: true }
+        created_at: { type: string, format: date-time }
 
     APIKeyScope:
       type: string

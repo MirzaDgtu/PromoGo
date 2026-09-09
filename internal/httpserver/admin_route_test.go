@@ -768,6 +768,119 @@ func TestHandlePutLoyaltyConfig_ZeroExchangeRateRejected(t *testing.T) {
 	}
 }
 
+func TestHandlePutLoyaltyConfig_VersionIncrementsAndHistoryRecorded(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	put := func(accrualPercent string) *httptest.ResponseRecorder {
+		req := adminReq(http.MethodPut, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config", token, map[string]any{
+			"mechanic": "points", "accrual_percent": accrualPercent, "min_purchase_amount": "0",
+			"min_balance_to_redeem": 0, "max_redeem_percent": "100", "points_exchange_rate": "1",
+		})
+		req.SetPathValue("orgID", itoa(org.ID))
+		req.SetPathValue("storeID", itoa(store.ID))
+		return doRequest(handler, req)
+	}
+
+	first := put("10")
+	if first.Code != http.StatusOK {
+		t.Fatalf("first put status = %d, want 200 (body=%s)", first.Code, first.Body.String())
+	}
+	var firstResp loyaltyConfigResponseBody
+	decodeJSON(t, first, &firstResp)
+	if firstResp.Version != 1 {
+		t.Fatalf("first put Version = %d, want 1", firstResp.Version)
+	}
+
+	second := put("20")
+	if second.Code != http.StatusOK {
+		t.Fatalf("second put status = %d, want 200 (body=%s)", second.Code, second.Body.String())
+	}
+	var secondResp loyaltyConfigResponseBody
+	decodeJSON(t, second, &secondResp)
+	if secondResp.Version != 2 {
+		t.Fatalf("second put Version = %d, want 2", secondResp.Version)
+	}
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config/history", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("history status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var histResp struct {
+		History []loyaltyConfigVersionResponseBody `json:"history"`
+	}
+	decodeJSON(t, rec, &histResp)
+	if len(histResp.History) != 2 {
+		t.Fatalf("history length = %d, want 2", len(histResp.History))
+	}
+	// Newest version first.
+	if histResp.History[0].Version != 2 || histResp.History[0].AccrualPercent != "20" {
+		t.Errorf("history[0] = %+v, want version=2 accrual_percent=20", histResp.History[0])
+	}
+	if histResp.History[1].Version != 1 || histResp.History[1].AccrualPercent != "10" {
+		t.Errorf("history[1] = %+v, want version=1 accrual_percent=10", histResp.History[1])
+	}
+}
+
+func TestHandleRollbackLoyaltyConfig_ReappliesOldVersionAsNewVersion(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	put := func(accrualPercent string) {
+		req := adminReq(http.MethodPut, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config", token, map[string]any{
+			"mechanic": "points", "accrual_percent": accrualPercent, "min_purchase_amount": "0",
+			"min_balance_to_redeem": 0, "max_redeem_percent": "100", "points_exchange_rate": "1",
+		})
+		req.SetPathValue("orgID", itoa(org.ID))
+		req.SetPathValue("storeID", itoa(store.ID))
+		if rec := doRequest(handler, req); rec.Code != http.StatusOK {
+			t.Fatalf("put(%q) status = %d, want 200 (body=%s)", accrualPercent, rec.Code, rec.Body.String())
+		}
+	}
+	put("10") // version 1
+	put("20") // version 2
+
+	rollbackReq := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config/rollback", token, map[string]any{"version": 1})
+	rollbackReq.SetPathValue("orgID", itoa(org.ID))
+	rollbackReq.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, rollbackReq)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("rollback status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp loyaltyConfigResponseBody
+	decodeJSON(t, rec, &resp)
+	// Rollback creates version 3 carrying version 1's values — history stays
+	// forward-only, never rewritten.
+	if resp.Version != 3 {
+		t.Fatalf("rollback Version = %d, want 3", resp.Version)
+	}
+	if resp.AccrualPercent != "10" {
+		t.Fatalf("rollback AccrualPercent = %q, want 10 (version 1's value)", resp.AccrualPercent)
+	}
+}
+
+func TestHandleRollbackLoyaltyConfig_UnknownVersionRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/loyalty-config/rollback", token, map[string]any{"version": 99})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 (no config/history exists yet)", rec.Code)
+	}
+}
+
 // --- admin_audit.go ---
 
 func TestHandleListAuditEvents_Success(t *testing.T) {
