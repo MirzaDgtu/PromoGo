@@ -753,6 +753,35 @@ tags:
   теперь опираются на подтверждённо чистый baseline без известных красных
   CI-гейтов.
 
+### DEC-021 — Материалы security/regression review Phase 1–3 подготовлены
+
+- Статус: зафиксировано (сам review — за человеком, эта запись фиксирует
+  только подготовку материалов)
+- Дата: 2026-09-09
+- Владелец: backend
+- Контекст: следующий пункт release gate после [[#DEC-020]] (подтверждённо
+  чистый baseline, 8/8) — материалы для security/regression review
+  критических изменений Phase 1–3 (`docs/audit-remediation-prompt.md`):
+  Phase 1 (security/tenant isolation), Phase 2 (loyalty/concurrency
+  correctness), Phase 3 (QR/notifications/availability).
+- Решение: `docs/security-regression-review-phase1-3.md` — 10 пунктов,
+  каждый с исходной угрозой/дефектом, исправляющим коммитом и связанной
+  DEC, затронутыми trust boundaries и файлами, конкретными тестами
+  (включая негативные и конкурентные, по именам функций), миграционными/
+  rollout-рисками, остаточным риском и предметным чек-листом ручной
+  проверки. В конце — консолидированный чек-лист по темам (access
+  control, money correctness, PII/audit, availability) и пункт sign-off,
+  которым сам review должен зафиксировать свой результат отдельной DEC.
+  Документ — материалы для человека-ревьюера, не сам review; несколько
+  пунктов явно оставлены открытыми для его суждения (например: нужен ли
+  реальный конкурентный интеграционный тест double-redeem против
+  Postgres — сейчас такого нет; принят ли осознанно residual-риск
+  legacy `stores.api_key_hash` без scope-проверки).
+- Последствия и миграция: результат самого review (approved /
+  approved-with-noted-risks / blocked) фиксируется отдельной DEC после
+  того, как человек его проведёт — эта запись не заменяет его. Следующий
+  пункт release gate — черновик pilot rollout/rollback checklist.
+
 ## Шаблон нового решения
 
 ### DEC-NNN — Короткое название
