@@ -1,0 +1,3 @@
+# Accepted/triaged vulnerabilities for the promogo container image.
+# One CVE id per line, with a comment explaining why it's accepted and by
+# whom. Empty today — nothing has been triaged as acceptable yet.

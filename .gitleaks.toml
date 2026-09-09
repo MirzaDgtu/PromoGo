@@ -1,0 +1,12 @@
+title = "promogo gitleaks config"
+
+[extend]
+useDefault = true
+
+# `curl-auth-header` false-positives on the literal placeholder used in this
+# skill's example commands ("Authorization: Bearer test-api-key") — not a
+# real credential, never was.
+[allowlist]
+description = "Doc placeholder API key in dev-stack skill examples"
+paths = ['''\.claude/skills/dev-stack/SKILL\.md''']
+regexes = ['''Bearer test-api-key''']
