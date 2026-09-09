@@ -127,7 +127,9 @@ func New(deps Deps) *http.Server {
 	}
 
 	var handler http.Handler = mux
+	handler = recoverMW(deps.Log)(handler)
 	handler = loggingMW(deps.Log)(handler)
+	handler = requestIDMW(handler)
 	handler = withResolvedClientIP(deps.TrustedProxies)(handler)
 	handler = http.MaxBytesHandler(handler, 1<<20)
 

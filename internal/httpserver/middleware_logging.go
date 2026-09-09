@@ -18,6 +18,7 @@ func loggingMW(log *slog.Logger) func(http.Handler) http.Handler {
 			log.InfoContext(r.Context(), "http request",
 				"method", r.Method, "path", r.URL.Path,
 				"status", sw.status, "duration", time.Since(start),
+				"request_id", requestIDFromContext(r.Context()),
 			)
 		})
 	}
