@@ -782,6 +782,34 @@ tags:
   того, как человек его проведёт — эта запись не заменяет его. Следующий
   пункт release gate — черновик pilot rollout/rollback checklist.
 
+### DEC-022 — Черновик pilot rollout/rollback checklist
+
+- Статус: черновик (требует sign-off release-gate перед RC)
+- Дата: 2026-09-09
+- Владелец: backend (черновик), business/ops (sign-off даты/порогов/эскалации)
+- Контекст: последний пункт management-level release gate после
+  [[#DEC-021]] — черновик чек-листа rollout/rollback для пилота, опирающийся
+  на подтверждённо чистый CI baseline ([[#DEC-020]]), материалы
+  security/regression review ([[#DEC-021]]) и уже существующие
+  `docs/deployment.md`, `docs/backup-restore.md`, `docs/runbooks.md`,
+  `docs/slo.md`.
+- Решение: `docs/pilot-rollout-checklist.md` — секции: prerequisites
+  (сверка с предыдущими пунктами release gate), конфигурация окружения,
+  готовность данных/бэкапов, готовность observability, сам cutover,
+  триггеры и процедура rollback (по трём категориям: версия приложения,
+  миграция, целостность данных — каждая с отдельной процедурой и явным
+  разделением "not a rollback trigger" для деградации уведомлений per
+  runbook #1), post-cutover проверки. Не финальный документ — несколько
+  пунктов явно оставлены для решения business owner'ом (конкретные
+  пороги N минут до rollback, кто авторизует rollback при
+  data-integrity инциденте, нужен ли maintenance-mode флаг).
+- Последствия и миграция: результат самого sign-off (кем, когда,
+  с какими правками) фиксируется отдельной DEC перед тем, как этот
+  документ станет частью основания для RC. Это последний открытый пункт
+  release gate из исходного сообщения пользователя — после его закрытия
+  ADR sign-off и legal-minimum.md sign-off (оба вне скоупа этой сессии)
+  остаются единственными оставшимися шагами до RC.
+
 ## Шаблон нового решения
 
 ### DEC-NNN — Короткое название
