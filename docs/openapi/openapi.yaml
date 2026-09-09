@@ -596,7 +596,53 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
+  /api/v1/staff/me:
+    get:
+      operationId: getStaffMe
+      tags: [Staff Auth]
+      summary: Get the caller's own staff profile and memberships
+      description: >
+        Returns the caller's profile plus every active membership and its
+        resolved permissions. No organization/store scope applies — this
+        describes the caller, not one tenant's resource. An account with no
+        active membership still gets 200 with an empty `memberships` array.
+      security:
+        - staffAccessToken: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StaffMe" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
   /api/v1/admin/organizations:
+    get:
+      operationId: listOrganizations
+      tags: [Admin - Organizations]
+      summary: List organizations visible to the caller
+      description: >
+        A platform_admin membership (anywhere) sees every organization;
+        any other caller sees only the organizations of their own active
+        memberships.
+      security:
+        - staffAccessToken: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organizations:
+                    type: array
+                    items: { $ref: "#/components/schemas/Organization" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
     post:
       operationId: createOrganization
       tags: [Admin - Organizations]
@@ -625,6 +671,35 @@ paths:
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
   /api/v1/admin/organizations/{orgID}/stores:
+    get:
+      operationId: listStores
+      tags: [Admin - Organizations]
+      summary: List stores visible to the caller within an Organization
+      description: >
+        A platform_admin, or a caller with an organization-wide membership
+        in orgID, sees every store in the organization; a caller with only
+        store-scoped membership(s) in orgID sees only those stores. 403 if
+        the caller has no membership in orgID at all.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stores:
+                    type: array
+                    items: { $ref: "#/components/schemas/Store" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
     post:
       operationId: createStore
       tags: [Admin - Organizations]
@@ -1348,6 +1423,33 @@ components:
         status: { $ref: "#/components/schemas/StaffStatus" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        email:
+          type: string
+          description: The target StaffUser's profile email. Empty until their first OIDC login.
+        display_name:
+          type: string
+          description: The target StaffUser's profile display name. Empty until their first OIDC login.
+
+    StaffMeMembership:
+      type: object
+      properties:
+        organization_id: { type: integer, format: int64 }
+        store_id: { type: integer, format: int64, nullable: true }
+        role: { $ref: "#/components/schemas/Role" }
+        permissions:
+          type: array
+          items: { type: string }
+          description: The permissions this membership's role grants (domain.RolePermissions), pre-resolved for the frontend.
+
+    StaffMe:
+      type: object
+      properties:
+        staff_user_id: { type: integer, format: int64 }
+        email: { type: string }
+        display_name: { type: string }
+        memberships:
+          type: array
+          items: { $ref: "#/components/schemas/StaffMeMembership" }
 
     AdminClient:
       type: object

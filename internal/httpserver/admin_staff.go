@@ -49,12 +49,19 @@ type staffMembershipResponseBody struct {
 	Status         string    `json:"status"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	// Email and DisplayName are the target StaffUser's own profile fields —
+	// populated on their first OIDC login (see
+	// service.StaffAuthService.resolveOrCreateUser) — so admin UIs can show
+	// a name instead of a bare numeric staff_user_id. Both are empty until
+	// that first login happens.
+	Email       string `json:"email,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
 }
 
 // handleListStaffMemberships returns a handler for GET
 // /api/v1/admin/organizations/{orgID}/staff. Must run behind
 // RequireStaff(staff.manage, orgScopeFromPath).
-func handleListStaffMemberships(memberships domain.StaffMembershipRepository, log *slog.Logger) http.HandlerFunc {
+func handleListStaffMemberships(memberships domain.StaffMembershipRepository, users domain.StaffUserRepository, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := strconv.ParseInt(r.PathValue("orgID"), 10, 64)
 		if err != nil {
@@ -69,9 +76,23 @@ func handleListStaffMemberships(memberships domain.StaffMembershipRepository, lo
 			return
 		}
 
+		userCache := make(map[int64]*domain.StaffUser, len(list))
 		out := make([]staffMembershipResponseBody, 0, len(list))
 		for _, m := range list {
-			out = append(out, membershipToBody(m))
+			body := membershipToBody(m)
+			user, ok := userCache[m.StaffUserID]
+			if !ok {
+				user, err = users.GetByID(r.Context(), m.StaffUserID)
+				if err != nil {
+					log.ErrorContext(r.Context(), "load staff user", "staff_user_id", m.StaffUserID, "error", err)
+					writeError(w, http.StatusInternalServerError, "list staff memberships")
+					return
+				}
+				userCache[m.StaffUserID] = user
+			}
+			body.Email = user.Email
+			body.DisplayName = user.DisplayName
+			out = append(out, body)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"memberships": out})
 	}

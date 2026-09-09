@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
 
@@ -75,6 +77,152 @@ func TestHandleGetStore_NotFoundWrongOrg(t *testing.T) {
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+}
+
+func TestHandleGetStaffMe_ReturnsProfileAndResolvedPermissions(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleStoreManager)
+	fakes.StaffUsers.byID[1].Email = "manager@example.com"
+	fakes.StaffUsers.byID[1].DisplayName = "Manager"
+
+	req := adminReq(http.MethodGet, "/api/v1/staff/me", token, nil)
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body staffMeResponseBody
+	decodeJSON(t, rec, &body)
+	if body.Email != "manager@example.com" || body.DisplayName != "Manager" {
+		t.Fatalf("profile = %+v, want email/display_name populated", body)
+	}
+	if len(body.Memberships) != 1 || body.Memberships[0].OrganizationID != org.ID {
+		t.Fatalf("memberships = %+v, want one membership in org %d", body.Memberships, org.ID)
+	}
+	if len(body.Memberships[0].Permissions) == 0 {
+		t.Fatalf("permissions = empty, want store_manager's resolved permissions")
+	}
+}
+
+func TestHandleGetStaffMe_NoMembershipReturns200WithEmptyList(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	fakes.StaffUsers.byID[1] = &domain.StaffUser{ID: 1, ExternalSubject: "sub-1", Status: domain.StaffActive}
+	fakes.StaffUsers.nextID = 1
+	token, err := auth.IssueStaffAccessToken(testStaffSecret, 1, time.Hour)
+	if err != nil {
+		t.Fatalf("IssueStaffAccessToken() error = %v", err)
+	}
+
+	req := adminReq(http.MethodGet, "/api/v1/staff/me", token, nil)
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body staffMeResponseBody
+	decodeJSON(t, rec, &body)
+	if len(body.Memberships) != 0 {
+		t.Fatalf("memberships = %+v, want empty", body.Memberships)
+	}
+}
+
+func TestHandleListOrganizations_PlatformAdminSeesAll(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	orgA := seedOrganization(fakes, "Org A")
+	_ = seedOrganization(fakes, "Org B")
+	token := issueStaffToken(t, fakes, 1, orgA.ID, nil, domain.RolePlatformAdmin)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations", token, nil)
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Organizations []organizationResponseBody `json:"organizations"`
+	}
+	decodeJSON(t, rec, &body)
+	if len(body.Organizations) != 2 {
+		t.Fatalf("organizations = %+v, want both org A and org B for a platform_admin", body.Organizations)
+	}
+}
+
+func TestHandleListOrganizations_RetailerAdminSeesOnlyOwnOrg(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	orgA := seedOrganization(fakes, "Org A")
+	_ = seedOrganization(fakes, "Org B")
+	token := issueStaffToken(t, fakes, 1, orgA.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations", token, nil)
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Organizations []organizationResponseBody `json:"organizations"`
+	}
+	decodeJSON(t, rec, &body)
+	if len(body.Organizations) != 1 || body.Organizations[0].ID != orgA.ID {
+		t.Fatalf("organizations = %+v, want only org A", body.Organizations)
+	}
+}
+
+func TestHandleListStores_OrgWideMembershipSeesAllStores(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	_ = seedStore(fakes, org.ID, "Store 1")
+	_ = seedStore(fakes, org.ID, "Store 2")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Stores []storeResponseBody `json:"stores"`
+	}
+	decodeJSON(t, rec, &body)
+	if len(body.Stores) != 2 {
+		t.Fatalf("stores = %+v, want both store 1 and store 2", body.Stores)
+	}
+}
+
+func TestHandleListStores_StoreScopedMembershipSeesOnlyOwnStore(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	ownStore := seedStore(fakes, org.ID, "Own store")
+	_ = seedStore(fakes, org.ID, "Other store")
+	token := issueStaffToken(t, fakes, 1, org.ID, &ownStore.ID, domain.RoleStoreManager)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Stores []storeResponseBody `json:"stores"`
+	}
+	decodeJSON(t, rec, &body)
+	if len(body.Stores) != 1 || body.Stores[0].ID != ownStore.ID {
+		t.Fatalf("stores = %+v, want only the caller's own store %d", body.Stores, ownStore.ID)
+	}
+}
+
+func TestHandleListStores_NoMembershipInOrgRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	orgA := seedOrganization(fakes, "Org A")
+	orgB := seedOrganization(fakes, "Org B")
+	seedStore(fakes, orgB.ID, "Store in B")
+	// Caller only has a membership in org A, and tries to list org B's stores.
+	token := issueStaffToken(t, fakes, 1, orgA.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(orgB.ID)+"/stores", token, nil)
+	req.SetPathValue("orgID", itoa(orgB.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403 (cross-org IDOR)", rec.Code)
 	}
 }
 

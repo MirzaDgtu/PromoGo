@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -50,6 +51,34 @@ func (f *fakeOrganizationRepo) Create(_ context.Context, org *domain.Organizatio
 	org.CreatedAt = time.Now()
 	f.byID[org.ID] = org
 	return nil
+}
+
+func (f *fakeOrganizationRepo) ListAll(_ context.Context) ([]*domain.Organization, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]*domain.Organization, 0, len(f.byID))
+	for _, o := range f.byID {
+		out = append(out, o)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
+}
+
+func (f *fakeOrganizationRepo) ListByIDs(_ context.Context, ids []int64) ([]*domain.Organization, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	want := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		want[id] = true
+	}
+	var out []*domain.Organization
+	for _, o := range f.byID {
+		if want[o.ID] {
+			out = append(out, o)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
 }
 
 func TestBootstrapPlatformAdmin_FreshCreateSucceeds(t *testing.T) {

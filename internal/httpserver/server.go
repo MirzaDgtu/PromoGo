@@ -115,9 +115,12 @@ func New(deps Deps) *http.Server {
 		case contourCustomer:
 			h = requireCustomer(h)
 		case contourStaff:
-			if route.StaffGlobal {
+			switch {
+			case route.StaffIdentityOnly:
+				h = RequireStaffIdentity(deps.StaffAccessTokenSecret, deps.StaffAuth)(h)
+			case route.StaffGlobal:
 				h = RequireGlobalStaffPermission(deps.StaffAccessTokenSecret, deps.StaffAuth, route.StaffPermission)(h)
-			} else {
+			default:
 				scopeFn := storeScopeFromPath
 				if route.StaffScope == staffScopeOrg {
 					scopeFn = orgScopeFromPath

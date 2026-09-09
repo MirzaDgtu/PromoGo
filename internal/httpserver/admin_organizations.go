@@ -88,6 +88,66 @@ func handleCreateStore(stores domain.StoreRepository, log *slog.Logger) http.Han
 	}
 }
 
+// handleListStores returns a handler for GET
+// /api/v1/admin/organizations/{orgID}/stores. Must run behind
+// RequireStaffIdentity: unlike stores.manage/read, "which stores can I see
+// in this org" depends on whether the caller's membership in orgID is
+// organization-wide or narrowed to one store, which RequireStaff's
+// per-route scope check can't express — so this handler resolves its own
+// visibility instead. A platform_admin or an organization-wide membership
+// sees every store in orgID; a store-scoped membership sees only its own
+// store(s); a caller with no membership in orgID at all gets 403.
+func handleListStores(stores domain.StoreRepository, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		orgID, err := strconv.ParseInt(r.PathValue("orgID"), 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid organization id")
+			return
+		}
+
+		principal, ok := staffFromContext(r.Context())
+		if !ok {
+			writeError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+
+		orgWide := principalIsPlatformAdmin(principal)
+		allowedStoreIDs := map[int64]bool{}
+		matchedOrg := orgWide
+		for _, m := range principal.Memberships {
+			if m.OrganizationID != orgID {
+				continue
+			}
+			matchedOrg = true
+			if m.StoreID == nil {
+				orgWide = true
+			} else {
+				allowedStoreIDs[*m.StoreID] = true
+			}
+		}
+		if !matchedOrg {
+			writeError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+
+		list, err := stores.ListByOrganization(r.Context(), orgID)
+		if err != nil {
+			log.ErrorContext(r.Context(), "list stores", "organization_id", orgID, "error", err)
+			writeError(w, http.StatusInternalServerError, "list stores")
+			return
+		}
+
+		out := make([]storeResponseBody, 0, len(list))
+		for _, s := range list {
+			if !orgWide && !allowedStoreIDs[s.ID] {
+				continue
+			}
+			out = append(out, storeResponseBody{ID: s.ID, OrganizationID: s.OrganizationID, Name: s.Name})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"stores": out})
+	}
+}
+
 // handleGetStore returns a handler for GET
 // /api/v1/admin/organizations/{orgID}/stores/{storeID}. Must run behind
 // RequireStaff(stores.read, storeScopeFromPath); 404s if the store doesn't

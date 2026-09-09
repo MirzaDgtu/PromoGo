@@ -24,4 +24,14 @@ type OrganizationRepository interface {
 	// GetByID), not guessed through.
 	GetByName(ctx context.Context, name string) (*Organization, error)
 	Create(ctx context.Context, org *Organization) error
+	// ListAll returns every Organization, ordered by id. Used by
+	// GET /api/v1/admin/organizations for a platform_admin caller, who sees
+	// every tenant rather than only the organizations they hold a
+	// membership in.
+	ListAll(ctx context.Context) ([]*Organization, error)
+	// ListByIDs returns the Organizations matching ids, ordered by id.
+	// Unknown ids are silently omitted. Used by GET /api/v1/admin/organizations
+	// for a non-platform_admin caller, scoped to their active memberships'
+	// distinct organization ids.
+	ListByIDs(ctx context.Context, ids []int64) ([]*Organization, error)
 }

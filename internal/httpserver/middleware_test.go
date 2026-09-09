@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -53,6 +54,17 @@ func (f *fakeStoreRepo) Create(_ context.Context, s *domain.Store) error {
 		f.byAPIKey[s.APIKeyHash] = s
 	}
 	return nil
+}
+
+func (f *fakeStoreRepo) ListByOrganization(_ context.Context, organizationID int64) ([]*domain.Store, error) {
+	var out []*domain.Store
+	for _, s := range f.byID {
+		if s.OrganizationID == organizationID {
+			out = append(out, s)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out, nil
 }
 
 func (f *fakeStoreRepo) addLegacy(store *domain.Store, plaintextKey string) {

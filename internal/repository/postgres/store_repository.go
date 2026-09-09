@@ -52,6 +52,31 @@ func (r *StoreRepository) GetByAPIKeyHash(ctx context.Context, apiKeyHash string
 	return store, nil
 }
 
+// ListByOrganization returns every store belonging to organizationID,
+// ordered by id.
+func (r *StoreRepository) ListByOrganization(ctx context.Context, organizationID int64) ([]*domain.Store, error) {
+	const query = `SELECT id, organization_id, name, COALESCE(api_key_hash, '') FROM stores WHERE organization_id = $1 ORDER BY id`
+
+	rows, err := r.pool.Query(ctx, query, organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("list stores for organization %d: %w", organizationID, err)
+	}
+	defer rows.Close()
+
+	var stores []*domain.Store
+	for rows.Next() {
+		store := &domain.Store{}
+		if err := rows.Scan(&store.ID, &store.OrganizationID, &store.Name, &store.APIKeyHash); err != nil {
+			return nil, fmt.Errorf("scan store: %w", err)
+		}
+		stores = append(stores, store)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list stores for organization %d: %w", organizationID, err)
+	}
+	return stores, nil
+}
+
 // Create inserts store. An empty store.APIKeyHash is stored as NULL — new
 // stores created via the admin API rely solely on StoreAPIKeyRepository
 // (migrations/00019, migrations/00021) and never populate the legacy

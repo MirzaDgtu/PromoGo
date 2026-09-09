@@ -95,6 +95,41 @@ func RequireStaff(accessTokenSecret []byte, staffAuth staffPrincipalResolver, pe
 	}
 }
 
+// RequireStaffIdentity verifies the caller's staff access token and resolves
+// their current principal (memberships loaded fresh from the database), but
+// applies no permission or organization/store scope check — for the small
+// set of operations that describe the caller themselves ("who am I", "which
+// organizations can I see") rather than one particular tenant's resource, so
+// there is no fixed scope to check against. Route handlers behind this
+// middleware are responsible for filtering what they return to whatever the
+// principal's own memberships allow.
+func RequireStaffIdentity(accessTokenSecret []byte, staffAuth staffPrincipalResolver) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			if token == "" {
+				writeError(w, http.StatusUnauthorized, "missing access token")
+				return
+			}
+
+			staffUserID, err := auth.ParseStaffAccessToken(accessTokenSecret, token)
+			if err != nil {
+				writeError(w, http.StatusUnauthorized, "invalid access token")
+				return
+			}
+
+			principal, err := staffAuth.ResolvePrincipal(r.Context(), staffUserID)
+			if err != nil {
+				writeError(w, http.StatusUnauthorized, "unauthorized")
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), staffContextKey{}, principal)
+			next(w, r.WithContext(ctx))
+		}
+	}
+}
+
 // RequireGlobalStaffPermission is RequireStaff without an organization/store
 // scope: it grants access if perm is held by any of the caller's active
 // memberships, anywhere. Reserved for the small set of operations that are

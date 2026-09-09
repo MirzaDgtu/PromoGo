@@ -68,6 +68,55 @@ func (r *OrganizationRepository) GetByName(ctx context.Context, name string) (*d
 	}
 }
 
+func (r *OrganizationRepository) ListAll(ctx context.Context) ([]*domain.Organization, error) {
+	const query = `SELECT id, name, created_at FROM organizations ORDER BY id`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list organizations: %w", err)
+	}
+	defer rows.Close()
+
+	var orgs []*domain.Organization
+	for rows.Next() {
+		org := &domain.Organization{}
+		if err := rows.Scan(&org.ID, &org.Name, &org.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan organization: %w", err)
+		}
+		orgs = append(orgs, org)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list organizations: %w", err)
+	}
+	return orgs, nil
+}
+
+func (r *OrganizationRepository) ListByIDs(ctx context.Context, ids []int64) ([]*domain.Organization, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	const query = `SELECT id, name, created_at FROM organizations WHERE id = ANY($1) ORDER BY id`
+
+	rows, err := r.pool.Query(ctx, query, ids)
+	if err != nil {
+		return nil, fmt.Errorf("list organizations by ids: %w", err)
+	}
+	defer rows.Close()
+
+	var orgs []*domain.Organization
+	for rows.Next() {
+		org := &domain.Organization{}
+		if err := rows.Scan(&org.ID, &org.Name, &org.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan organization: %w", err)
+		}
+		orgs = append(orgs, org)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list organizations by ids: %w", err)
+	}
+	return orgs, nil
+}
+
 func (r *OrganizationRepository) Create(ctx context.Context, org *domain.Organization) error {
 	const query = `INSERT INTO organizations (name) VALUES ($1) RETURNING id, created_at`
 

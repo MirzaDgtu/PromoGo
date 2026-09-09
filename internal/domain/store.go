@@ -23,4 +23,10 @@ type StoreRepository interface {
 	// hashes to apiKeyHash. Used by the webhook auth middleware.
 	GetByAPIKeyHash(ctx context.Context, apiKeyHash string) (*Store, error)
 	Create(ctx context.Context, store *Store) error
+	// ListByOrganization returns every Store belonging to organizationID,
+	// ordered by id. Used by GET /api/v1/admin/organizations/{orgID}/stores;
+	// callers must filter the result to a caller's store-scoped memberships
+	// themselves when the caller doesn't hold an organization-wide
+	// membership (this method itself does no permission filtering).
+	ListByOrganization(ctx context.Context, organizationID int64) ([]*Store, error)
 }

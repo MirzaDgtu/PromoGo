@@ -65,12 +65,16 @@ type routeMeta struct {
 	// APIKeyScope applies to contourStoreKey routes.
 	APIKeyScope string
 
-	// StaffPermission, StaffGlobal, and StaffScope apply to contourStaff
-	// routes. StaffGlobal routes (organization creation) use
-	// RequireGlobalStaffPermission and ignore StaffScope.
-	StaffPermission domain.Permission
-	StaffGlobal     bool
-	StaffScope      staffScopeKind
+	// StaffPermission, StaffGlobal, StaffScope, and StaffIdentityOnly apply
+	// to contourStaff routes. StaffGlobal routes (organization creation) use
+	// RequireGlobalStaffPermission and ignore StaffScope. StaffIdentityOnly
+	// routes (the caller's own profile) use RequireStaffIdentity and ignore
+	// both StaffPermission and StaffScope — there is no organization/store
+	// to scope "who am I" to.
+	StaffPermission   domain.Permission
+	StaffGlobal       bool
+	StaffScope        staffScopeKind
+	StaffIdentityOnly bool
 
 	RateLimitProfile string
 }
@@ -114,12 +118,19 @@ var routeTable = []routeMeta{
 	// --- Retailer staff / platform admin (OIDC + RBAC) ---
 	{Method: http.MethodPost, Path: "/api/v1/staff/auth/oidc", OperationID: "staffOIDCLogin",
 		Contour: contourPublic, RateLimitProfile: rlProfileStaffLogin},
+	{Method: http.MethodGet, Path: "/api/v1/staff/me", OperationID: "getStaffMe",
+		Contour: contourStaff, StaffIdentityOnly: true, RateLimitProfile: rlProfileAdmin},
+
+	{Method: http.MethodGet, Path: "/api/v1/admin/organizations", OperationID: "listOrganizations",
+		Contour: contourStaff, StaffIdentityOnly: true, RateLimitProfile: rlProfileAdmin},
 
 	{Method: http.MethodPost, Path: "/api/v1/admin/organizations", OperationID: "createOrganization",
 		Contour: contourStaff, StaffGlobal: true, StaffPermission: domain.PermOrganizationsManage, RateLimitProfile: rlProfileAdmin},
 
 	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}", OperationID: "getStore",
 		Contour: contourStaff, StaffPermission: domain.PermStoresRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
+	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores", OperationID: "listStores",
+		Contour: contourStaff, StaffIdentityOnly: true, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodPost, Path: "/api/v1/admin/organizations/{orgID}/stores", OperationID: "createStore",
 		Contour: contourStaff, StaffPermission: domain.PermStoresManage, StaffScope: staffScopeOrg, RateLimitProfile: rlProfileAdmin},
 
@@ -209,14 +220,20 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 
 	case "staffOIDCLogin":
 		return handleStaffOIDCLogin(deps.StaffAuth, deps.Log)
+	case "getStaffMe":
+		return handleGetStaffMe(deps.StaffUsers, deps.Log)
+	case "listOrganizations":
+		return handleListOrganizations(deps.Organizations, deps.Log)
 	case "createOrganization":
 		return handleCreateOrganization(deps.Organizations, deps.Log)
 	case "getStore":
 		return handleGetStore(deps.Stores, deps.Log)
+	case "listStores":
+		return handleListStores(deps.Stores, deps.Log)
 	case "createStore":
 		return handleCreateStore(deps.Stores, deps.Log)
 	case "listStaffMemberships":
-		return handleListStaffMemberships(deps.StaffMemberships, deps.Log)
+		return handleListStaffMemberships(deps.StaffMemberships, deps.StaffUsers, deps.Log)
 	case "createStaffMembership":
 		return handleCreateStaffMembership(deps.StaffUsers, deps.StaffMemberships, deps.AuditEvents, deps.Log)
 	case "updateStaffMembership":
