@@ -199,7 +199,7 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 	case "getMyBalance":
 		return handleGetMyBalance(deps.Clients, deps.Balances, deps.Log)
 	case "getMyTransactions":
-		return handleGetMyTransactions(deps.Clients, deps.Transactions, deps.Log)
+		return handleGetMyTransactions(deps.Clients, deps.Transactions, deps.Stores, deps.Log)
 	case "issueQR":
 		return handleIssueQR(deps.QR, deps.Log)
 	case "registerDevice":

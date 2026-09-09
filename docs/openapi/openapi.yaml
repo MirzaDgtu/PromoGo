@@ -1178,11 +1178,14 @@ components:
       type: object
       properties:
         store_id: { type: integer, format: int64 }
+        store_name: { type: string, description: "Merchant/store label. Empty if the store couldn't be resolved." }
         client_id: { type: integer, format: int64 }
         type: { type: string, enum: [accrual, redeem, refund] }
+        amount: { type: string, format: decimal, description: "Purchase amount this transaction is based on." }
+        currency: { type: string, example: RUB }
         points_delta: { type: integer, format: int64 }
         balance_after: { type: integer, format: int64 }
-        created_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time, description: Operation date/time. }
 
     MeTransactionsPage:
       type: object

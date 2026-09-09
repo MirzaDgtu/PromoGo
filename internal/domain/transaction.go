@@ -16,6 +16,10 @@ const (
 	TransactionRefund  TransactionType = "refund"
 )
 
+// DefaultCurrency is the only currency the MVP supports — every store
+// transacts in rubles. See Transaction.Currency.
+const DefaultCurrency = "RUB"
+
 // Transaction records one purchase/redemption event and its point effect.
 // ExternalTxID is the transaction_id 1C sends with the webhook — the unique
 // index on (StoreID, Type, ExternalTxID) is what makes Accrue/Redeem
@@ -28,8 +32,12 @@ type Transaction struct {
 	ClientID     int64
 	ExternalTxID string
 	Amount       decimal.Decimal
-	Type         TransactionType
-	PointsDelta  int64
+	// Currency is the ISO 4217 code Amount is denominated in. The MVP has
+	// no multi-currency support, so this is always DefaultCurrency, set by
+	// the service layer at write time (see internal/service/loyalty.go).
+	Currency    string
+	Type        TransactionType
+	PointsDelta int64
 	// BalanceAfter is the client's point balance immediately after this
 	// transaction was posted, snapshotted by LedgerRepository.Post. Replays
 	// return this stored value rather than the client's current balance, so

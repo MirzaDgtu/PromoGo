@@ -97,8 +97,11 @@ func handleGetMyBalance(clients domain.ClientRepository, balances domain.Balance
 
 type meTransactionItem struct {
 	StoreID      int64     `json:"store_id"`
+	StoreName    string    `json:"store_name"`
 	ClientID     int64     `json:"client_id"`
 	Type         string    `json:"type"`
+	Amount       string    `json:"amount"`
+	Currency     string    `json:"currency"`
 	PointsDelta  int64     `json:"points_delta"`
 	BalanceAfter int64     `json:"balance_after"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -109,7 +112,7 @@ type meTransactionItem struct {
 // the customer has a linked Client in, newest first, keyset-paginated via
 // ?limit=&cursor= (see encodeTransactionCursor/decodeTransactionCursor).
 // Must run behind RequireCustomerSession.
-func handleGetMyTransactions(clients domain.ClientRepository, txs domain.TransactionRepository, log *slog.Logger) http.HandlerFunc {
+func handleGetMyTransactions(clients domain.ClientRepository, txs domain.TransactionRepository, stores domain.StoreRepository, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		customerAccountID, ok := customerFromContext(r.Context())
 		if !ok {
@@ -155,10 +158,25 @@ func handleGetMyTransactions(clients domain.ClientRepository, txs domain.Transac
 			clientTxs = clientTxs[:limit]
 		}
 
+		// Store names are resolved once per distinct store, not once per
+		// transaction — a customer's history typically spans few stores even
+		// when it spans many transactions.
+		storeNames := make(map[int64]string)
 		items := make([]meTransactionItem, 0, len(clientTxs))
 		for _, tx := range clientTxs {
+			name, ok := storeNames[tx.StoreID]
+			if !ok {
+				if store, err := stores.GetByID(r.Context(), tx.StoreID); err == nil {
+					name = store.Name
+				} else if !errors.Is(err, domain.ErrNotFound) {
+					log.WarnContext(r.Context(), "load store name for transaction history", "store_id", tx.StoreID, "error", err)
+				}
+				storeNames[tx.StoreID] = name
+			}
+
 			items = append(items, meTransactionItem{
-				StoreID: tx.StoreID, ClientID: tx.ClientID, Type: string(tx.Type),
+				StoreID: tx.StoreID, StoreName: name, ClientID: tx.ClientID, Type: string(tx.Type),
+				Amount: tx.Amount.String(), Currency: tx.Currency,
 				PointsDelta: tx.PointsDelta, BalanceAfter: tx.BalanceAfter, CreatedAt: tx.CreatedAt,
 			})
 		}

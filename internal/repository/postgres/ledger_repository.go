@@ -68,11 +68,14 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 		return nil, nil, fmt.Errorf("post transaction %d/%s: adjust balance: %w", tx.StoreID, tx.ExternalTxID, err)
 	}
 
+	if tx.Currency == "" {
+		tx.Currency = domain.DefaultCurrency
+	}
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, rule_version)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, currency, type, points_delta, balance_after, request_fingerprint, created_at, rule_version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10)
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint, tx.RuleVersion).
+	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Currency, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint, tx.RuleVersion).
 		Scan(&tx.ID, &tx.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -90,12 +93,12 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction) (*d
 	return tx, balance, nil
 }
 
-const selectTransactionColumns = `id, store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refunded_amount, refunded_points, refund_cumulative_amount, refund_fully_refunded, rule_version`
+const selectTransactionColumns = `id, store_id, client_id, external_tx_id, amount, currency, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refunded_amount, refunded_points, refund_cumulative_amount, refund_fully_refunded, rule_version`
 
 func scanTransactionRow(row pgx.Row) (*domain.Transaction, error) {
 	tx := &domain.Transaction{}
 	err := row.Scan(
-		&tx.ID, &tx.StoreID, &tx.ClientID, &tx.ExternalTxID, &tx.Amount, &tx.Type, &tx.PointsDelta, &tx.BalanceAfter, &tx.RequestFingerprint, &tx.CreatedAt,
+		&tx.ID, &tx.StoreID, &tx.ClientID, &tx.ExternalTxID, &tx.Amount, &tx.Currency, &tx.Type, &tx.PointsDelta, &tx.BalanceAfter, &tx.RequestFingerprint, &tx.CreatedAt,
 		&tx.OriginalTransactionID, &tx.RefundedAmount, &tx.RefundedPoints, &tx.RefundCumulativeAmount, &tx.RefundFullyRefunded, &tx.RuleVersion,
 	)
 	if err != nil {
@@ -205,12 +208,13 @@ func (r *LedgerRepository) PostRefund(ctx context.Context, refund *domain.Transa
 	}
 
 	fullyRefunded := newRefundedAmount.Equal(original.Amount)
+	refund.Currency = original.Currency
 
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refund_cumulative_amount, refund_fully_refunded)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9, $10, $11)
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, currency, type, points_delta, balance_after, request_fingerprint, created_at, original_transaction_id, refund_cumulative_amount, refund_fully_refunded)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10, $11, $12)
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, refund.StoreID, refund.ClientID, refund.ExternalTxID, refund.Amount, domain.TransactionRefund, pointsDelta, balance.Points, refund.RequestFingerprint, original.ID, newRefundedAmount, fullyRefunded).
+	err = dbTx.QueryRow(ctx, insert, refund.StoreID, refund.ClientID, refund.ExternalTxID, refund.Amount, refund.Currency, domain.TransactionRefund, pointsDelta, balance.Points, refund.RequestFingerprint, original.ID, newRefundedAmount, fullyRefunded).
 		Scan(&refund.ID, &refund.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -285,11 +289,14 @@ func (r *LedgerRepository) PostRedeemChecked(ctx context.Context, tx *domain.Tra
 		return nil, nil, fmt.Errorf("post redeem %d/%s: adjust balance: %w", tx.StoreID, tx.ExternalTxID, err)
 	}
 
+	if tx.Currency == "" {
+		tx.Currency = domain.DefaultCurrency
+	}
 	const insert = `
-		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, type, points_delta, balance_after, request_fingerprint, created_at, rule_version)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), $9)
+		INSERT INTO transactions (store_id, client_id, external_tx_id, amount, currency, type, points_delta, balance_after, request_fingerprint, created_at, rule_version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10)
 		RETURNING id, created_at`
-	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint, tx.RuleVersion).
+	err = dbTx.QueryRow(ctx, insert, tx.StoreID, tx.ClientID, tx.ExternalTxID, tx.Amount, tx.Currency, tx.Type, tx.PointsDelta, balance.Points, tx.RequestFingerprint, tx.RuleVersion).
 		Scan(&tx.ID, &tx.CreatedAt)
 	if err != nil {
 		var pgErr *pgconn.PgError

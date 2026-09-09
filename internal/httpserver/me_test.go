@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
@@ -144,7 +146,7 @@ func TestHandleGetMyTransactions_FirstPageHasNextCursor(t *testing.T) {
 	}}
 	txRepo := &fakeMeTransactionRepo{txs: append(seedTransactions(10, 3, base), seedTransactions(20, 3, base)...)}
 
-	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, newFakeStoreRepo(), testLogger()))
 	rec := httptest.NewRecorder()
 	handler(rec, newMeTransactionsRequest(t, 1, "?limit=4"))
 
@@ -171,7 +173,7 @@ func TestHandleGetMyTransactions_SecondPageExhausts(t *testing.T) {
 		1: {{ID: 10, StoreID: 1}},
 	}}
 	txRepo := &fakeMeTransactionRepo{txs: seedTransactions(10, 5, base)}
-	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, newFakeStoreRepo(), testLogger()))
 
 	rec1 := httptest.NewRecorder()
 	handler(rec1, newMeTransactionsRequest(t, 1, "?limit=3"))
@@ -195,10 +197,48 @@ func TestHandleGetMyTransactions_SecondPageExhausts(t *testing.T) {
 	}
 }
 
+// TestHandleGetMyTransactions_IncludesAmountCurrencyAndStoreName guards
+// Phase 2's customer-history requirement (docs/audit-remediation-prompt.md):
+// "Include purchase amount, currency, merchant/store label and operation
+// date in customer history."
+func TestHandleGetMyTransactions_IncludesAmountCurrencyAndStoreName(t *testing.T) {
+	clients := &fakeMeClientRepo{byCustomerAccount: map[int64][]*domain.Client{
+		1: {{ID: 10, StoreID: 1}},
+	}}
+	txRepo := &fakeMeTransactionRepo{txs: []*domain.Transaction{
+		{ID: 1, StoreID: 1, ClientID: 10, Type: domain.TransactionAccrual, Amount: decimal.NewFromInt(250), Currency: "RUB", CreatedAt: time.Now()},
+	}}
+	stores := newFakeStoreRepo()
+	if err := stores.Create(context.Background(), &domain.Store{ID: 1, Name: "Corner Shop"}); err != nil {
+		t.Fatalf("seed store: %v", err)
+	}
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, stores, testLogger()))
+
+	rec := httptest.NewRecorder()
+	handler(rec, newMeTransactionsRequest(t, 1, ""))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	resp := decodeMeTransactionsResponse(t, rec)
+	if len(resp.Transactions) != 1 {
+		t.Fatalf("len(Transactions) = %d, want 1", len(resp.Transactions))
+	}
+	item := resp.Transactions[0]
+	if item.Amount != "250" {
+		t.Errorf("Amount = %q, want 250", item.Amount)
+	}
+	if item.Currency != "RUB" {
+		t.Errorf("Currency = %q, want RUB", item.Currency)
+	}
+	if item.StoreName != "Corner Shop" {
+		t.Errorf("StoreName = %q, want %q", item.StoreName, "Corner Shop")
+	}
+}
+
 func TestHandleGetMyTransactions_InvalidCursorRejected(t *testing.T) {
 	clients := &fakeMeClientRepo{byCustomerAccount: map[int64][]*domain.Client{1: {{ID: 10}}}}
 	txRepo := &fakeMeTransactionRepo{}
-	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, newFakeStoreRepo(), testLogger()))
 
 	rec := httptest.NewRecorder()
 	handler(rec, newMeTransactionsRequest(t, 1, "?cursor=not-valid-base64!!"))
@@ -211,7 +251,7 @@ func TestHandleGetMyTransactions_InvalidCursorRejected(t *testing.T) {
 func TestHandleGetMyTransactions_NoLinkedClientsSkipsQuery(t *testing.T) {
 	clients := &fakeMeClientRepo{byCustomerAccount: map[int64][]*domain.Client{}}
 	txRepo := &fakeMeTransactionRepo{}
-	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, testLogger()))
+	handler := RequireCustomerSession(testCustomerSecret, meCustomerAccounts())(handleGetMyTransactions(clients, txRepo, newFakeStoreRepo(), testLogger()))
 
 	rec := httptest.NewRecorder()
 	handler(rec, newMeTransactionsRequest(t, 1, ""))

@@ -40,19 +40,19 @@
     "semantic_hash": "234bb8ee76433a68967394ee106a2c41"
   },
   "internal/domain/errors.go": {
-    "mtime": 1788903593.6814487,
-    "ast_hash": "b6b3e16f18f81cf5ca6cdac5a2bf091f",
+    "mtime": 1788908087.5919187,
+    "ast_hash": "7c77b4bbe62072806377b500bc17e3e0",
     "semantic_hash": ""
   },
   "internal/domain/ledger.go": {
-    "mtime": 1785403009.2244275,
-    "ast_hash": "1b6af358446510345c3fd8eae8e8067f",
+    "mtime": 1788907903.165603,
+    "ast_hash": "bd1dd219b2fd6f66b14e339a0b1445ae",
     "semantic_hash": ""
   },
   "internal/domain/loyalty_config.go": {
-    "mtime": 1785228076.4587836,
-    "ast_hash": "66cf8b1c05629b2c6bf9ceed1aabfc74",
-    "semantic_hash": "66cf8b1c05629b2c6bf9ceed1aabfc74"
+    "mtime": 1788908103.5192003,
+    "ast_hash": "7b59630822b8bfaafdb9745c87e91acf",
+    "semantic_hash": ""
   },
   "internal/domain/mechanic.go": {
     "mtime": 1785227796.9646356,
@@ -70,8 +70,8 @@
     "semantic_hash": "3047f87958cf6a107e2400dc175f32b1"
   },
   "internal/domain/transaction.go": {
-    "mtime": 1785403827.3512235,
-    "ast_hash": "488540bbd33737b3372aaa51ba5d5e4e",
+    "mtime": 1788907803.786539,
+    "ast_hash": "b8e3e94cc9eed5d42b83af1ae260f125",
     "semantic_hash": ""
   },
   "internal/httpserver/clients.go": {
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "internal/repository/postgres/ledger_repository.go": {
-    "mtime": 1785403066.1897726,
-    "ast_hash": "bdd8cac15a6364f42d3f6778aa82e624",
+    "mtime": 1788907912.7533388,
+    "ast_hash": "dc7b417df82640e7ff72dc99a1917abe",
     "semantic_hash": ""
   },
   "internal/repository/postgres/loyalty_config_repository.go": {
@@ -175,13 +175,13 @@
     "semantic_hash": ""
   },
   "internal/service/loyalty.go": {
-    "mtime": 1785404026.7075555,
-    "ast_hash": "baec3d680af731a1060bbf7771ac48b0",
+    "mtime": 1788907925.055983,
+    "ast_hash": "73dbf62471c270e38cb3cc6ee41de0cb",
     "semantic_hash": ""
   },
   "internal/service/loyalty_test.go": {
-    "mtime": 1785408641.835306,
-    "ast_hash": "c34f47d804de8ac49c5c89c53890a548",
+    "mtime": 1788907946.372212,
+    "ast_hash": "93843bc7c854d3749ba8dd51d16af249",
     "semantic_hash": ""
   },
   "migrations/embed.go": {
@@ -420,9 +420,9 @@
     "semantic_hash": ""
   },
   "internal/httpserver/admin_loyaltyconfig.go": {
-    "mtime": 1785277605.2013538,
-    "ast_hash": "e3003104c46a29859645db0f0b4ca00a",
-    "semantic_hash": "e3003104c46a29859645db0f0b4ca00a"
+    "mtime": 1788908121.509833,
+    "ast_hash": "71af7082e1a8cc27136c98819b165375",
+    "semantic_hash": ""
   },
   "internal/httpserver/admin_organizations.go": {
     "mtime": 1785277490.548435,
@@ -660,8 +660,8 @@
     "semantic_hash": ""
   },
   "internal/httpserver/admin_route_test.go": {
-    "mtime": 1788901672.4346902,
-    "ast_hash": "72e24c43bccb7bd8dd10876bf004b5ba",
+    "mtime": 1788908159.138327,
+    "ast_hash": "1b178c3a418608803ca101eb09cab6e2",
     "semantic_hash": ""
   },
   "internal/httpserver/auth_customer_route_test.go": {
@@ -700,13 +700,13 @@
     "semantic_hash": ""
   },
   "internal/httpserver/testsupport_test.go": {
-    "mtime": 1788903672.4321165,
-    "ast_hash": "19e580ee9f76cf6432fe8cae459da3ea",
+    "mtime": 1788908018.9264228,
+    "ast_hash": "37036dcc73d1e3b2a7ee9bbce4592a16",
     "semantic_hash": ""
   },
   "internal/httpserver/transactions_route_test.go": {
-    "mtime": 1788901058.96755,
-    "ast_hash": "c27e8cba916f956ec5ab672af1e66a8a",
+    "mtime": 1788908048.73507,
+    "ast_hash": "a56a42ed086df9deccf4b87b7f768ce5",
     "semantic_hash": ""
   },
   "internal/ratelimit/limiter.go": {
@@ -847,6 +847,11 @@
   "migrations/sql/00024_audit_events_append_only_and_index.sql": {
     "mtime": 1788906553.9636843,
     "ast_hash": "d0c180e1a0ca145a216619f03b6c5c4f",
+    "semantic_hash": ""
+  },
+  "migrations/sql/00025_refund_replay_snapshot.sql": {
+    "mtime": 1788907798.5472505,
+    "ast_hash": "b301cacbd97425b4fc823a314270f847",
     "semantic_hash": ""
   }
 }
