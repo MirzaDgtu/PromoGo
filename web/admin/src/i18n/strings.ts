@@ -19,6 +19,9 @@ export const strings = {
     sessionExpiredTitle: 'Сессия истекла',
     sessionExpiredBody: 'Пожалуйста, войдите снова, чтобы продолжить работу.',
     loginAgain: 'Войти снова',
+    unconfiguredTitle: 'OIDC-провайдер не настроен',
+    unconfiguredBody:
+      'Скопируйте web/admin/.env.example в .env.local и укажите VITE_OIDC_AUTHORITY и VITE_OIDC_CLIENT_ID вашего провайдера.',
   },
   noMembership: {
     title: 'Нет доступа к организациям',

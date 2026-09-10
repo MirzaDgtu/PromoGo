@@ -16,6 +16,7 @@ import { oidcSettings } from './oidcConfig'
 
 export type AuthStatus =
   | 'loading'
+  | 'unconfigured'
   | 'unauthenticated'
   | 'authenticating'
   | 'authenticated'
@@ -74,7 +75,13 @@ export function AuthProvider({
 }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [staffUserID, setStaffUserID] = useState<number | null>(null)
-  const userManager = useMemo(() => new UserManager(oidcSettings()), [])
+  // null when DEC-004 hasn't picked an OIDC provider for this deployment
+  // yet (see oidcConfig.ts) — every method below no-ops or reports
+  // 'unconfigured' rather than throwing in that case.
+  const userManager = useMemo(() => {
+    const settings = oidcSettings()
+    return settings ? new UserManager(settings) : null
+  }, [])
   // Coalesces concurrent 401s from multiple in-flight requests into a
   // single silent-renew attempt, so a page that fires several queries at
   // once doesn't open several renewal flows — see the module doc on
@@ -108,6 +115,7 @@ export function AuthProvider({
   )
 
   const attemptSilentRenewal = useCallback((): Promise<void> => {
+    if (!userManager) return Promise.resolve()
     if (renewalInFlight.current) return renewalInFlight.current
     const attempt = (async () => {
       try {
@@ -140,6 +148,10 @@ export function AuthProvider({
   }, [attemptSilentRenewal])
 
   useEffect(() => {
+    if (!userManager) {
+      setStatus('unconfigured')
+      return
+    }
     // On first load (not the /auth/callback route), check whether
     // oidc-client-ts already has a live session (e.g. a page refresh) — if
     // so, re-derive the PromoGo staff session from it rather than forcing a
@@ -167,11 +179,16 @@ export function AuthProvider({
   }, [])
 
   const login = useCallback(async () => {
+    if (!userManager) return
     setStatus('authenticating')
     await userManager.signinRedirect()
   }, [userManager])
 
   const completeLogin = useCallback(async () => {
+    if (!userManager) {
+      setStatus('unconfigured')
+      return
+    }
     setStatus('authenticating')
     try {
       const user = await userManager.signinRedirectCallback()
@@ -186,7 +203,7 @@ export function AuthProvider({
     setStaffUserID(null)
     setStatus('unauthenticated')
     queryClient.clear()
-    await userManager.signoutRedirect().catch(() => {
+    await userManager?.signoutRedirect().catch(() => {
       // No end-session endpoint configured, or the IdP rejected it — the
       // local session is already cleared above, which is the part that
       // actually matters for this app; losing the IdP-side logout redirect

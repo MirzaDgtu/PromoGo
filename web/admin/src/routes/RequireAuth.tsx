@@ -18,6 +18,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     case 'loading':
     case 'authenticating':
       return <LoadingState />
+    case 'unconfigured':
     case 'unauthenticated':
       return <Navigate to="/login" replace />
     case 'session_expired':

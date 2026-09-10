@@ -6,20 +6,24 @@ import type { UserManagerSettings } from 'oidc-client-ts'
 // provider. A pilot deployment sets these in web/admin/.env.production (or
 // the hosting platform's env config); local dev uses .env.local (both
 // gitignored — see .env.example for the required keys).
-function requireEnv(name: string): string {
-  const value = import.meta.env[name as keyof ImportMetaEnv]
-  if (!value) {
-    throw new Error(
-      `Missing required env var ${name}. Copy web/admin/.env.example to .env.local and fill in your OIDC provider's values.`,
-    )
-  }
-  return value
+//
+// DEC-004 hasn't picked a provider yet, so an unconfigured environment is
+// the expected default today, not a misconfiguration — isOIDCConfigured
+// lets AuthProvider render a clear "not configured" screen for that case
+// instead of throwing during render (a thrown error here would take down
+// the whole app before a user ever sees a login button, which is worse
+// than just saying so).
+export function isOIDCConfigured(): boolean {
+  return Boolean(import.meta.env.VITE_OIDC_AUTHORITY && import.meta.env.VITE_OIDC_CLIENT_ID)
 }
 
-export function oidcSettings(): UserManagerSettings {
+// oidcSettings returns null when isOIDCConfigured() is false — callers must
+// check that first rather than relying on this to throw.
+export function oidcSettings(): UserManagerSettings | null {
+  if (!isOIDCConfigured()) return null
   return {
-    authority: requireEnv('VITE_OIDC_AUTHORITY'),
-    client_id: requireEnv('VITE_OIDC_CLIENT_ID'),
+    authority: import.meta.env.VITE_OIDC_AUTHORITY,
+    client_id: import.meta.env.VITE_OIDC_CLIENT_ID,
     redirect_uri: new URL('/auth/callback', window.location.origin).toString(),
     post_logout_redirect_uri: new URL('/login', window.location.origin).toString(),
     // Authorization Code + PKCE (oidc-client-ts always uses PKCE for the

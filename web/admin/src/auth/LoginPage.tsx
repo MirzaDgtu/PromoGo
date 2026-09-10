@@ -17,9 +17,16 @@ export function LoginPage() {
             {strings.auth.sessionExpiredBody}
           </p>
         )}
-        <button type="button" onClick={() => void login()} disabled={status === 'authenticating'}>
-          {status === 'authenticating' ? strings.auth.loggingIn : strings.auth.loginButton}
-        </button>
+        {status === 'unconfigured' ? (
+          <div role="alert">
+            <h2>{strings.auth.unconfiguredTitle}</h2>
+            <p>{strings.auth.unconfiguredBody}</p>
+          </div>
+        ) : (
+          <button type="button" onClick={() => void login()} disabled={status === 'authenticating'}>
+            {status === 'authenticating' ? strings.auth.loggingIn : strings.auth.loginButton}
+          </button>
+        )}
       </div>
     </main>
   )
