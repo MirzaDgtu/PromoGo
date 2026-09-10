@@ -1,6 +1,6 @@
 APP_NAME      := promogo
 MIGRATIONS_DIR := migrations/sql
-DATABASE_URL  ?= postgres://promogo:promogo@localhost:5432/promogo?sslmode=disable
+DATABASE_URL  ?= postgres://promogo:promogo@localhost:5433/promogo?sslmode=disable
 # Keep in sync with the github.com/pressly/goose/v3 version pinned in go.mod.
 GOOSE_VERSION := v3.27.3
 
@@ -8,6 +8,7 @@ COMPOSE := docker compose -f deployments/docker-compose.yml
 
 .PHONY: build run test lint tidy \
         docker-up docker-down docker-logs redeploy \
+        oidc-mock-up oidc-mock-down \
         migrate-up migrate-down migrate-status migrate-validate
 
 build:
@@ -41,6 +42,15 @@ docker-logs:
 redeploy:
 	$(COMPOSE) build app
 	$(COMPOSE) up -d --no-deps app
+
+# Local-only test OIDC issuer for web/admin dev (see deployments/docker-compose.yml
+# and web/admin/README.md). Opt-in via the "dev-oidc" profile — never
+# started by docker-up/redeploy.
+oidc-mock-up:
+	$(COMPOSE) --profile dev-oidc up -d oidc-mock
+
+oidc-mock-down:
+	$(COMPOSE) --profile dev-oidc stop oidc-mock
 
 # ── Migrations ───────────────────────────────────────────────────────────────
 

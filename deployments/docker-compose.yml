@@ -4,6 +4,14 @@
 # no TLS between services, no resource limits, no secrets management. For a
 # real deployment, supply real credentials via secrets/env injection, put
 # Postgres/Redis behind a private network, and terminate TLS at the edge.
+#
+# NOTE: postgres/redis host ports default to 5433/6380 (not the standard
+# 5432/6379) to avoid clashing with a native Postgres/Redis install on the
+# dev machine. The `app` service always reaches them via the internal
+# compose network (postgres:5432, redis:6379) regardless of this mapping.
+# For production, drop the `ports:` blocks on postgres/redis entirely so
+# they're reachable only from inside the compose network — do not publish
+# them to the host at all.
 name: promogo
 
 services:
@@ -14,7 +22,7 @@ services:
       POSTGRES_PASSWORD: promogo
       POSTGRES_DB: promogo
     ports:
-      - "${POSTGRES_HOST:-127.0.0.1}:${POSTGRES_HOST_PORT:-5432}:5432"
+      - "${POSTGRES_HOST:-127.0.0.1}:${POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +34,7 @@ services:
   redis:
     image: redis:7.4.6-alpine@sha256:3b73847e72874be07e6657b129a94761662b79bc0f679273757d4218573b2a98
     ports:
-      - "${REDIS_HOST:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379"
+      - "${REDIS_HOST:-127.0.0.1}:${REDIS_HOST_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -39,8 +47,17 @@ services:
       dockerfile: Dockerfile
     environment:
       PROMOGO_POSTGRES_HOST: postgres
+      PROMOGO_POSTGRES_PORT: 5432
       PROMOGO_REDIS_ADDR: redis:6379
       PROMOGO_FCM_CREDENTIALS_JSON: ${PROMOGO_FCM_CREDENTIALS_JSON:-}
+      # Empty by default (staff OIDC login stays disabled, as documented in
+      # configs/config.yaml) so plain `make docker-up`/`redeploy` never
+      # silently points staff auth at a mock issuer. Set these three in a
+      # repo-root .env to test web/admin locally against `oidc-mock` below
+      # — see web/admin/README.md "Local OIDC for dev".
+      PROMOGO_OIDC_ISSUER_URL: ${PROMOGO_OIDC_ISSUER_URL:-}
+      PROMOGO_OIDC_AUDIENCE: ${PROMOGO_OIDC_AUDIENCE:-}
+      PROMOGO_OIDC_JWKS_URL: ${PROMOGO_OIDC_JWKS_URL:-}
     ports:
       - "${APP_HOST:-127.0.0.1}:${APP_HOST_PORT:-8090}:8080"
     depends_on:
@@ -48,6 +65,19 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # Local-only test OIDC issuer for web/admin dev (Milestone 1) — not part
+  # of the pilot deployment and never used in production; the real IdP is
+  # deployment configuration per knowledge/Decisions.md DEC-004, still
+  # undecided. Not started by `make docker-up`/`redeploy`; opt in with
+  # `make oidc-mock-up` (profile "dev-oidc"). Zero-config default issuer
+  # ("default" issuerId, aud="default" per navikt/mock-oauth2-server) — see
+  # web/admin/README.md for the exact env values to pair with it.
+  oidc-mock:
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.2@sha256:b538810afd589d42fbfb856c588c2065eaeed1dc528d6c532972048e67fc2aff
+    profiles: ["dev-oidc"]
+    ports:
+      - "${OIDC_MOCK_HOST:-127.0.0.1}:${OIDC_MOCK_HOST_PORT:-8091}:8080"
 
 volumes:
   postgres_data:
