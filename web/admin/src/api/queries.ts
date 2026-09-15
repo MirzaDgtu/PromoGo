@@ -30,7 +30,7 @@ export function useOrganizations(enabled: boolean) {
   })
 }
 
-export function useStores(orgID: number | null) {
+export function useStores(orgID: number | null, enabled: boolean) {
   return useQuery({
     queryKey: ['stores', orgID],
     queryFn: async () => {
@@ -40,6 +40,6 @@ export function useStores(orgID: number | null) {
       if (error) throw Object.assign(new Error('load stores'), { response })
       return data?.stores ?? []
     },
-    enabled: orgID != null,
+    enabled: enabled && orgID != null,
   })
 }

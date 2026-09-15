@@ -86,7 +86,7 @@ export function OrgStoreProvider({ children, enabled }: { children: ReactNode; e
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizations])
 
-  const storesQuery = useStores(selectedOrgID)
+  const storesQuery = useStores(selectedOrgID, enabled)
   const stores = useMemo(() => storesQuery.data ?? [], [storesQuery.data])
 
   const hasPermission = useCallback(
