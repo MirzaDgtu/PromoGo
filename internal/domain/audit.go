@@ -31,6 +31,12 @@ const (
 	AuditActionStaffRoleChanged     = "staff.role_changed"
 	AuditActionStaffStatusChanged   = "staff.status_changed"
 
+	// Organization/store onboarding — TargetType "organization" or "store",
+	// TargetID that entity's ID. The values themselves aren't recorded.
+	AuditActionOrganizationCreated = "organization.created"
+	AuditActionStoreCreated        = "store.created"
+	AuditActionStoreUpdated        = "store.updated"
+
 	AuditActionAPIKeyCreated = "api_key.created"
 	AuditActionAPIKeyRotated = "api_key.rotated"
 	AuditActionAPIKeyRevoked = "api_key.revoked"

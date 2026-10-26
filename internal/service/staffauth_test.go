@@ -402,6 +402,28 @@ func TestStaffPrincipal_HasPermission_ScopeRules(t *testing.T) {
 		}
 	}
 
+	// platform_admin is network-wide: its membership in org 1 grants every
+	// permission in an organization it has no membership in, at org and store level.
+	for _, perm := range []domain.Permission{domain.PermStoresManage, domain.PermStaffManage, domain.PermAPIKeysRotate} {
+		if !platformAdmin.HasPermission(perm, 2, nil) {
+			t.Errorf("platform_admin should have %q in org 2 without a membership there", perm)
+		}
+	}
+	if !platformAdmin.HasPermission(domain.PermLoyaltyConfigWrite, 2, &store6) {
+		t.Error("platform_admin should have loyalty_config.write for a store in org 2")
+	}
+
+	// A disabled platform_admin membership grants nothing, anywhere.
+	disabledPlatformAdmin := &StaffPrincipal{Memberships: []*domain.StaffMembership{
+		{OrganizationID: 1, StoreID: nil, Role: domain.RolePlatformAdmin, Status: domain.StaffDisabled},
+	}}
+	if disabledPlatformAdmin.IsPlatformAdmin() {
+		t.Error("a disabled platform_admin membership should not make the principal a platform admin")
+	}
+	if disabledPlatformAdmin.HasPermission(domain.PermStoresManage, 2, nil) {
+		t.Error("a disabled platform_admin membership should not grant permissions in another organization")
+	}
+
 	// support_viewer never has a write permission.
 	if supportViewer.HasPermission(domain.PermLoyaltyConfigWrite, 1, &store5) {
 		t.Error("support_viewer should never have loyalty_config.write")
@@ -434,5 +456,15 @@ func TestStaffPrincipal_IsSupportViewerOnly(t *testing.T) {
 	}}
 	if noMatch.IsSupportViewerOnly(1, &store5) {
 		t.Error("IsSupportViewerOnly() = true for an unrelated organization, want false")
+	}
+
+	// A platform_admin sees unmasked data even where its only membership in
+	// that organization is support_viewer.
+	platformAdminViewer := &StaffPrincipal{Memberships: []*domain.StaffMembership{
+		{OrganizationID: 1, StoreID: nil, Role: domain.RolePlatformAdmin, Status: domain.StaffActive},
+		{OrganizationID: 2, StoreID: nil, Role: domain.RoleSupportViewer, Status: domain.StaffActive},
+	}}
+	if platformAdminViewer.IsSupportViewerOnly(2, &store5) {
+		t.Error("IsSupportViewerOnly() = true for a platform_admin, want false")
 	}
 }

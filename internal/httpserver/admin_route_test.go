@@ -2,8 +2,10 @@ package httpserver
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,6 +60,239 @@ func TestHandleCreateStore_MalformedBody(t *testing.T) {
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestHandleCreateStore_NameValidation(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		wantCode int
+		wantName string
+	}{
+		{"whitespace only", "   ", http.StatusBadRequest, ""},
+		{"trimmed", "  Магазин на Ленина  ", http.StatusCreated, "Магазин на Ленина"},
+		// 255 Cyrillic characters are 510 bytes: the limit counts characters, per the OpenAPI maxLength.
+		{"255 cyrillic chars", strings.Repeat("я", 255), http.StatusCreated, strings.Repeat("я", 255)},
+		{"256 chars", strings.Repeat("я", 256), http.StatusBadRequest, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, fakes := newTestServer(t)
+			org := seedOrganization(fakes, "Acme")
+			token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+			req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores", token, map[string]string{"name": tc.input})
+			req.SetPathValue("orgID", itoa(org.ID))
+			rec := doRequest(handler, req)
+			if rec.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d (body=%s)", rec.Code, tc.wantCode, rec.Body.String())
+			}
+			if tc.wantCode != http.StatusCreated {
+				return
+			}
+			var got struct {
+				Name string `json:"name"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if got.Name != tc.wantName {
+				t.Fatalf("name = %q, want %q", got.Name, tc.wantName)
+			}
+		})
+	}
+}
+
+// A platform_admin creating an organization has no membership in it; it must
+// still be able to onboard it. A retailer_admin from another organization
+// must not.
+func TestHandleCreateStore_CrossOrganizationAccess(t *testing.T) {
+	cases := []struct {
+		name     string
+		role     domain.Role
+		wantCode int
+	}{
+		{"platform_admin", domain.RolePlatformAdmin, http.StatusCreated},
+		{"retailer_admin", domain.RoleRetailerAdmin, http.StatusForbidden},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, fakes := newTestServer(t)
+			home := seedOrganization(fakes, "Home")
+			other := seedOrganization(fakes, "Other")
+			token := issueStaffToken(t, fakes, 1, home.ID, nil, tc.role)
+
+			req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(other.ID)+"/stores", token, map[string]string{"name": "Store"})
+			req.SetPathValue("orgID", itoa(other.ID))
+			rec := doRequest(handler, req)
+			if rec.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d (body=%s)", rec.Code, tc.wantCode, rec.Body.String())
+			}
+		})
+	}
+}
+
+type storeBodyForTest struct {
+	Name         string  `json:"name"`
+	Address      string  `json:"address"`
+	ExternalCode *string `json:"external_code"`
+}
+
+func decodeStore(t *testing.T, rec *httptest.ResponseRecorder) storeBodyForTest {
+	t.Helper()
+	var got storeBodyForTest
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v (body=%s)", err, rec.Body.String())
+	}
+	return got
+}
+
+func storePath(orgID, storeID int64) string {
+	return "/api/v1/admin/organizations/" + itoa(orgID) + "/stores/" + itoa(storeID)
+}
+
+func TestHandleCreateStore_ProfileFields(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores", token,
+		map[string]string{"name": "Океан", "address": " г. Махачкала, ул. Ленина, 1 ", "external_code": " 000123 "})
+	req.SetPathValue("orgID", itoa(org.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body=%s)", rec.Code, rec.Body.String())
+	}
+	got := decodeStore(t, rec)
+	if got.Address != "г. Махачкала, ул. Ленина, 1" || got.ExternalCode == nil || *got.ExternalCode != "000123" {
+		t.Fatalf("got %+v, want trimmed address and external_code", got)
+	}
+
+	last := fakes.AuditEvents.all[len(fakes.AuditEvents.all)-1]
+	if last.Action != domain.AuditActionStoreCreated {
+		t.Fatalf("last audit action = %q, want %q", last.Action, domain.AuditActionStoreCreated)
+	}
+}
+
+func TestHandleCreateStore_DuplicateExternalCodeConflicts(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	existing := seedStore(fakes, org.ID, "First")
+	code := "000123"
+	existing.ExternalCode = &code
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores", token,
+		map[string]string{"name": "Second", "external_code": "000123"})
+	req.SetPathValue("orgID", itoa(org.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409 (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleUpdateStore(t *testing.T) {
+	code := "000123"
+	other := "000999"
+	cases := []struct {
+		name      string
+		role      domain.Role
+		wrongOrg  bool
+		body      map[string]string
+		wantCode  int
+		wantStore storeBodyForTest
+	}{
+		{
+			name: "partial update keeps absent fields", role: domain.RoleRetailerAdmin,
+			body:     map[string]string{"address": "ул. Гагарина, 5"},
+			wantCode: http.StatusOK, wantStore: storeBodyForTest{Name: "Океан", Address: "ул. Гагарина, 5", ExternalCode: &code},
+		},
+		{
+			name: "empty external_code clears it", role: domain.RoleRetailerAdmin,
+			body:     map[string]string{"external_code": "  "},
+			wantCode: http.StatusOK, wantStore: storeBodyForTest{Name: "Океан", Address: "ул. Ленина, 1"},
+		},
+		{
+			name: "external_code of another store conflicts", role: domain.RoleRetailerAdmin,
+			body: map[string]string{"external_code": other}, wantCode: http.StatusConflict,
+		},
+		{
+			name: "empty name is rejected", role: domain.RoleRetailerAdmin,
+			body: map[string]string{"name": " "}, wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "store from another organization is not found", role: domain.RoleRetailerAdmin, wrongOrg: true,
+			body: map[string]string{"name": "X"}, wantCode: http.StatusNotFound,
+		},
+		{
+			name: "store_manager lacks stores.manage", role: domain.RoleStoreManager,
+			body: map[string]string{"name": "X"}, wantCode: http.StatusForbidden,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, fakes := newTestServer(t)
+			org := seedOrganization(fakes, "Acme")
+			otherOrg := seedOrganization(fakes, "Other")
+			store := seedStore(fakes, org.ID, "Океан")
+			store.Address = "ул. Ленина, 1"
+			storeCode := code
+			store.ExternalCode = &storeCode
+			sibling := seedStore(fakes, org.ID, "Сосед")
+			siblingCode := other
+			sibling.ExternalCode = &siblingCode
+
+			pathOrg := org.ID
+			if tc.wrongOrg {
+				pathOrg = otherOrg.ID
+			}
+			token := issueStaffToken(t, fakes, 1, pathOrg, nil, tc.role)
+
+			req := adminReq(http.MethodPatch, storePath(pathOrg, store.ID), token, tc.body)
+			req.SetPathValue("orgID", itoa(pathOrg))
+			req.SetPathValue("storeID", itoa(store.ID))
+			rec := doRequest(handler, req)
+			if rec.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d (body=%s)", rec.Code, tc.wantCode, rec.Body.String())
+			}
+			if tc.wantCode != http.StatusOK {
+				if store.Name != "Океан" || store.ExternalCode == nil || *store.ExternalCode != code {
+					t.Fatalf("a rejected update changed the store: %+v", store)
+				}
+				return
+			}
+			got := decodeStore(t, rec)
+			if got.Name != tc.wantStore.Name || got.Address != tc.wantStore.Address ||
+				(got.ExternalCode == nil) != (tc.wantStore.ExternalCode == nil) ||
+				(got.ExternalCode != nil && *got.ExternalCode != *tc.wantStore.ExternalCode) {
+				t.Fatalf("got %+v, want %+v", got, tc.wantStore)
+			}
+			last := fakes.AuditEvents.all[len(fakes.AuditEvents.all)-1]
+			if last.Action != domain.AuditActionStoreUpdated {
+				t.Fatalf("last audit action = %q, want %q", last.Action, domain.AuditActionStoreUpdated)
+			}
+		})
+	}
+}
+
+func TestHandleCreateOrganization_TrimsName(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	token := issueStaffToken(t, fakes, 1, 1, nil, domain.RolePlatformAdmin)
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations", token, map[string]string{"name": " Ромашка "})
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var got struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.Name != "Ромашка" {
+		t.Fatalf("name = %q, want %q", got.Name, "Ромашка")
 	}
 }
 

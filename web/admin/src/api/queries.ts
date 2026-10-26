@@ -1,6 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api } from './client'
+import type { components } from './schema.gen'
+
+export type StoreProfileInput = components['schemas']['StoreProfileInput']
 
 // enabled defaults to true in every hook below except where noted — callers
 // pass enabled: false while auth/org/store context isn't ready yet, so a
@@ -30,16 +33,84 @@ export function useOrganizations(enabled: boolean) {
   })
 }
 
-export function useStores(orgID: number | null, enabled: boolean) {
-  return useQuery({
+function storesQuery(orgID: number) {
+  return {
     queryKey: ['stores', orgID],
     queryFn: async () => {
       const { data, error, response } = await api.GET('/api/v1/admin/organizations/{orgID}/stores', {
-        params: { path: { orgID: orgID! } },
+        params: { path: { orgID } },
       })
       if (error) throw Object.assign(new Error('load stores'), { response })
       return data?.stores ?? []
     },
+  }
+}
+
+export function useStores(orgID: number | null, enabled: boolean) {
+  return useQuery({
+    ...storesQuery(orgID ?? 0),
     enabled: enabled && orgID != null,
   })
+}
+
+// useStoresByOrganization loads every listed organization's stores, one
+// request per organization, sharing useStores' cache entries. Fine for the
+// pilot's handful of organizations; a cross-organization list endpoint
+// would replace it if that number grows.
+export function useStoresByOrganization(orgIDs: number[]) {
+  return useQueries({ queries: orgIDs.map((id) => storesQuery(id)) })
+}
+
+// Mutations await their list invalidation in onSuccess, so by the time
+// mutateAsync resolves the caller's list already includes the new row.
+
+export function useCreateOrganization() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { data, error, response } = await api.POST('/api/v1/admin/organizations', { body: { name } })
+      if (error || !data) throw Object.assign(new Error('create organization'), { response })
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['organizations'] }),
+  })
+}
+
+export function useCreateStore(orgID: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: StoreProfileInput & { name: string }) => {
+      const { data, error, response } = await api.POST('/api/v1/admin/organizations/{orgID}/stores', {
+        params: { path: { orgID } },
+        body: input,
+      })
+      if (error || !data) throw Object.assign(new Error('create store'), { response })
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stores', orgID] }),
+  })
+}
+
+export function useUpdateStore(orgID: number, storeID: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: StoreProfileInput) => {
+      const { data, error, response } = await api.PATCH('/api/v1/admin/organizations/{orgID}/stores/{storeID}', {
+        params: { path: { orgID, storeID } },
+        body: input,
+      })
+      if (error || !data) throw Object.assign(new Error('update store'), { response })
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stores', orgID] }),
+  })
+}
+
+// responseOf recovers the Response attached by the hooks above, so error UI
+// can branch on status and show the request id.
+export function responseOf(error: unknown): Response | undefined {
+  if (error && typeof error === 'object' && 'response' in error && error.response instanceof Response) {
+    return error.response
+  }
+  return undefined
 }

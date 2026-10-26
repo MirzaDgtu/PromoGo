@@ -32,12 +32,15 @@ func newFakeStoreRepo() *fakeStoreRepo {
 	return &fakeStoreRepo{byID: map[int64]*domain.Store{}, byAPIKey: map[string]*domain.Store{}}
 }
 
+// GetByID returns a copy, like a real database read: a handler editing the
+// result must not change the stored row until it calls UpdateProfile.
 func (f *fakeStoreRepo) GetByID(_ context.Context, id int64) (*domain.Store, error) {
 	s, ok := f.byID[id]
 	if !ok {
 		return nil, domain.ErrNotFound
 	}
-	return s, nil
+	copied := *s
+	return &copied, nil
 }
 
 func (f *fakeStoreRepo) GetByAPIKeyHash(_ context.Context, hash string) (*domain.Store, error) {
@@ -48,7 +51,36 @@ func (f *fakeStoreRepo) GetByAPIKeyHash(_ context.Context, hash string) (*domain
 	return s, nil
 }
 
+// externalCodeTaken mirrors idx_stores_org_external_code.
+func (f *fakeStoreRepo) externalCodeTaken(s *domain.Store) bool {
+	if s.ExternalCode == nil {
+		return false
+	}
+	for _, other := range f.byID {
+		if other.ID != s.ID && other.OrganizationID == s.OrganizationID &&
+			other.ExternalCode != nil && *other.ExternalCode == *s.ExternalCode {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *fakeStoreRepo) UpdateProfile(_ context.Context, s *domain.Store) error {
+	existing, ok := f.byID[s.ID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	if f.externalCodeTaken(s) {
+		return domain.ErrConflict
+	}
+	existing.Name, existing.Address, existing.ExternalCode = s.Name, s.Address, s.ExternalCode
+	return nil
+}
+
 func (f *fakeStoreRepo) Create(_ context.Context, s *domain.Store) error {
+	if f.externalCodeTaken(s) {
+		return domain.ErrConflict
+	}
 	f.byID[s.ID] = s
 	if s.APIKeyHash != "" {
 		f.byAPIKey[s.APIKeyHash] = s

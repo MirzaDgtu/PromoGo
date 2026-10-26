@@ -49,7 +49,7 @@ export function ErrorState({
 }: {
   title?: string
   body?: ReactNode
-  response?: Response
+  response?: Response | undefined
   onRetry?: () => void
 }) {
   const requestId = requestIdFrom(response)

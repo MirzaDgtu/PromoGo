@@ -12,7 +12,12 @@ type Store struct {
 	ID             int64
 	OrganizationID int64
 	Name           string
-	APIKeyHash     string
+	// Address is a free-form display string; "" means not set.
+	Address string
+	// ExternalCode is the store's identifier in the retailer's 1C, unique
+	// within OrganizationID; nil means not set.
+	ExternalCode *string
+	APIKeyHash   string
 }
 
 // StoreRepository persists and retrieves Store rows.
@@ -22,7 +27,13 @@ type StoreRepository interface {
 	// GetByAPIKeyHash returns domain.ErrNotFound if no store's API key
 	// hashes to apiKeyHash. Used by the webhook auth middleware.
 	GetByAPIKeyHash(ctx context.Context, apiKeyHash string) (*Store, error)
+	// Create returns domain.ErrConflict if store.ExternalCode is already
+	// used by another store in the same organization.
 	Create(ctx context.Context, store *Store) error
+	// UpdateProfile saves store's Name, Address and ExternalCode (nothing
+	// else). Returns domain.ErrNotFound if the store doesn't exist and
+	// domain.ErrConflict on a duplicate ExternalCode within the organization.
+	UpdateProfile(ctx context.Context, store *Store) error
 	// ListByOrganization returns every Store belonging to organizationID,
 	// ordered by id. Used by GET /api/v1/admin/organizations/{orgID}/stores;
 	// callers must filter the result to a caller's store-scoped memberships

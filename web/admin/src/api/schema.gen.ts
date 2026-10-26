@@ -445,7 +445,7 @@ export interface paths {
         put?: never;
         /**
          * Create a Store within an Organization
-         * @description Requires `stores.manage` in orgID.
+         * @description Requires `stores.manage` in orgID. String fields are trimmed; lengths count characters. 409 if external_code is already used by another store in the organization.
          */
         post: operations["createStore"];
         delete?: never;
@@ -471,7 +471,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update a Store's name, address or 1C code
+         * @description Requires `stores.manage` for the store. Absent fields keep their current value; an empty external_code clears it. 404 if storeID doesn't belong to orgID, 409 if external_code is already used by another store in the organization. Audited as `store.updated`.
+         */
+        patch: operations["updateStore"];
         trace?: never;
     };
     "/api/v1/admin/organizations/{orgID}/staff": {
@@ -891,10 +895,20 @@ export interface components {
         };
         Store: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** Format: int64 */
-            organization_id?: number;
+            organization_id: number;
+            name: string;
+            /** @description Free-form display address; empty string when not set. */
+            address: string;
+            /** @description The store's identifier in the retailer's 1C, unique within the organization; null when not set. */
+            external_code: string | null;
+        };
+        StoreProfileInput: {
             name?: string;
+            address?: string;
+            /** @description Empty string clears the code. */
+            external_code?: string;
         };
         /** @enum {string} */
         Role: "platform_admin" | "retailer_admin" | "store_manager" | "support_viewer";
@@ -1931,9 +1945,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["StoreProfileInput"] & unknown;
             };
         };
         responses: {
@@ -1949,6 +1961,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
             429: components["responses"]["TooManyRequests"];
             503: components["responses"]["ServiceUnavailable"];
         };
@@ -1977,6 +1990,40 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    updateStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgID: components["parameters"]["orgID"];
+                storeID: components["parameters"]["storeID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreProfileInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             429: components["responses"]["TooManyRequests"];
             503: components["responses"]["ServiceUnavailable"];
         };

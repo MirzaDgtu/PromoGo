@@ -62,6 +62,53 @@ export const strings = {
     audit: 'Аудит',
     logout: 'Выйти',
   },
+  form: {
+    nameRequired: 'Укажите название',
+    tooLong: (max: number) => `Не длиннее ${max} символов`,
+    invalidInput: 'Сервер отклонил данные. Проверьте поля формы.',
+    saving: 'Сохранение…',
+  },
+  organizations: {
+    title: 'Организации и магазины',
+    addOrganization: '+ Организация',
+    createLabel: 'Название новой организации',
+    createSubmit: 'Создать',
+    created: (name: string) => `Организация «${name}» создана и выбрана`,
+    empty: 'Организаций пока нет',
+    storeCount: (n: number) => {
+      const mod10 = n % 10
+      const mod100 = n % 100
+      if (mod10 === 1 && mod100 !== 11) return `${n} магазин`
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} магазина`
+      return `${n} магазинов`
+    },
+    collapse: (name: string) => `Свернуть «${name}»`,
+    expand: (name: string) => `Развернуть «${name}»`,
+    current: 'Текущая',
+  },
+  stores: {
+    name: 'Название',
+    address: 'Адрес',
+    externalCode: 'Код в 1С',
+    externalCodeHint: 'Необязательно. Уникален в пределах организации.',
+    externalCodeTaken: 'Этот код уже используется другим магазином организации',
+    id: 'ID',
+    actions: 'Действия',
+    notSet: '—',
+    current: 'Текущий',
+    select: (name: string) => `Сделать «${name}» текущим магазином`,
+    add: '+ Магазин',
+    addLabel: (orgName: string) => `Добавить магазин в «${orgName}»`,
+    createTitle: (orgName: string) => `Новый магазин в «${orgName}»`,
+    createSubmit: 'Создать',
+    created: (name: string) => `Магазин «${name}» создан`,
+    edit: 'Изменить',
+    editLabel: (name: string) => `Изменить магазин «${name}»`,
+    editTitle: (name: string) => `Изменение магазина «${name}»`,
+    editSubmit: 'Сохранить',
+    updated: (name: string) => `Магазин «${name}» сохранён`,
+    empty: 'Магазинов пока нет. Создайте первый, затем настройте для него программу лояльности и API-ключ кассы.',
+  },
   comingSoon: {
     title: 'Раздел в разработке',
     body: 'Этот экран появится в следующем этапе (Milestone 2).',

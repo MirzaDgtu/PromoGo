@@ -27,13 +27,32 @@ type StaffPrincipal struct {
 	Memberships []*domain.StaffMembership
 }
 
+// IsPlatformAdmin reports whether the principal holds an active
+// platform_admin membership in any organization. platform_admin is a
+// network-wide operator role: the organization its membership row happens
+// to sit in only records where it was granted, not where it applies.
+func (p *StaffPrincipal) IsPlatformAdmin() bool {
+	for _, m := range p.Memberships {
+		if m.Role == domain.RolePlatformAdmin && m.Status == domain.StaffActive {
+			return true
+		}
+	}
+	return false
+}
+
 // HasPermission reports whether the principal holds perm within
 // organizationID, and (if storeID is non-nil) specifically for that store.
-// An organization-wide membership (StoreID nil) grants store-scoped
+// A platform_admin holds its permissions in every organization (see
+// IsPlatformAdmin) — otherwise a platform_admin who creates an organization
+// could not add a single store or staff member to it. For everyone else, an
+// organization-wide membership (StoreID nil) grants store-scoped
 // permissions across every store in the organization; a store-scoped
 // membership never grants an organization-level permission (storeID nil)
 // outside its own store.
 func (p *StaffPrincipal) HasPermission(perm domain.Permission, organizationID int64, storeID *int64) bool {
+	if p.IsPlatformAdmin() && domain.HasPermission(domain.RolePlatformAdmin, perm) {
+		return true
+	}
 	for _, m := range p.Memberships {
 		if m.OrganizationID != organizationID || !domain.HasPermission(m.Role, perm) {
 			continue
@@ -57,6 +76,9 @@ func (p *StaffPrincipal) HasPermission(perm domain.Permission, organizationID in
 // Returns false if no membership matches at all (callers only reach here
 // after RequireStaff already confirmed at least read access).
 func (p *StaffPrincipal) IsSupportViewerOnly(organizationID int64, storeID *int64) bool {
+	if p.IsPlatformAdmin() {
+		return false
+	}
 	matched := false
 	for _, m := range p.Memberships {
 		if m.OrganizationID != organizationID {

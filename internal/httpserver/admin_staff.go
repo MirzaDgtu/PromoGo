@@ -12,20 +12,11 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/service"
 )
 
-// principalIsPlatformAdmin reports whether principal holds an active
-// platform_admin membership anywhere — mirroring how
-// RequireGlobalStaffPermission already treats platform_admin as inherently
-// global rather than scoped to one organization's membership row.
+// principalIsPlatformAdmin is the nil-safe form of
+// StaffPrincipal.IsPlatformAdmin, for handlers reading the principal back
+// out of the request context.
 func principalIsPlatformAdmin(principal *service.StaffPrincipal) bool {
-	if principal == nil {
-		return false
-	}
-	for _, m := range principal.Memberships {
-		if m.Role == domain.RolePlatformAdmin && m.Status == domain.StaffActive {
-			return true
-		}
-	}
-	return false
+	return principal != nil && principal.IsPlatformAdmin()
 }
 
 // Last-active-administrator protection: handleUpdateStaffMembership blocks

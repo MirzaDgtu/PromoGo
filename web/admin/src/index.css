@@ -81,6 +81,217 @@ textarea {
   color: inherit;
 }
 
+/* --- UI primitives shared by feature pages --- */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.page-header + .name-form {
+  margin-bottom: var(--space-4);
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+/* Organizations table: each tbody is one organization's group of stores. */
+.org-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.org-table th,
+.org-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.org-table thead th {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.org-group__header {
+  background: var(--color-surface);
+}
+
+.org-group__header th {
+  font-weight: 400;
+}
+
+/* Current organization/store: an accent bar plus bold text, not color alone. */
+.org-table tr[aria-current='true'] > :first-child {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+.org-table tr[aria-current='true'] .link-button {
+  font-weight: 600;
+}
+
+.org-group__name {
+  margin-left: var(--space-1);
+  font-size: 16px;
+}
+
+.org-group__meta {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-left: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+/* Store rows are indented under their organization's header. */
+.org-table .cell-store-name {
+  padding-left: calc(var(--space-3) + 32px);
+}
+
+.cell-store-name .badge {
+  margin-left: var(--space-2);
+}
+
+.cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.form-row > td {
+  padding: var(--space-4) var(--space-3) var(--space-4) calc(var(--space-3) + 32px);
+}
+
+.icon-button {
+  width: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.link-button:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.store-form__fields {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(240px, 2fr) minmax(140px, 1fr);
+  gap: var(--space-3);
+}
+
+.store-form__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.field label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+}
+
+.field-hint {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button-primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+input[type='text'] {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.name-form {
+  max-width: 520px;
+}
+
+.name-form label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: 600;
+}
+
+.name-form__row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.name-form__row input {
+  flex: 1;
+}
+
+.field-error {
+  color: var(--color-danger);
+  margin: var(--space-1) 0 0;
+}
+
+.notice {
+  color: var(--color-success);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

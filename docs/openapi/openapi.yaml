@@ -704,7 +704,10 @@ paths:
       operationId: createStore
       tags: [Admin - Organizations]
       summary: Create a Store within an Organization
-      description: Requires `stores.manage` in orgID.
+      description: >
+        Requires `stores.manage` in orgID. String fields are trimmed;
+        lengths count characters. 409 if external_code is already used by
+        another store in the organization.
       security:
         - staffAccessToken: []
       parameters:
@@ -714,9 +717,9 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [name]
-              properties: { name: { type: string, maxLength: 255 } }
+              allOf:
+                - $ref: "#/components/schemas/StoreProfileInput"
+                - required: [name]
       responses:
         "201":
           description: Created
@@ -726,6 +729,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
@@ -749,6 +753,38 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+    patch:
+      operationId: updateStore
+      tags: [Admin - Organizations]
+      summary: Update a Store's name, address or 1C code
+      description: >
+        Requires `stores.manage` for the store. Absent fields keep their
+        current value; an empty external_code clears it. 404 if storeID
+        doesn't belong to orgID, 409 if external_code is already used by
+        another store in the organization. Audited as `store.updated`.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StoreProfileInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Store" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
@@ -1440,10 +1476,29 @@ components:
 
     Store:
       type: object
+      required: [id, organization_id, name, address, external_code]
       properties:
         id: { type: integer, format: int64 }
         organization_id: { type: integer, format: int64 }
         name: { type: string }
+        address:
+          type: string
+          description: Free-form display address; empty string when not set.
+        external_code:
+          type: string
+          nullable: true
+          description: The store's identifier in the retailer's 1C, unique within the organization; null when not set.
+
+    StoreProfileInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        address: { type: string, maxLength: 500 }
+        external_code:
+          type: string
+          maxLength: 64
+          description: Empty string clears the code.
 
     Role:
       type: string

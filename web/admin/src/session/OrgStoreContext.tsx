@@ -27,6 +27,14 @@ interface OrgStoreContextValue {
   /** The caller's active memberships, for permission-aware nav. */
   memberships: StaffMeMembership[]
   hasPermission: (permission: string) => boolean
+  /**
+   * Permission in a specific organization (and store), independent of the
+   * current selection. Mirrors service.StaffPrincipal.HasPermission: with no
+   * storeID only an organization-wide membership counts.
+   */
+  can: (permission: string, orgID: number, storeID?: number | null) => boolean
+  /** Permission granted by any membership, for global operations such as creating an organization. */
+  hasGlobalPermission: (permission: string) => boolean
 }
 
 const OrgStoreContext = createContext<OrgStoreContextValue | null>(null)
@@ -89,16 +97,36 @@ export function OrgStoreProvider({ children, enabled }: { children: ReactNode; e
   const storesQuery = useStores(selectedOrgID, enabled)
   const stores = useMemo(() => storesQuery.data ?? [], [storesQuery.data])
 
+  // Mirrors service.StaffPrincipal.HasPermission: platform_admin is
+  // network-wide, so its permissions apply in organizations where it has
+  // no membership of its own (e.g. one it just created).
   const hasPermission = useCallback(
     (permission: string) => {
       if (selectedOrgID == null) return false
       return memberships.some((m) => {
+        if (m.role === 'platform_admin') return (m.permissions ?? []).includes(permission)
         if (m.organization_id !== selectedOrgID) return false
         if (selectedStoreID != null && m.store_id != null && m.store_id !== selectedStoreID) return false
         return (m.permissions ?? []).includes(permission)
       })
     },
     [memberships, selectedOrgID, selectedStoreID],
+  )
+
+  const can = useCallback(
+    (permission: string, orgID: number, storeID: number | null = null) =>
+      memberships.some((m) => {
+        if (!(m.permissions ?? []).includes(permission)) return false
+        if (m.role === 'platform_admin') return true
+        if (m.organization_id !== orgID) return false
+        return m.store_id == null || (storeID != null && m.store_id === storeID)
+      }),
+    [memberships],
+  )
+
+  const hasGlobalPermission = useCallback(
+    (permission: string) => memberships.some((m) => (m.permissions ?? []).includes(permission)),
+    [memberships],
   )
 
   const value = useMemo<OrgStoreContextValue>(
@@ -113,6 +141,8 @@ export function OrgStoreProvider({ children, enabled }: { children: ReactNode; e
       setSelectedStoreID,
       memberships,
       hasPermission,
+      can,
+      hasGlobalPermission,
     }),
     [
       organizations,
@@ -125,6 +155,8 @@ export function OrgStoreProvider({ children, enabled }: { children: ReactNode; e
       setSelectedStoreID,
       memberships,
       hasPermission,
+      can,
+      hasGlobalPermission,
     ],
   )
 

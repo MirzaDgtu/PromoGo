@@ -129,6 +129,8 @@ var routeTable = []routeMeta{
 
 	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}", OperationID: "getStore",
 		Contour: contourStaff, StaffPermission: domain.PermStoresRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
+	{Method: http.MethodPatch, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}", OperationID: "updateStore",
+		Contour: contourStaff, StaffPermission: domain.PermStoresManage, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores", OperationID: "listStores",
 		Contour: contourStaff, StaffIdentityOnly: true, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodPost, Path: "/api/v1/admin/organizations/{orgID}/stores", OperationID: "createStore",
@@ -227,13 +229,15 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 	case "listOrganizations":
 		return handleListOrganizations(deps.Organizations, deps.Log)
 	case "createOrganization":
-		return handleCreateOrganization(deps.Organizations, deps.Log)
+		return handleCreateOrganization(deps.Organizations, deps.AuditEvents, deps.Log)
 	case "getStore":
 		return handleGetStore(deps.Stores, deps.Log)
+	case "updateStore":
+		return handleUpdateStore(deps.Stores, deps.AuditEvents, deps.Log)
 	case "listStores":
 		return handleListStores(deps.Stores, deps.Log)
 	case "createStore":
-		return handleCreateStore(deps.Stores, deps.Log)
+		return handleCreateStore(deps.Stores, deps.AuditEvents, deps.Log)
 	case "listStaffMemberships":
 		return handleListStaffMemberships(deps.StaffMemberships, deps.StaffUsers, deps.Log)
 	case "createStaffMembership":
