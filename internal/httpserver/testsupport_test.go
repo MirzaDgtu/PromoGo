@@ -449,6 +449,9 @@ func (f *fakeLoyaltyConfigRepo) Upsert(_ context.Context, cfg *domain.LoyaltyCon
 	if existing, ok := f.byStore[cfg.StoreID]; ok {
 		currentVersion = existing.Version
 	}
+	if cfg.ExpectedVersion != nil && *cfg.ExpectedVersion != currentVersion {
+		return domain.ErrConflict
+	}
 	cfg.Version = currentVersion + 1
 	f.byStore[cfg.StoreID] = cfg
 	f.history[cfg.StoreID] = append([]*domain.LoyaltyConfigVersion{{

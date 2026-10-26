@@ -551,7 +551,7 @@ export interface paths {
         };
         /**
          * Look up a client by phone (admin view)
-         * @description Requires `clients.read`. Phone is masked (e.g. "********4567") for a caller whose only membership in this scope is support_viewer.
+         * @description Requires `clients.read`. The phone is canonicalized like the cashier lookup ("8 (926) 123-45-67" finds "+79261234567"). Phone is masked (e.g. "********4567") for a caller whose only membership in this scope is support_viewer.
          */
         get: operations["adminLookupClient"];
         put?: never;
@@ -596,7 +596,7 @@ export interface paths {
         get: operations["getLoyaltyConfig"];
         /**
          * Set a store's loyalty configuration
-         * @description Requires `loyalty_config.write`.
+         * @description Requires `loyalty_config.write`. Takes effect immediately for the next accrual/redemption (Q-P0-068). Each write is a new version.
          */
         put: operations["putLoyaltyConfig"];
         post?: never;
@@ -952,24 +952,32 @@ export interface components {
         };
         AdminClient: {
             /** Format: int64 */
-            client_id?: number;
+            client_id: number;
             /** @description Masked (e.g. "********4567") if the caller's only membership in this scope is support_viewer. */
-            phone?: string;
+            phone: string;
             /** Format: int64 */
-            balance?: number;
+            balance: number;
+            /** @description True once the client has signed in to the mobile app with this phone (OTP). */
+            app_connected: boolean;
+            /** Format: date-time */
+            created_at: string;
         };
         AdminTransaction: {
             /** Format: int64 */
-            id?: number;
-            external_tx_id?: string;
+            id: number;
+            external_tx_id: string;
             /** @enum {string} */
-            type?: "accrual" | "redeem" | "refund";
+            type: "accrual" | "redeem" | "refund";
+            /** @description Purchase amount (decimal string) as reported by the store for this operation. */
+            amount: string;
+            /** @example RUB */
+            currency: string;
             /** Format: int64 */
-            points_delta?: number;
+            points_delta: number;
             /** Format: int64 */
-            balance_after?: number;
+            balance_after: number;
             /** Format: date-time */
-            created_at?: string;
+            created_at: string;
         };
         LoyaltyConfig: {
             /** Format: int64 */
@@ -997,11 +1005,13 @@ export interface components {
             min_balance_to_redeem: number;
             /**
              * Format: decimal
+             * @description Max % of a purchase payable with points. "0" means no cap (not "no redemption").
              * @example 100
              */
             max_redeem_percent: string;
             /**
              * Format: decimal
+             * @description Currency value of one point when redeemed.
              * @example 1
              */
             points_exchange_rate: string;
@@ -1010,6 +1020,11 @@ export interface components {
              * @description Increments on every write. See /loyalty-config/history.
              */
             readonly version?: number;
+            /**
+             * Format: int64
+             * @description Optional. Reject the write with 409 unless this is still the current version (0 = not configured yet).
+             */
+            expected_version?: number;
         };
         LoyaltyConfigVersion: {
             /** Format: int64 */
@@ -2287,6 +2302,24 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            /** @description expected_version is no longer the current version — someone else saved in between. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Values out of range or unknown mechanic. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
             429: components["responses"]["TooManyRequests"];
             503: components["responses"]["ServiceUnavailable"];
         };
@@ -2335,6 +2368,11 @@ export interface operations {
                 "application/json": {
                     /** Format: int64 */
                     version: number;
+                    /**
+                     * Format: int64
+                     * @description Optional. Reject with 409 unless this is still the current version.
+                     */
+                    expected_version?: number;
                 };
             };
         };
@@ -2353,6 +2391,15 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description Version not found. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description expected_version is no longer the current version. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

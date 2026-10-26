@@ -6,7 +6,9 @@ import { AppShell } from '../components/AppShell'
 import { NotFoundState } from '../components/states'
 import { strings } from '../i18n/strings'
 import { ApiKeysPage } from '../pages/apiKeys/ApiKeysPage'
+import { ClientsPage } from '../pages/clients/ClientsPage'
 import { ComingSoonPage } from '../pages/ComingSoonPage'
+import { LoyaltyConfigPage } from '../pages/loyalty/LoyaltyConfigPage'
 import { OrganizationsPage } from '../pages/OrganizationsPage'
 import { RequireAuth } from './RequireAuth'
 
@@ -26,8 +28,8 @@ export function AppRouter() {
         <Route index element={<ComingSoonPage title={strings.nav.dashboard} />} />
         <Route path="/organizations" element={<OrganizationsPage />} />
         <Route path="/staff" element={<ComingSoonPage title={strings.nav.staff} />} />
-        <Route path="/loyalty-config" element={<ComingSoonPage title={strings.nav.loyaltyConfig} />} />
-        <Route path="/clients" element={<ComingSoonPage title={strings.nav.clients} />} />
+        <Route path="/loyalty-config" element={<LoyaltyConfigPage />} />
+        <Route path="/clients" element={<ClientsPage />} />
         <Route path="/api-keys" element={<ApiKeysPage />} />
         <Route path="/audit" element={<ComingSoonPage title={strings.nav.audit} />} />
       </Route>

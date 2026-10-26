@@ -926,8 +926,10 @@ paths:
       tags: [Admin - Clients]
       summary: Look up a client by phone (admin view)
       description: >
-        Requires `clients.read`. Phone is masked (e.g. "********4567") for
-        a caller whose only membership in this scope is support_viewer.
+        Requires `clients.read`. The phone is canonicalized like the
+        cashier lookup ("8 (926) 123-45-67" finds "+79261234567"). Phone is
+        masked (e.g. "********4567") for a caller whose only membership in
+        this scope is support_viewer.
       security:
         - staffAccessToken: []
       parameters:
@@ -1013,7 +1015,9 @@ paths:
       operationId: putLoyaltyConfig
       tags: [Admin - Loyalty Config]
       summary: Set a store's loyalty configuration
-      description: Requires `loyalty_config.write`.
+      description: >
+        Requires `loyalty_config.write`. Takes effect immediately for the
+        next accrual/redemption (Q-P0-068). Each write is a new version.
       security:
         - staffAccessToken: []
       parameters:
@@ -1033,6 +1037,16 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: expected_version is no longer the current version — someone else saved in between.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Values out of range or unknown mechanic.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
@@ -1089,6 +1103,10 @@ paths:
               required: [version]
               properties:
                 version: { type: integer, format: int64 }
+                expected_version:
+                  type: integer
+                  format: int64
+                  description: Optional. Reject with 409 unless this is still the current version.
       responses:
         "200":
           description: OK
@@ -1100,6 +1118,11 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404":
           description: Version not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: expected_version is no longer the current version.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1555,19 +1578,29 @@ components:
 
     AdminClient:
       type: object
+      required: [client_id, phone, balance, app_connected, created_at]
       properties:
         client_id: { type: integer, format: int64 }
         phone:
           type: string
           description: Masked (e.g. "********4567") if the caller's only membership in this scope is support_viewer.
         balance: { type: integer, format: int64 }
+        app_connected:
+          type: boolean
+          description: True once the client has signed in to the mobile app with this phone (OTP).
+        created_at: { type: string, format: date-time }
 
     AdminTransaction:
       type: object
+      required: [id, external_tx_id, type, amount, currency, points_delta, balance_after, created_at]
       properties:
         id: { type: integer, format: int64 }
         external_tx_id: { type: string }
         type: { type: string, enum: [accrual, redeem, refund] }
+        amount:
+          type: string
+          description: Purchase amount (decimal string) as reported by the store for this operation.
+        currency: { type: string, example: RUB }
         points_delta: { type: integer, format: int64 }
         balance_after: { type: integer, format: int64 }
         created_at: { type: string, format: date-time }
@@ -1584,9 +1617,18 @@ components:
         accrual_percent: { type: string, format: decimal, example: "10", description: "% of purchase amount credited as points." }
         min_purchase_amount: { type: string, format: decimal, example: "0" }
         min_balance_to_redeem: { type: integer, format: int64, example: 0 }
-        max_redeem_percent: { type: string, format: decimal, example: "100" }
-        points_exchange_rate: { type: string, format: decimal, example: "1" }
+        max_redeem_percent:
+          type: string
+          format: decimal
+          example: "100"
+          description: Max % of a purchase payable with points. "0" means no cap (not "no redemption").
+        points_exchange_rate: { type: string, format: decimal, example: "1", description: "Currency value of one point when redeemed." }
         version: { type: integer, format: int64, readOnly: true, description: "Increments on every write. See /loyalty-config/history." }
+        expected_version:
+          type: integer
+          format: int64
+          writeOnly: true
+          description: Optional. Reject the write with 409 unless this is still the current version (0 = not configured yet).
 
     LoyaltyConfigVersion:
       type: object

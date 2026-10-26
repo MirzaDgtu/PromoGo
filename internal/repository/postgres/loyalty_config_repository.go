@@ -61,6 +61,11 @@ func (r *LoyaltyConfigRepository) Upsert(ctx context.Context, cfg *domain.Loyalt
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("upsert loyalty config for store %d: lock current: %w", cfg.StoreID, err)
 	}
+	// Checked under the row lock, so no other write can slip in between.
+	if cfg.ExpectedVersion != nil && *cfg.ExpectedVersion != currentVersion {
+		return fmt.Errorf("upsert loyalty config for store %d: expected version %d, current %d: %w",
+			cfg.StoreID, *cfg.ExpectedVersion, currentVersion, domain.ErrConflict)
+	}
 	cfg.Version = currentVersion + 1
 
 	const upsert = `

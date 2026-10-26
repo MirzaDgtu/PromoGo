@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import {
   responseOf,
@@ -8,6 +7,7 @@ import {
   useStoreAPIKeys,
   type StoreAPIKey,
 } from '../../api/queries'
+import { NeedStoreState } from '../../components/NeedStoreState'
 import { OneTimeSecretDialog } from '../../components/OneTimeSecretDialog'
 import { SubmitError } from '../../components/SubmitError'
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from '../../components/states'
@@ -38,14 +38,7 @@ export function ApiKeysPage() {
     return (
       <>
         <h1>{t.title}</h1>
-        <EmptyState
-          title={t.noStore}
-          body={
-            <p>
-              {t.noStoreBody} <Link to="/organizations">{t.toStores}</Link>
-            </p>
-          }
-        />
+        <NeedStoreState body={t.noStoreBody} />
       </>
     )
   }

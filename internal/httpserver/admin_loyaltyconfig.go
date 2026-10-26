@@ -65,6 +65,39 @@ type putLoyaltyConfigBody struct {
 	MinBalanceToRedeem int64           `json:"min_balance_to_redeem"`
 	MaxRedeemPercent   decimal.Decimal `json:"max_redeem_percent"`
 	PointsExchangeRate decimal.Decimal `json:"points_exchange_rate"`
+	// ExpectedVersion, if set, rejects the write with 409 unless it's still
+	// the store's current version (0 = no config yet).
+	ExpectedVersion *int64 `json:"expected_version"`
+}
+
+const errConfigChanged = "loyalty config was changed by someone else; reload and try again"
+
+// fitsNumeric reports whether d fits a Postgres NUMERIC(precision, scale)
+// column exactly — without it, extra decimals would be silently rounded on
+// write (the response would echo a value that isn't what got stored) and
+// too many integer digits would fail the write with a 500.
+func fitsNumeric(d decimal.Decimal, precision, scale int32) bool {
+	if !d.Equal(d.Truncate(scale)) {
+		return false
+	}
+	limit := decimal.New(1, precision-scale)
+	return d.Abs().LessThan(limit)
+}
+
+// checkLoyaltyConfigColumns mirrors loyalty_configs' column types
+// (migrations/sql/00005_create_loyalty_configs.sql).
+func checkLoyaltyConfigColumns(b putLoyaltyConfigBody) string {
+	switch {
+	case !fitsNumeric(b.AccrualPercent, 5, 2):
+		return "accrual_percent allows at most 2 decimal places"
+	case !fitsNumeric(b.MinPurchaseAmount, 20, 2):
+		return "min_purchase_amount allows at most 2 decimal places and 18 integer digits"
+	case !fitsNumeric(b.MaxRedeemPercent, 5, 2):
+		return "max_redeem_percent allows at most 2 decimal places"
+	case !fitsNumeric(b.PointsExchangeRate, 10, 4):
+		return "points_exchange_rate allows at most 4 decimal places and 6 integer digits"
+	}
+	return ""
 }
 
 // actorStaffUserID extracts the current request's staff principal's
@@ -103,10 +136,14 @@ func handlePutLoyaltyConfig(stores domain.StoreRepository, configs domain.Loyalt
 			StoreID: store.ID, Mechanic: body.Mechanic,
 			AccrualPercent: body.AccrualPercent, MinPurchaseAmount: body.MinPurchaseAmount,
 			MinBalanceToRedeem: body.MinBalanceToRedeem, MaxRedeemPercent: body.MaxRedeemPercent,
-			PointsExchangeRate: body.PointsExchangeRate,
+			PointsExchangeRate: body.PointsExchangeRate, ExpectedVersion: body.ExpectedVersion,
 		}
 		if err := cfg.Validate(); err != nil {
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		if msg := checkLoyaltyConfigColumns(body); msg != "" {
+			writeError(w, http.StatusUnprocessableEntity, msg)
 			return
 		}
 		// Mechanic enum membership is internal/mechanicbuild's source of
@@ -119,7 +156,12 @@ func handlePutLoyaltyConfig(stores domain.StoreRepository, configs domain.Loyalt
 		}
 
 		actorID := actorStaffUserID(r)
-		if err := configs.Upsert(r.Context(), cfg, actorID); err != nil {
+		err := configs.Upsert(r.Context(), cfg, actorID)
+		if errors.Is(err, domain.ErrConflict) {
+			writeError(w, http.StatusConflict, errConfigChanged)
+			return
+		}
+		if err != nil {
 			log.ErrorContext(r.Context(), "upsert loyalty config", "store_id", store.ID, "error", err)
 			writeError(w, http.StatusInternalServerError, "save loyalty config")
 			return
@@ -178,7 +220,8 @@ func handleListLoyaltyConfigHistory(stores domain.StoreRepository, configs domai
 }
 
 type rollbackLoyaltyConfigBody struct {
-	Version int64 `json:"version"`
+	Version         int64  `json:"version"`
+	ExpectedVersion *int64 `json:"expected_version"`
 }
 
 // handleRollbackLoyaltyConfig returns a handler for POST
@@ -225,10 +268,15 @@ func handleRollbackLoyaltyConfig(stores domain.StoreRepository, configs domain.L
 			StoreID: store.ID, Mechanic: target.Mechanic,
 			AccrualPercent: target.AccrualPercent, MinPurchaseAmount: target.MinPurchaseAmount,
 			MinBalanceToRedeem: target.MinBalanceToRedeem, MaxRedeemPercent: target.MaxRedeemPercent,
-			PointsExchangeRate: target.PointsExchangeRate,
+			PointsExchangeRate: target.PointsExchangeRate, ExpectedVersion: body.ExpectedVersion,
 		}
 		actorID := actorStaffUserID(r)
-		if err := configs.Upsert(r.Context(), cfg, actorID); err != nil {
+		err = configs.Upsert(r.Context(), cfg, actorID)
+		if errors.Is(err, domain.ErrConflict) {
+			writeError(w, http.StatusConflict, errConfigChanged)
+			return
+		}
+		if err != nil {
 			log.ErrorContext(r.Context(), "rollback loyalty config", "store_id", store.ID, "error", err)
 			writeError(w, http.StatusInternalServerError, "rollback loyalty config")
 			return

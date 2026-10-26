@@ -216,6 +216,101 @@ textarea {
   font-size: 13px;
 }
 
+.page-section {
+  margin-top: var(--space-8);
+}
+
+.alert,
+.callout {
+  max-width: 760px;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.alert {
+  border-left-color: var(--color-danger);
+}
+
+.alert p {
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+.loyalty-form {
+  margin-top: var(--space-4);
+}
+
+.loyalty-form__layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 520px) minmax(260px, 340px);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.loyalty-form__fields {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.loyalty-form__fields h3 {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: 16px;
+}
+
+.loyalty-form__fields .field + .field {
+  margin-top: var(--space-3);
+}
+
+.field select {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+/* Read-only callers see the values, plainly not editable. */
+.loyalty-form__fields:disabled input,
+.loyalty-form__fields:disabled select {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.loyalty-preview {
+  position: sticky;
+  top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.loyalty-preview h3 {
+  margin-top: 0;
+  font-size: 16px;
+}
+
+.loyalty-preview label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.loyalty-preview input {
+  width: 100%;
+}
+
+.loyalty-preview ul {
+  margin: var(--space-3) 0 0;
+  padding-left: var(--space-4);
+}
+
+.loyalty-preview li + li {
+  margin-top: var(--space-2);
+}
+
 .page-intro {
   max-width: 760px;
   margin-top: 0;
@@ -237,6 +332,62 @@ textarea {
 .data-table thead th {
   color: var(--color-text-muted);
   font-size: 13px;
+  font-weight: 600;
+}
+
+.data-table .cell-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.clients-search {
+  max-width: 560px;
+}
+
+.clients-search label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-weight: 600;
+}
+
+.clients-search .name-form__row input {
+  flex: 1;
+}
+
+.clients-not-found {
+  margin-top: var(--space-4);
+}
+
+.clients-not-found p {
+  margin: 0;
+}
+
+.client-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-4) 0 0;
+}
+
+.client-summary > div {
+  min-width: 200px;
+  max-width: 360px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.client-summary dt {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.client-summary dd {
+  margin: var(--space-1) 0 0;
+}
+
+.client-summary__balance {
+  font-size: 24px;
   font-weight: 600;
 }
 

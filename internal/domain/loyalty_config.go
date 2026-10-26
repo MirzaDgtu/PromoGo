@@ -39,6 +39,12 @@ type LoyaltyConfig struct {
 	// a past calculation stays reconstructable after later config changes.
 	// Set by LoyaltyConfigRepository.Upsert; ignored on input.
 	Version int64
+
+	// ExpectedVersion, input-only, makes Upsert an optimistic-concurrency
+	// write: if non-nil, Upsert returns ErrConflict unless the store's
+	// current Version equals it (0 = no config yet). Lets an admin form
+	// refuse to overwrite a change someone else saved after it was loaded.
+	ExpectedVersion *int64
 }
 
 // LoyaltyConfigVersion is one historical snapshot of a store's
@@ -100,7 +106,8 @@ type LoyaltyConfigRepository interface {
 	// transaction's RuleVersion can always be resolved via ListHistory even
 	// after later Upserts change the live row. changedBy is nil if the
 	// write isn't attributable to a staff principal. cfg.Version is set to
-	// the newly assigned version on return.
+	// the newly assigned version on return. Returns ErrConflict, writing
+	// nothing, if cfg.ExpectedVersion is set and doesn't match.
 	Upsert(ctx context.Context, cfg *LoyaltyConfig, changedBy *int64) error
 	// ListHistory returns storeID's configuration history, newest version
 	// first.

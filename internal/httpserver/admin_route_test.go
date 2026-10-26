@@ -11,6 +11,7 @@ import (
 
 	"github.com/MirzaDgtu/PromoGo/internal/auth"
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
+	"github.com/shopspring/decimal"
 )
 
 func adminReq(method, path, token string, body any) *http.Request {
@@ -1129,13 +1130,38 @@ func TestHandleAdminLookupClient_NotFound(t *testing.T) {
 	}
 }
 
+func TestHandleAdminLookupClient_NormalizesPhoneAndReportsAppLink(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	accountID := int64(42)
+	client := fakes.Clients.seed(&domain.Client{StoreID: store.ID, Phone: "+79261234567", CustomerAccountID: &accountID})
+	fakes.Balances.set(client.ID, 10)
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	// "8 (926) 123-45-67", as staff would type it from a customer's words.
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(org.ID)+"/stores/"+itoa(store.ID)+"/clients/lookup?phone=8+%28926%29+123-45-67", token, nil)
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp adminClientResponseBody
+	decodeJSON(t, rec, &resp)
+	if resp.ClientID != client.ID || !resp.AppConnected || resp.Balance != 10 {
+		t.Errorf("resp = %+v, want client %d, app_connected, balance 10", resp, client.ID)
+	}
+}
+
 func TestHandleAdminListClientTransactions_Success(t *testing.T) {
 	handler, fakes := newTestServer(t)
 	org := seedOrganization(fakes, "Acme")
 	store := seedStore(fakes, org.ID, "Store")
 	client := fakes.Clients.seed(&domain.Client{StoreID: store.ID, Phone: "+79261234567"})
 	fakes.Transactions.all = append(fakes.Transactions.all, &domain.Transaction{
-		ID: 1, StoreID: store.ID, ClientID: client.ID, ExternalTxID: "tx-1", Type: domain.TransactionAccrual, PointsDelta: 10, BalanceAfter: 10,
+		ID: 1, StoreID: store.ID, ClientID: client.ID, ExternalTxID: "tx-1", Type: domain.TransactionAccrual,
+		Amount: decimal.RequireFromString("200.50"), Currency: "RUB", PointsDelta: 10, BalanceAfter: 10,
 	})
 	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
 
@@ -1153,6 +1179,9 @@ func TestHandleAdminListClientTransactions_Success(t *testing.T) {
 	decodeJSON(t, rec, &resp)
 	if len(resp.Transactions) != 1 {
 		t.Fatalf("len(Transactions) = %d, want 1", len(resp.Transactions))
+	}
+	if got := resp.Transactions[0]; got.Amount != "200.5" || got.Currency != "RUB" {
+		t.Errorf("amount = %q %q, want 200.5 RUB", got.Amount, got.Currency)
 	}
 }
 
@@ -1227,6 +1256,90 @@ func TestHandlePutLoyaltyConfig_Success(t *testing.T) {
 	rec := doRequest(handler, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+// expected_version makes a save fail with 409, writing nothing, if someone
+// else saved (or rolled back) after the caller loaded the config.
+func TestLoyaltyConfig_ExpectedVersionConflict(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	store := seedStore(fakes, org.ID, "Store")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	base := storePath(org.ID, store.ID) + "/loyalty-config"
+
+	put := func(expected *int64) int {
+		body := map[string]any{
+			"mechanic": "points", "accrual_percent": "10", "min_purchase_amount": "0",
+			"min_balance_to_redeem": 0, "max_redeem_percent": "50", "points_exchange_rate": "1",
+		}
+		if expected != nil {
+			body["expected_version"] = *expected
+		}
+		req := adminReq(http.MethodPut, base, token, body)
+		req.SetPathValue("orgID", itoa(org.ID))
+		req.SetPathValue("storeID", itoa(store.ID))
+		return doRequest(handler, req).Code
+	}
+	v := func(n int64) *int64 { return &n }
+
+	if code := put(v(0)); code != http.StatusOK {
+		t.Fatalf("first save with expected_version 0: status = %d, want 200", code)
+	}
+	if code := put(v(0)); code != http.StatusConflict {
+		t.Fatalf("second save still expecting version 0: status = %d, want 409", code)
+	}
+	if code := put(v(1)); code != http.StatusOK {
+		t.Fatalf("save expecting the current version 1: status = %d, want 200", code)
+	}
+	if code := put(nil); code != http.StatusOK {
+		t.Fatalf("save without expected_version keeps last-write-wins: status = %d, want 200", code)
+	}
+
+	req := adminReq(http.MethodPost, base+"/rollback", token, map[string]any{"version": 1, "expected_version": 2})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("storeID", itoa(store.ID))
+	if code := doRequest(handler, req).Code; code != http.StatusConflict {
+		t.Fatalf("rollback expecting stale version 2 (current is 3): status = %d, want 409", code)
+	}
+
+	if got := len(fakes.LoyaltyConfigs.history[store.ID]); got != 3 {
+		t.Fatalf("history length = %d, want 3 (rejected writes must not add versions)", got)
+	}
+}
+
+func TestHandlePutLoyaltyConfig_ColumnPrecision(t *testing.T) {
+	cases := []struct {
+		field, value string
+		wantCode     int
+	}{
+		{"accrual_percent", "10.25", http.StatusOK},
+		{"accrual_percent", "10.255", http.StatusUnprocessableEntity},
+		{"min_purchase_amount", "999999999999999999.99", http.StatusOK},
+		{"min_purchase_amount", "1000000000000000000", http.StatusUnprocessableEntity},
+		{"points_exchange_rate", "0.0001", http.StatusOK},
+		{"points_exchange_rate", "0.00001", http.StatusUnprocessableEntity},
+		{"points_exchange_rate", "1000000", http.StatusUnprocessableEntity},
+	}
+	for _, tc := range cases {
+		t.Run(tc.field+"="+tc.value, func(t *testing.T) {
+			handler, fakes := newTestServer(t)
+			org := seedOrganization(fakes, "Acme")
+			store := seedStore(fakes, org.ID, "Store")
+			token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+			body := map[string]any{
+				"mechanic": "points", "accrual_percent": "10", "min_purchase_amount": "0",
+				"min_balance_to_redeem": 0, "max_redeem_percent": "50", "points_exchange_rate": "1",
+			}
+			body[tc.field] = tc.value
+			req := adminReq(http.MethodPut, storePath(org.ID, store.ID)+"/loyalty-config", token, body)
+			req.SetPathValue("orgID", itoa(org.ID))
+			req.SetPathValue("storeID", itoa(store.ID))
+			if code := doRequest(handler, req).Code; code != tc.wantCode {
+				t.Fatalf("status = %d, want %d", code, tc.wantCode)
+			}
+		})
 	}
 }
 

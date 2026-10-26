@@ -62,6 +62,18 @@ type adminClientResponseBody struct {
 	ClientID int64  `json:"client_id"`
 	Phone    string `json:"phone"`
 	Balance  int64  `json:"balance"`
+	// AppConnected reports whether the client has signed in to the mobile
+	// app (CustomerAccountID linked) — support's first question when a
+	// customer says "I don't see my points".
+	AppConnected bool      `json:"app_connected"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func newAdminClientResponse(client *domain.Client, balance int64, masked bool) adminClientResponseBody {
+	return adminClientResponseBody{
+		ClientID: client.ID, Phone: maskPhoneIf(client.Phone, masked), Balance: balance,
+		AppConnected: client.CustomerAccountID != nil, CreatedAt: client.CreatedAt,
+	}
 }
 
 // handleAdminLookupClient returns a handler for GET
@@ -79,6 +91,12 @@ func handleAdminLookupClient(stores domain.StoreRepository, clients domain.Clien
 		if phone == "" {
 			writeError(w, http.StatusBadRequest, "phone is required")
 			return
+		}
+		// Same canonicalization as the cashier lookup and the accrual
+		// webhook, so "8 (926) 123-45-67" finds the client stored as
+		// "+79261234567"; unparseable input falls through unchanged.
+		if normalized, err := auth.NormalizePhone(phone); err == nil {
+			phone = normalized
 		}
 
 		client, err := clients.GetByPhone(r.Context(), store.ID, phone)
@@ -104,9 +122,7 @@ func handleAdminLookupClient(stores domain.StoreRepository, clients domain.Clien
 			masked = principal.IsSupportViewerOnly(orgID, &store.ID)
 		}
 
-		writeJSON(w, http.StatusOK, adminClientResponseBody{
-			ClientID: client.ID, Phone: maskPhoneIf(client.Phone, masked), Balance: balance.Points,
-		})
+		writeJSON(w, http.StatusOK, newAdminClientResponse(client, balance.Points, masked))
 	}
 }
 
@@ -157,9 +173,7 @@ func handleAdminListClients(stores domain.StoreRepository, clients domain.Client
 				writeError(w, http.StatusInternalServerError, "load clients")
 				return
 			}
-			out = append(out, adminClientResponseBody{
-				ClientID: client.ID, Phone: maskPhoneIf(client.Phone, masked), Balance: balance.Points,
-			})
+			out = append(out, newAdminClientResponse(client, balance.Points, masked))
 		}
 
 		resp := map[string]any{"clients": out}
@@ -174,6 +188,8 @@ type adminTransactionResponseBody struct {
 	ID           int64     `json:"id"`
 	ExternalTxID string    `json:"external_tx_id"`
 	Type         string    `json:"type"`
+	Amount       string    `json:"amount"`
+	Currency     string    `json:"currency"`
 	PointsDelta  int64     `json:"points_delta"`
 	BalanceAfter int64     `json:"balance_after"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -218,7 +234,7 @@ func handleAdminListClientTransactions(stores domain.StoreRepository, clients do
 		for _, tx := range list {
 			out = append(out, adminTransactionResponseBody{
 				ID: tx.ID, ExternalTxID: tx.ExternalTxID, Type: string(tx.Type),
-				PointsDelta: tx.PointsDelta, BalanceAfter: tx.BalanceAfter, CreatedAt: tx.CreatedAt,
+				Amount: tx.Amount.String(), Currency: tx.Currency, PointsDelta: tx.PointsDelta, BalanceAfter: tx.BalanceAfter, CreatedAt: tx.CreatedAt,
 			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"transactions": out})
