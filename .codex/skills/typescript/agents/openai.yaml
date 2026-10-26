@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeScript"
+  short_description: "Senior TypeScript development guidance"
+  default_prompt: "Use this skill for strict TypeScript typing, DTOs, generics, narrowing, refactors, and safe API boundaries."

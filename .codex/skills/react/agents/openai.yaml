@@ -1,0 +1,4 @@
+interface:
+  display_name: "React"
+  short_description: "Senior React development guidance"
+  default_prompt: "Use this skill for React component, hooks, state, form, accessibility, performance, and testing work."
