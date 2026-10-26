@@ -133,21 +133,6 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 		return nil, fmt.Errorf("accrue: resolve client: %w", err)
 	}
 
-	cfg, err := s.configs.GetByStore(ctx, req.StoreID)
-	if err != nil {
-		return nil, fmt.Errorf("accrue: load loyalty config: %w", err)
-	}
-
-	mechanic, err := mechanicbuild.Build(cfg.Mechanic)
-	if err != nil {
-		return nil, fmt.Errorf("accrue: build mechanic: %w", err)
-	}
-
-	balanceBefore, err := s.balances.Get(ctx, client.ID)
-	if err != nil {
-		return nil, fmt.Errorf("accrue: load balance: %w", err)
-	}
-
 	tx := &domain.Transaction{
 		StoreID:            req.StoreID,
 		ClientID:           client.ID,
@@ -155,18 +140,39 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 		Amount:             req.Amount,
 		Type:               domain.TransactionAccrual,
 		RequestFingerprint: accrualFingerprint(client.ID, req.Amount),
-		RuleVersion:        &cfg.Version,
 	}
 
-	pointsEarned, err := mechanic.Accrue(ctx, tx, cfg, balanceBefore)
-	if err != nil {
-		return nil, fmt.Errorf("accrue: run mechanic %q: %w", mechanic.Name(), err)
+	// A store connected to 1C before its loyalty rules were saved still
+	// gets every sale recorded, at 0 points and with no RuleVersion (DEC-028)
+	// — a 500 here made 1C's offline queue retry the sale forever.
+	cfg, err := s.configs.GetByStore(ctx, req.StoreID)
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		metrics.AccrualsWithoutConfig.Inc()
+	case err != nil:
+		return nil, fmt.Errorf("accrue: load loyalty config: %w", err)
+	default:
+		mechanic, err := mechanicbuild.Build(cfg.Mechanic)
+		if err != nil {
+			return nil, fmt.Errorf("accrue: build mechanic: %w", err)
+		}
+
+		balanceBefore, err := s.balances.Get(ctx, client.ID)
+		if err != nil {
+			return nil, fmt.Errorf("accrue: load balance: %w", err)
+		}
+
+		tx.RuleVersion = &cfg.Version
+		pointsEarned, err := mechanic.Accrue(ctx, tx, cfg, balanceBefore)
+		if err != nil {
+			return nil, fmt.Errorf("accrue: run mechanic %q: %w", mechanic.Name(), err)
+		}
+		tx.PointsDelta = pointsEarned
 	}
-	tx.PointsDelta = pointsEarned
 
 	var notify *domain.NotificationOutboxEntry
-	if pointsEarned > 0 {
-		rendered := notifytemplates.AccrualCredited(pointsEarned)
+	if tx.PointsDelta > 0 {
+		rendered := notifytemplates.AccrualCredited(tx.PointsDelta)
 		notify = &domain.NotificationOutboxEntry{
 			ClientID: client.ID, TemplateID: rendered.TemplateID, TemplateVersion: rendered.Version, Message: rendered.Message,
 			DedupeKey: outboxDedupeKey(req.StoreID, domain.TransactionAccrual, req.ExternalTxID),
@@ -283,6 +289,11 @@ func (s *LoyaltyService) Redeem(ctx context.Context, req RedeemRequest) (*Redeem
 	}
 
 	cfg, err := s.configs.GetByStore(ctx, req.StoreID)
+	if errors.Is(err, domain.ErrNotFound) {
+		// No rules ever saved means nothing was ever accrued (configs are
+		// never deleted) — there is nothing to redeem (DEC-028).
+		return nil, domain.ErrInsufficientBalance
+	}
 	if err != nil {
 		return nil, fmt.Errorf("redeem: load loyalty config: %w", err)
 	}

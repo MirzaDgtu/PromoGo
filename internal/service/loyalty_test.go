@@ -505,6 +505,48 @@ func TestAccrue_ZeroPointsEarnedDoesNotEnqueueNotification(t *testing.T) {
 	}
 }
 
+// TestAccrue_WithoutConfigRecordsSaleAtZeroPoints: a store with no loyalty
+// config yet still records the sale (DEC-028) — 0 points, no RuleVersion,
+// no notification — and a replay returns the same result, not an error.
+func TestAccrue_WithoutConfigRecordsSaleAtZeroPoints(t *testing.T) {
+	deps := newTestService(nil)
+	ctx := context.Background()
+	req := AccrueRequest{StoreID: 1, ExternalTxID: "rcpt-nocfg-1", Phone: "+70000000301", Amount: decimal.NewFromInt(1000)}
+
+	result, err := deps.svc.Accrue(ctx, req)
+	if err != nil {
+		t.Fatalf("Accrue() error = %v, want the sale recorded at 0 points", err)
+	}
+	if result.PointsEarned != 0 || result.Balance != 0 {
+		t.Errorf("result = %+v, want 0 points earned and 0 balance", result)
+	}
+	if len(deps.txs.all) != 1 || deps.txs.all[0].RuleVersion != nil || deps.txs.all[0].PointsDelta != 0 {
+		t.Fatalf("transactions = %+v, want one 0-point accrual with no rule version", deps.txs.all)
+	}
+	if len(deps.ledger.outbox) != 0 {
+		t.Errorf("outbox = %d entries, want 0", len(deps.ledger.outbox))
+	}
+
+	replay, err := deps.svc.Accrue(ctx, req)
+	if err != nil || !replay.Replayed || replay.PointsEarned != 0 {
+		t.Fatalf("replay = %+v, %v; want a replayed 0-point result", replay, err)
+	}
+}
+
+func TestRedeem_WithoutConfigIsInsufficientBalance(t *testing.T) {
+	deps := newTestService(nil)
+	ctx := context.Background()
+	accrued, err := deps.svc.Accrue(ctx, AccrueRequest{StoreID: 1, ExternalTxID: "rcpt-nocfg-2", Phone: "+70000000302", Amount: decimal.NewFromInt(500)})
+	if err != nil {
+		t.Fatalf("Accrue() error = %v", err)
+	}
+
+	_, err = deps.svc.Redeem(ctx, RedeemRequest{StoreID: 1, ExternalTxID: "rdm-nocfg-2", ClientID: accrued.ClientID, Points: 1, Amount: decimal.NewFromInt(500)})
+	if !errors.Is(err, domain.ErrInsufficientBalance) {
+		t.Fatalf("Redeem() error = %v, want ErrInsufficientBalance", err)
+	}
+}
+
 // TestAccrue_ReplayDoesNotDoubleEnqueueNotification: a replayed webhook
 // must not queue a second notification for the same logical write.
 func TestAccrue_ReplayDoesNotDoubleEnqueueNotification(t *testing.T) {

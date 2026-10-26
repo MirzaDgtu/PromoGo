@@ -134,7 +134,10 @@ func TestHandleAccrueTransaction_IdempotencyConflictOnReusedID(t *testing.T) {
 	}
 }
 
-func TestHandleAccrueTransaction_ServiceErrorMissingLoyaltyConfig(t *testing.T) {
+// TestHandleAccrueTransaction_MissingLoyaltyConfigRecordsZeroPoints: a
+// store without saved loyalty rules still gets its sale accepted at 0
+// points (DEC-028), so 1C doesn't queue and retry it as a server failure.
+func TestHandleAccrueTransaction_MissingLoyaltyConfigRecordsZeroPoints(t *testing.T) {
 	handler, fakes := newTestServer(t)
 	fakes.Stores.byID[1] = &domain.Store{ID: 1, OrganizationID: 1, Name: "Store"}
 	fakes.StoreAPIKeys.add(&domain.StoreAPIKey{ID: 1, StoreID: 1, Scopes: []string{domain.ScopeTransactionsWrite}}, "key")
@@ -143,8 +146,15 @@ func TestHandleAccrueTransaction_ServiceErrorMissingLoyaltyConfig(t *testing.T) 
 	rec := doRequest(handler, accrueReq("key-1.key", map[string]any{
 		"transaction_id": "tx-1", "phone": "+79261234567", "amount": "100.00",
 	}))
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want 500 (no loyalty config configured)", rec.Code)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp struct {
+		PointsEarned int64 `json:"points_earned"`
+	}
+	decodeJSON(t, rec, &resp)
+	if resp.PointsEarned != 0 {
+		t.Errorf("points_earned = %d, want 0", resp.PointsEarned)
 	}
 }
 

@@ -55,7 +55,7 @@ export interface paths {
         put?: never;
         /**
          * Accrue points for a completed sale (1C webhook)
-         * @description Idempotent on (store, transaction_id): a retried request with the same transaction_id and parameters returns the original result (`replayed: true`) rather than crediting points twice. Requires the `transactions.write` scope.
+         * @description Idempotent on (store, transaction_id): a retried request with the same transaction_id and parameters returns the original result (`replayed: true`) rather than crediting points twice. Requires the `transactions.write` scope. If the store has no loyalty config yet, the sale is still recorded and answered 200 with `points_earned: 0` (DEC-028).
          */
         post: operations["createTransaction"];
         delete?: never;

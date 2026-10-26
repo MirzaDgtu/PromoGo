@@ -29,6 +29,14 @@ var IdempotencyConflicts = promauto.NewCounterVec(prometheus.CounterOpts{
 	Help: "Idempotency-key replays whose request fingerprint didn't match the original write.",
 }, []string{"flow"}) // flow: accrue|redeem|refund
 
+// AccrualsWithoutConfig counts sales recorded at 0 points because the
+// store has no loyalty config yet (DEC-028) — a store selling through 1C
+// without earning anyone points, which onboarding should fix.
+var AccrualsWithoutConfig = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "promogo_accruals_without_config_total",
+	Help: "Accrual webhooks recorded at 0 points because the store has no loyalty config.",
+})
+
 // RefundFailures counts a refund request that failed business validation
 // (unknown original transaction, over-refund, etc.), labeled by the
 // specific reason so a spike in one reason is distinguishable from another.
