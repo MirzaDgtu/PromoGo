@@ -241,7 +241,7 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 	case "listStaffMemberships":
 		return handleListStaffMemberships(deps.StaffMemberships, deps.StaffUsers, deps.Log)
 	case "createStaffMembership":
-		return handleCreateStaffMembership(deps.StaffUsers, deps.StaffMemberships, deps.AuditEvents, deps.Log)
+		return handleCreateStaffMembership(deps.StaffUsers, deps.StaffMemberships, deps.Stores, deps.AuditEvents, deps.Log)
 	case "updateStaffMembership":
 		return handleUpdateStaffMembership(deps.StaffMemberships, deps.AuditEvents, deps.Log)
 	case "adminListClients":

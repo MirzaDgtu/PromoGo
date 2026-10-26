@@ -492,6 +492,53 @@ func TestHandleCreateStaffMembership_Success(t *testing.T) {
 	}
 }
 
+func TestHandleCreateStaffMembership_TrimsPastedAccessCode(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff", token, map[string]any{
+		"external_subject": "  oidc|pasted	", "role": "store_manager",
+	})
+	req.SetPathValue("orgID", itoa(org.ID))
+	rec := doRequest(handler, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201 (body=%s)", rec.Code, rec.Body.String())
+	}
+	var resp staffMembershipResponseBody
+	decodeJSON(t, rec, &resp)
+	if resp.ExternalSubject != "oidc|pasted" {
+		t.Errorf("external_subject = %q, want trimmed %q", resp.ExternalSubject, "oidc|pasted")
+	}
+}
+
+func TestHandleCreateStaffMembership_StoreFromAnotherOrganizationRejected(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	other := seedOrganization(fakes, "Other")
+	ownStore := seedStore(fakes, org.ID, "Own")
+	foreignStore := seedStore(fakes, other.ID, "Foreign")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+	for _, tc := range []struct {
+		name    string
+		storeID int64
+		want    int
+	}{
+		{"own store", ownStore.ID, http.StatusCreated},
+		{"another organization's store", foreignStore.ID, http.StatusBadRequest},
+		{"unknown store", 9999, http.StatusBadRequest},
+	} {
+		req := adminReq(http.MethodPost, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff", token, map[string]any{
+			"external_subject": "oidc|" + tc.name, "role": "store_manager", "store_id": tc.storeID,
+		})
+		req.SetPathValue("orgID", itoa(org.ID))
+		if rec := doRequest(handler, req); rec.Code != tc.want {
+			t.Errorf("%s: status = %d, want %d (body=%s)", tc.name, rec.Code, tc.want, rec.Body.String())
+		}
+	}
+}
+
 func TestHandleCreateStaffMembership_InvalidRole(t *testing.T) {
 	handler, fakes := newTestServer(t)
 	org := seedOrganization(fakes, "Acme")

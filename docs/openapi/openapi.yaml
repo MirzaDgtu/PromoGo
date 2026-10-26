@@ -822,7 +822,11 @@ paths:
       description: >
         Requires `staff.manage`. Creates the target StaffUser row (by OIDC
         subject) if it doesn't exist yet — the rest of their profile fills
-        in on their first real OIDC login.
+        in on their first real OIDC login. `external_subject` is the access
+        code the new employee copies from Admin Web's "no access" screen;
+        surrounding whitespace is trimmed. `store_id`, when set, must be a
+        store of this organization (400 otherwise). 409 if the person
+        already has this exact membership (active or disabled).
       security:
         - staffAccessToken: []
       parameters:
@@ -856,7 +860,10 @@ paths:
       operationId: updateStaffMembership
       tags: [Admin - Staff]
       summary: Update a staff membership's role or status
-      description: Requires `staff.manage`.
+      description: >
+        Requires `staff.manage`. 400 when the caller targets their own
+        membership; 403 when a non-platform-admin grants or modifies
+        platform_admin; 404 when the membership isn't in this organization.
       security:
         - staffAccessToken: []
       parameters:
@@ -878,6 +885,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
@@ -1541,6 +1549,7 @@ components:
 
     StaffMembership:
       type: object
+      required: [id, staff_user_id, organization_id, role, status, created_at, updated_at, external_subject]
       properties:
         id: { type: integer, format: int64 }
         staff_user_id: { type: integer, format: int64 }
@@ -1550,6 +1559,11 @@ components:
         status: { $ref: "#/components/schemas/StaffStatus" }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        external_subject:
+          type: string
+          description: >
+            The access code (OIDC subject) the membership was granted to —
+            what tells apart people who haven't logged in yet.
         email:
           type: string
           description: The target StaffUser's profile email. Empty until their first OIDC login.

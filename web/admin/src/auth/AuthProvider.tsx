@@ -28,6 +28,13 @@ interface AuthContextValue {
   status: AuthStatus
   /** Only set once status === 'authenticated'. */
   staffUserID: number | null
+  /**
+   * The signed-in person as the OIDC provider identifies them, set once a
+   * login completes (whatever the outcome). subject is the access code a
+   * new employee hands to an administrator from the "no access" screen —
+   * the same claim the backend stores as external_subject.
+   */
+  identity: { subject: string; email: string; name: string } | null
   login: () => Promise<void>
   logout: () => Promise<void>
   /** Consumes the OIDC redirect callback at /auth/callback. */
@@ -75,6 +82,7 @@ export function AuthProvider({
 }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [staffUserID, setStaffUserID] = useState<number | null>(null)
+  const [identity, setIdentity] = useState<AuthContextValue['identity']>(null)
   // null when DEC-004 hasn't picked an OIDC provider for this deployment
   // yet (see oidcConfig.ts) — every method below no-ops or reports
   // 'unconfigured' rather than throwing in that case.
@@ -95,6 +103,7 @@ export function AuthProvider({
         setStatus('unauthenticated')
         return
       }
+      setIdentity({ subject: user.profile.sub, email: user.profile.email ?? '', name: user.profile.name ?? '' })
       const result = await exchangeIDToken(idToken)
       if ('accessToken' in result) {
         setAccessToken(result.accessToken)
@@ -201,6 +210,7 @@ export function AuthProvider({
   const logout = useCallback(async () => {
     setAccessToken(null)
     setStaffUserID(null)
+    setIdentity(null)
     setStatus('unauthenticated')
     queryClient.clear()
     await userManager?.signoutRedirect().catch(() => {
@@ -212,8 +222,8 @@ export function AuthProvider({
   }, [userManager, queryClient])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, staffUserID, login, logout, completeLogin }),
-    [status, staffUserID, login, logout, completeLogin],
+    () => ({ status, staffUserID, identity, login, logout, completeLogin }),
+    [status, staffUserID, identity, login, logout, completeLogin],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

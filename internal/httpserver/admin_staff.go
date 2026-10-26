@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
@@ -40,6 +41,10 @@ type staffMembershipResponseBody struct {
 	Status         string    `json:"status"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	// ExternalSubject is the access code the admin entered (the target's
+	// OIDC subject) — the only way to tell apart people who haven't logged
+	// in yet and so have no email/display name.
+	ExternalSubject string `json:"external_subject"`
 	// Email and DisplayName are the target StaffUser's own profile fields —
 	// populated on their first OIDC login (see
 	// service.StaffAuthService.resolveOrCreateUser) — so admin UIs can show
@@ -81,6 +86,7 @@ func handleListStaffMemberships(memberships domain.StaffMembershipRepository, us
 				}
 				userCache[m.StaffUserID] = user
 			}
+			body.ExternalSubject = user.ExternalSubject
 			body.Email = user.Email
 			body.DisplayName = user.DisplayName
 			out = append(out, body)
@@ -109,7 +115,7 @@ type createStaffMembershipBody struct {
 // handleCreateStaffMembership returns a handler for POST
 // /api/v1/admin/organizations/{orgID}/staff. Must run behind
 // RequireStaff(staff.manage, orgScopeFromPath).
-func handleCreateStaffMembership(users domain.StaffUserRepository, memberships domain.StaffMembershipRepository, audit domain.AuditEventRepository, log *slog.Logger) http.HandlerFunc {
+func handleCreateStaffMembership(users domain.StaffUserRepository, memberships domain.StaffMembershipRepository, stores domain.StoreRepository, audit domain.AuditEventRepository, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		orgID, err := strconv.ParseInt(r.PathValue("orgID"), 10, 64)
 		if err != nil {
@@ -120,7 +126,11 @@ func handleCreateStaffMembership(users domain.StaffUserRepository, memberships d
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
 		var body createStaffMembershipBody
-		if err := dec.Decode(&body); err != nil ||
+		err = dec.Decode(&body)
+		// The access code is pasted from the new employee's "no access"
+		// screen, so stray whitespace is expected, not a different subject.
+		body.ExternalSubject = strings.TrimSpace(body.ExternalSubject)
+		if err != nil ||
 			body.ExternalSubject == "" || len(body.ExternalSubject) > maxExternalSubjectLen ||
 			!validRole(body.Role) {
 			writeError(w, http.StatusBadRequest, "external_subject and a valid role are required")
@@ -131,6 +141,19 @@ func handleCreateStaffMembership(users domain.StaffUserRepository, memberships d
 		if domain.Role(body.Role) == domain.RolePlatformAdmin && !principalIsPlatformAdmin(principal) {
 			writeError(w, http.StatusForbidden, "only a platform admin can grant platform_admin")
 			return
+		}
+
+		if body.StoreID != nil {
+			store, err := stores.GetByID(r.Context(), *body.StoreID)
+			if errors.Is(err, domain.ErrNotFound) || (err == nil && store.OrganizationID != orgID) {
+				writeError(w, http.StatusBadRequest, "store does not belong to this organization")
+				return
+			}
+			if err != nil {
+				log.ErrorContext(r.Context(), "load store", "store_id", *body.StoreID, "error", err)
+				writeError(w, http.StatusInternalServerError, "load store")
+				return
+			}
 		}
 
 		user, err := users.GetByExternalSubject(r.Context(), body.ExternalSubject)
@@ -168,7 +191,11 @@ func handleCreateStaffMembership(users domain.StaffUserRepository, memberships d
 		}
 		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionStaffMembershipAdded, &orgID, nil, "staff_membership", &membership.ID, clientIP(r), r.UserAgent())
 
-		writeJSON(w, http.StatusCreated, membershipToBody(membership))
+		created := membershipToBody(membership)
+		created.ExternalSubject = user.ExternalSubject
+		created.Email = user.Email
+		created.DisplayName = user.DisplayName
+		writeJSON(w, http.StatusCreated, created)
 	}
 }
 

@@ -284,6 +284,52 @@ export function useClientTransactions(orgID: number, storeID: number, clientID: 
   })
 }
 
+export type StaffMembership = components['schemas']['StaffMembership']
+export type StaffRole = components['schemas']['Role']
+
+export function useStaffMemberships(orgID: number, enabled: boolean) {
+  return useQuery({
+    queryKey: ['staff', orgID],
+    queryFn: async () => {
+      const { data, error, response } = await api.GET('/api/v1/admin/organizations/{orgID}/staff', {
+        params: { path: { orgID } },
+      })
+      if (error) throw Object.assign(new Error('load staff'), { response })
+      return data?.memberships ?? []
+    },
+    enabled,
+  })
+}
+
+export function useCreateStaffMembership(orgID: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { external_subject: string; role: StaffRole; store_id?: number }) => {
+      const { data, error, response } = await api.POST('/api/v1/admin/organizations/{orgID}/staff', {
+        params: { path: { orgID } },
+        body: input,
+      })
+      if (error || !data) throw Object.assign(new Error('create staff membership'), { response })
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staff', orgID] }),
+  })
+}
+
+export function useUpdateStaffMembership(orgID: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...body }: { id: number; role?: StaffRole; status?: 'active' | 'disabled' }) => {
+      const { error, response } = await api.PATCH('/api/v1/admin/organizations/{orgID}/staff/{membershipID}', {
+        params: { path: { orgID, membershipID: id } },
+        body,
+      })
+      if (error) throw Object.assign(new Error('update staff membership'), { response })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['staff', orgID] }),
+  })
+}
+
 // responseOf recovers the Response attached by the hooks above, so error UI
 // can branch on status and show the request id.
 export function responseOf(error: unknown): Response | undefined {

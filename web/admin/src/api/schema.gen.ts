@@ -493,7 +493,7 @@ export interface paths {
         put?: never;
         /**
          * Grant a staff membership
-         * @description Requires `staff.manage`. Creates the target StaffUser row (by OIDC subject) if it doesn't exist yet — the rest of their profile fills in on their first real OIDC login.
+         * @description Requires `staff.manage`. Creates the target StaffUser row (by OIDC subject) if it doesn't exist yet — the rest of their profile fills in on their first real OIDC login. `external_subject` is the access code the new employee copies from Admin Web's "no access" screen; surrounding whitespace is trimmed. `store_id`, when set, must be a store of this organization (400 otherwise). 409 if the person already has this exact membership (active or disabled).
          */
         post: operations["createStaffMembership"];
         delete?: never;
@@ -517,7 +517,7 @@ export interface paths {
         head?: never;
         /**
          * Update a staff membership's role or status
-         * @description Requires `staff.manage`.
+         * @description Requires `staff.manage`. 400 when the caller targets their own membership; 403 when a non-platform-admin grants or modifies platform_admin; 404 when the membership isn't in this organization.
          */
         patch: operations["updateStaffMembership"];
         trace?: never;
@@ -916,19 +916,21 @@ export interface components {
         StaffStatus: "active" | "disabled";
         StaffMembership: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** Format: int64 */
-            staff_user_id?: number;
+            staff_user_id: number;
             /** Format: int64 */
-            organization_id?: number;
+            organization_id: number;
             /** Format: int64 */
             store_id?: number | null;
-            role?: components["schemas"]["Role"];
-            status?: components["schemas"]["StaffStatus"];
+            role: components["schemas"]["Role"];
+            status: components["schemas"]["StaffStatus"];
             /** Format: date-time */
-            created_at?: string;
+            created_at: string;
             /** Format: date-time */
-            updated_at?: string;
+            updated_at: string;
+            /** @description The access code (OIDC subject) the membership was granted to — what tells apart people who haven't logged in yet. */
+            external_subject: string;
             /** @description The target StaffUser's profile email. Empty until their first OIDC login. */
             email?: string;
             /** @description The target StaffUser's profile display name. Empty until their first OIDC login. */
@@ -2137,6 +2139,7 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
             503: components["responses"]["ServiceUnavailable"];
         };

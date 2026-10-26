@@ -10,6 +10,7 @@ import { ClientsPage } from '../pages/clients/ClientsPage'
 import { ComingSoonPage } from '../pages/ComingSoonPage'
 import { LoyaltyConfigPage } from '../pages/loyalty/LoyaltyConfigPage'
 import { OrganizationsPage } from '../pages/OrganizationsPage'
+import { StaffPage } from '../pages/staff/StaffPage'
 import { RequireAuth } from './RequireAuth'
 
 export function AppRouter() {
@@ -27,7 +28,7 @@ export function AppRouter() {
       >
         <Route index element={<ComingSoonPage title={strings.nav.dashboard} />} />
         <Route path="/organizations" element={<OrganizationsPage />} />
-        <Route path="/staff" element={<ComingSoonPage title={strings.nav.staff} />} />
+        <Route path="/staff" element={<StaffPage />} />
         <Route path="/loyalty-config" element={<LoyaltyConfigPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/api-keys" element={<ApiKeysPage />} />

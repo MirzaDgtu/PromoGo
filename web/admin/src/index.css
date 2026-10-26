@@ -391,6 +391,51 @@ textarea {
   font-weight: 600;
 }
 
+.staff-sub {
+  font-size: 13px;
+}
+
+.data-table td > .badge {
+  margin-top: var(--space-1);
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.api-key-form .field select {
+  max-width: 100%;
+}
+
+.no-access {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+}
+
+.no-access__card {
+  width: min(560px, 100%);
+}
+
+.no-access__steps {
+  padding-left: var(--space-6);
+}
+
+.no-access__card > label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.no-access__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
 .row-inactive td {
   color: var(--color-text-muted);
 }
