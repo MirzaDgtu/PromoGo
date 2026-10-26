@@ -249,7 +249,7 @@ make migrate-validate
 Для нестандартного подключения:
 
 ```bash
-make migrate-up DATABASE_URL="postgres://user:password@localhost:5432/promogo?sslmode=disable"
+make migrate-up DATABASE_URL="postgres://user:password@localhost:5433/promogo?sslmode=disable"
 ```
 
 ## Проверки

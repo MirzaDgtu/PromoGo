@@ -69,12 +69,12 @@ make migrate-status    # show applied/pending migrations
 make migrate-validate  # sanity-check migration file formatting (goose validate)
 ```
 
-These use `DATABASE_URL`, defaulting to `postgres://promogo:promogo@localhost:5432/promogo?sslmode=disable`
-(matches `deployments/docker-compose.yml`'s Postgres credentials). Override with
+These use `DATABASE_URL`, defaulting to `postgres://promogo:promogo@localhost:5433/promogo?sslmode=disable`
+(matches `deployments/docker-compose.yml`'s Postgres credentials and default host port). Override with
 `DATABASE_URL=... make migrate-up` for a different environment, e.g. if you started the dev
 stack on an alternate port (see the dev-stack skill):
 ```bash
-DATABASE_URL="postgres://promogo:promogo@localhost:5433/promogo?sslmode=disable" make migrate-up
+DATABASE_URL="postgres://promogo:promogo@localhost:5434/promogo?sslmode=disable" make migrate-up
 ```
 On Windows without `make`, run the underlying goose command directly:
 ```bash

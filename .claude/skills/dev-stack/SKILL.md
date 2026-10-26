@@ -12,11 +12,14 @@ make docker-up    # docker compose -f deployments/docker-compose.yml up -d postg
 make migrate-up   # apply goose migrations (needs Postgres up first)
 ```
 
-Postgres: `localhost:5432`, db/user/password all `promogo` (see `deployments/docker-compose.yml`). Redis: `localhost:6379`.
+Postgres: `localhost:5433`, db/user/password all `promogo` (see `deployments/docker-compose.yml`). Redis: `localhost:6380`.
+These host ports are intentionally non-standard (not 5432/6379) so they don't clash with a
+native Postgres/Redis install on the dev machine; the `app` container always reaches them via
+the internal compose network (`postgres:5432`, `redis:6379`) regardless of this mapping.
 
-If those ports are already taken by another local project's dev stack, override the published host ports without editing the compose file:
+If 5433/6380 are still taken by another local project's dev stack, override the published host ports without editing the compose file:
 ```bash
-POSTGRES_HOST_PORT=5433 REDIS_HOST_PORT=6380 docker compose -f deployments/docker-compose.yml up -d postgres redis
+POSTGRES_HOST_PORT=5434 REDIS_HOST_PORT=6381 docker compose -f deployments/docker-compose.yml up -d postgres redis
 ```
 and point `PROMOGO_POSTGRES_PORT`/`PROMOGO_REDIS_ADDR` at the same alternate ports when running the app (see below).
 

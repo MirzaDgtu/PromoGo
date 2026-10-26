@@ -8,7 +8,7 @@ http:
 
 postgres:
   host: localhost
-  port: 5432
+  port: 5433
   user: promogo
   password: promogo
   dbname: promogo
@@ -21,7 +21,7 @@ postgres:
   max_conns: 10
 
 redis:
-  addr: localhost:6379
+  addr: localhost:6380
   password: ""
   db: 0
   # REQUIRED (true) outside app.env=development — internal/config.Load
