@@ -12,8 +12,6 @@ import (
 	"github.com/MirzaDgtu/PromoGo/internal/domain"
 )
 
-const maxAPIKeyNameLen = 255
-
 // resolveScopedStore loads storeID and verifies it belongs to orgID,
 // 404ing otherwise so one organization's staff can't reach another
 // organization's store by guessing a store id.
@@ -112,15 +110,32 @@ func handleCreateStoreAPIKey(stores domain.StoreRepository, keys domain.StoreAPI
 		dec := json.NewDecoder(r.Body)
 		dec.DisallowUnknownFields()
 		var body createAPIKeyBody
-		if err := dec.Decode(&body); err != nil || body.Name == "" || len(body.Name) > maxAPIKeyNameLen || len(body.Scopes) == 0 {
+		if err := dec.Decode(&body); err != nil || len(body.Scopes) == 0 {
 			writeError(w, http.StatusBadRequest, "name and at least one scope are required")
 			return
 		}
+		name, ok := normalizeName(body.Name)
+		if !ok {
+			writeError(w, http.StatusBadRequest, "name and at least one scope are required")
+			return
+		}
+		scopes := make([]string, 0, len(body.Scopes))
+		seen := map[string]bool{}
 		for _, scope := range body.Scopes {
 			if !validAPIKeyScopes[scope] {
 				writeError(w, http.StatusBadRequest, "invalid scope: "+scope)
 				return
 			}
+			if !seen[scope] {
+				seen[scope] = true
+				scopes = append(scopes, scope)
+			}
+		}
+		// A key that is already expired at birth could never authenticate;
+		// that is always a client mistake (e.g. a wrong date), not intent.
+		if body.ExpiresAt != nil && !body.ExpiresAt.After(time.Now()) {
+			writeError(w, http.StatusBadRequest, "expires_at must be in the future")
+			return
 		}
 
 		plaintext, keyID, hash, err := auth.GenerateAPIKey()
@@ -138,8 +153,8 @@ func handleCreateStoreAPIKey(stores domain.StoreRepository, keys domain.StoreAPI
 		}
 
 		key := &domain.StoreAPIKey{
-			StoreID: store.ID, KeyID: keyID, KeyHash: hash, Name: body.Name,
-			Scopes: body.Scopes, ExpiresAt: body.ExpiresAt, CreatedBy: createdBy,
+			StoreID: store.ID, KeyID: keyID, KeyHash: hash, Name: name,
+			Scopes: scopes, ExpiresAt: body.ExpiresAt, CreatedBy: createdBy,
 		}
 		if err := keys.Create(r.Context(), key); err != nil {
 			log.ErrorContext(r.Context(), "create store api key", "store_id", store.ID, "error", err)

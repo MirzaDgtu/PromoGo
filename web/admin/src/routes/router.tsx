@@ -5,6 +5,7 @@ import { LoginPage } from '../auth/LoginPage'
 import { AppShell } from '../components/AppShell'
 import { NotFoundState } from '../components/states'
 import { strings } from '../i18n/strings'
+import { ApiKeysPage } from '../pages/apiKeys/ApiKeysPage'
 import { ComingSoonPage } from '../pages/ComingSoonPage'
 import { OrganizationsPage } from '../pages/OrganizationsPage'
 import { RequireAuth } from './RequireAuth'
@@ -27,7 +28,7 @@ export function AppRouter() {
         <Route path="/staff" element={<ComingSoonPage title={strings.nav.staff} />} />
         <Route path="/loyalty-config" element={<ComingSoonPage title={strings.nav.loyaltyConfig} />} />
         <Route path="/clients" element={<ComingSoonPage title={strings.nav.clients} />} />
-        <Route path="/api-keys" element={<ComingSoonPage title={strings.nav.apiKeys} />} />
+        <Route path="/api-keys" element={<ApiKeysPage />} />
         <Route path="/audit" element={<ComingSoonPage title={strings.nav.audit} />} />
       </Route>
 

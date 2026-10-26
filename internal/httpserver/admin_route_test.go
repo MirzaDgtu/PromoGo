@@ -752,6 +752,67 @@ func TestHandleCreateStoreAPIKey_Success(t *testing.T) {
 	}
 }
 
+func TestHandleCreateStoreAPIKey_Validation(t *testing.T) {
+	cases := []struct {
+		name       string
+		body       map[string]any
+		wantCode   int
+		wantName   string
+		wantScopes []string
+	}{
+		{
+			name:     "trims the name and drops duplicate scopes",
+			body:     map[string]any{"name": "  Касса 1  ", "scopes": []string{"transactions.write", "transactions.write", "balances.read"}},
+			wantCode: http.StatusCreated, wantName: "Касса 1", wantScopes: []string{"transactions.write", "balances.read"},
+		},
+		{
+			name:     "future expiry is accepted",
+			body:     map[string]any{"name": "k", "scopes": []string{"balances.read"}, "expires_at": time.Now().Add(time.Hour).Format(time.RFC3339)},
+			wantCode: http.StatusCreated, wantName: "k", wantScopes: []string{"balances.read"},
+		},
+		{
+			name:     "past expiry is rejected",
+			body:     map[string]any{"name": "k", "scopes": []string{"balances.read"}, "expires_at": time.Now().Add(-time.Minute).Format(time.RFC3339)},
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "whitespace-only name is rejected",
+			body: map[string]any{"name": "   ", "scopes": []string{"balances.read"}}, wantCode: http.StatusBadRequest,
+		},
+		{
+			name: "unknown scope is rejected",
+			body: map[string]any{"name": "k", "scopes": []string{"admin"}}, wantCode: http.StatusBadRequest,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, fakes := newTestServer(t)
+			org := seedOrganization(fakes, "Acme")
+			store := seedStore(fakes, org.ID, "Store")
+			token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+
+			req := adminReq(http.MethodPost, storePath(org.ID, store.ID)+"/api-keys", token, tc.body)
+			req.SetPathValue("orgID", itoa(org.ID))
+			req.SetPathValue("storeID", itoa(store.ID))
+			rec := doRequest(handler, req)
+			if rec.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d (body=%s)", rec.Code, tc.wantCode, rec.Body.String())
+			}
+			if tc.wantCode != http.StatusCreated {
+				return
+			}
+			var resp struct {
+				Name   string   `json:"name"`
+				Scopes []string `json:"scopes"`
+			}
+			decodeJSON(t, rec, &resp)
+			if resp.Name != tc.wantName || strings.Join(resp.Scopes, ",") != strings.Join(tc.wantScopes, ",") {
+				t.Fatalf("got name=%q scopes=%v, want %q %v", resp.Name, resp.Scopes, tc.wantName, tc.wantScopes)
+			}
+		})
+	}
+}
+
 // TestHandleCreateStoreAPIKey_PlaintextAuthenticatesRealRequest is the
 // create-then-use regression test for the key_id/key_hash mismatch that
 // once made every freshly created store API key permanently unable to

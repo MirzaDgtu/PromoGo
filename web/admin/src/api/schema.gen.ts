@@ -661,7 +661,7 @@ export interface paths {
         put?: never;
         /**
          * Create a new store API key
-         * @description Requires `api_keys.rotate`. Returns the plaintext key exactly once — it is never persisted or logged again.
+         * @description Requires `api_keys.rotate`. Returns the plaintext key exactly once — it is never persisted or logged again. The name is trimmed (length counts characters), duplicate scopes are dropped, and expires_at, when given, must be in the future.
          */
         post: operations["createStoreAPIKey"];
         delete?: never;
@@ -681,7 +681,7 @@ export interface paths {
         put?: never;
         /**
          * Revoke a store API key
-         * @description Requires `api_keys.rotate`.
+         * @description Requires `api_keys.rotate`. Takes effect on the key's next request. 404 if the key doesn't belong to the store or is already revoked.
          */
         post: operations["revokeStoreAPIKey"];
         delete?: never;
@@ -1050,13 +1050,13 @@ export interface components {
         APIKeyScope: "transactions.write" | "clients.lookup" | "balances.read";
         StoreAPIKey: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** @description Non-secret, loggable prefix identifying the key — never the secret itself. */
-            key_id?: string;
-            name?: string;
-            scopes?: components["schemas"]["APIKeyScope"][];
+            key_id: string;
+            name: string;
+            scopes: components["schemas"]["APIKeyScope"][];
             /** Format: date-time */
-            created_at?: string;
+            created_at: string;
             /** Format: date-time */
             expires_at?: string | null;
             /** Format: date-time */
@@ -1066,7 +1066,7 @@ export interface components {
         };
         StoreAPIKeyCreated: components["schemas"]["StoreAPIKey"] & {
             /** @description The actual API key. Returned exactly once, at creation — never persisted or logged, and never retrievable again. */
-            plaintext_key?: string;
+            plaintext_key: string;
         };
         AuditEvent: {
             /** Format: int64 */
@@ -2452,6 +2452,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
             503: components["responses"]["ServiceUnavailable"];
         };

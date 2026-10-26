@@ -106,6 +106,56 @@ export function useUpdateStore(orgID: number, storeID: number) {
   })
 }
 
+export type StoreAPIKey = components['schemas']['StoreAPIKey']
+export type APIKeyScope = components['schemas']['APIKeyScope']
+
+export function useStoreAPIKeys(orgID: number | null, storeID: number | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['apiKeys', orgID, storeID],
+    queryFn: async () => {
+      const { data, error, response } = await api.GET('/api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys', {
+        params: { path: { orgID: orgID!, storeID: storeID! } },
+      })
+      if (error) throw Object.assign(new Error('load api keys'), { response })
+      return data?.api_keys ?? []
+    },
+    enabled: enabled && orgID != null && storeID != null,
+  })
+}
+
+// The create response carries the one-time plaintext key. gcTime: 0 drops
+// it from the mutation cache as soon as the caller resets the mutation, so
+// the secret doesn't linger in memory after the one-time dialog closes.
+export function useCreateStoreAPIKey(orgID: number, storeID: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    gcTime: 0,
+    mutationFn: async (input: { name: string; scopes: APIKeyScope[]; expires_at?: string }) => {
+      const { data, error, response } = await api.POST('/api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys', {
+        params: { path: { orgID, storeID } },
+        body: input,
+      })
+      if (error || !data) throw Object.assign(new Error('create api key'), { response })
+      return data
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['apiKeys', orgID, storeID] }),
+  })
+}
+
+export function useRevokeStoreAPIKey(orgID: number, storeID: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (keyID: number) => {
+      const { error, response } = await api.POST(
+        '/api/v1/admin/organizations/{orgID}/stores/{storeID}/api-keys/{keyID}/revoke',
+        { params: { path: { orgID, storeID, keyID } } },
+      )
+      if (error) throw Object.assign(new Error('revoke api key'), { response })
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['apiKeys', orgID, storeID] }),
+  })
+}
+
 // responseOf recovers the Response attached by the hooks above, so error UI
 // can branch on status and show the request id.
 export function responseOf(error: unknown): Response | undefined {
