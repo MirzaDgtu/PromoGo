@@ -227,7 +227,7 @@ func (f *fakeAuditEventRepo) Create(_ context.Context, e *domain.AuditEvent) err
 	return nil
 }
 
-func (f *fakeAuditEventRepo) ListByOrganization(_ context.Context, _ int64, _ int) ([]*domain.AuditEvent, error) {
+func (f *fakeAuditEventRepo) ListByOrganization(_ context.Context, _ int64, _ domain.AuditListQuery) ([]*domain.AuditEvent, error) {
 	return nil, nil
 }
 

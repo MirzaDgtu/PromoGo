@@ -166,7 +166,8 @@ func handlePutLoyaltyConfig(stores domain.StoreRepository, configs domain.Loyalt
 			writeError(w, http.StatusInternalServerError, "save loyalty config")
 			return
 		}
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionLoyaltyConfigChanged, &orgID, &store.ID, "loyalty_config", &store.ID, clientIP(r), r.UserAgent())
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionLoyaltyConfigChanged, &orgID, &store.ID, "loyalty_config", &store.ID,
+			map[string]any{"version": cfg.Version}, clientIP(r), r.UserAgent())
 
 		writeJSON(w, http.StatusOK, loyaltyConfigToBody(cfg))
 	}
@@ -281,7 +282,8 @@ func handleRollbackLoyaltyConfig(stores domain.StoreRepository, configs domain.L
 			writeError(w, http.StatusInternalServerError, "rollback loyalty config")
 			return
 		}
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionLoyaltyConfigRolledBack, &orgID, &store.ID, "loyalty_config", &store.ID, clientIP(r), r.UserAgent())
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionLoyaltyConfigRolledBack, &orgID, &store.ID, "loyalty_config", &store.ID,
+			map[string]any{"version": cfg.Version, "restored_version": body.Version}, clientIP(r), r.UserAgent())
 
 		writeJSON(w, http.StatusOK, loyaltyConfigToBody(cfg))
 	}

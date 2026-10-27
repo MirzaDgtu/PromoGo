@@ -48,15 +48,19 @@ func (r *AuditEventRepository) Create(ctx context.Context, event *domain.AuditEv
 	return nil
 }
 
-func (r *AuditEventRepository) ListByOrganization(ctx context.Context, organizationID int64, limit int) ([]*domain.AuditEvent, error) {
+func (r *AuditEventRepository) ListByOrganization(ctx context.Context, organizationID int64, q domain.AuditListQuery) ([]*domain.AuditEvent, error) {
+	// Served by idx_audit_events_org_occurred_id (organization_id,
+	// occurred_at DESC, id DESC); the row comparison is the keyset cursor.
 	const query = `
 		SELECT id, occurred_at, actor_type, actor_id, organization_id, store_id, action, target_type, target_id, metadata, ip, user_agent
 		FROM audit_events
 		WHERE organization_id = $1
-		ORDER BY occurred_at DESC
-		LIMIT $2`
+		  AND ($2::bigint = 0 OR (occurred_at, id) < ($3::timestamptz, $2::bigint))
+		  AND ($4::text = '' OR action LIKE $4::text || '%')
+		ORDER BY occurred_at DESC, id DESC
+		LIMIT $5`
 
-	rows, err := r.pool.Query(ctx, query, organizationID, limit)
+	rows, err := r.pool.Query(ctx, query, organizationID, q.BeforeID, q.BeforeOccurredAt, q.ActionPrefix, q.Limit)
 	if err != nil {
 		return nil, fmt.Errorf("list audit events for organization %d: %w", organizationID, err)
 	}

@@ -1234,12 +1234,25 @@ paths:
     get:
       operationId: listAuditEvents
       tags: [Admin - Audit]
-      summary: List recent audit events for an Organization
-      description: Requires `audit.read`.
+      summary: List audit events for an Organization
+      description: >
+        Requires `audit.read`. Newest first, keyset-paginated via
+        `?limit=&cursor=` (pass back `next_cursor`), optionally narrowed by
+        `?category=`. Staff actors and staff-membership targets carry a
+        resolved display name.
       security:
         - staffAccessToken: []
       parameters:
         - $ref: "#/components/parameters/orgID"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string, enum: [organization, store, staff, loyalty_config, api_key] }
       responses:
         "200":
           description: OK
@@ -1247,10 +1260,15 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [events]
                 properties:
                   events:
                     type: array
                     items: { $ref: "#/components/schemas/AuditEvent" }
+                  next_cursor:
+                    type: string
+                    description: Opaque; omitted on the last page.
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
@@ -1693,15 +1711,30 @@ components:
 
     AuditEvent:
       type: object
+      required: [id, occurred_at, actor_type, action]
       properties:
         id: { type: integer, format: int64 }
         occurred_at: { type: string, format: date-time }
         actor_type: { type: string, enum: [customer, staff, store_api_key, system] }
         actor_id: { type: integer, format: int64, nullable: true }
+        actor_name:
+          type: string
+          description: For a staff actor, their display name, email, or access code. Omitted when unresolvable.
+        store_id: { type: integer, format: int64, nullable: true }
         action: { type: string }
         target_type: { type: string }
         target_id: { type: integer, format: int64, nullable: true }
-        metadata: { type: object, additionalProperties: true }
+        target_name:
+          type: string
+          description: For a staff_membership target, the person's display name, email, or access code.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: >
+            Action-specific snapshot, recorded since DEC-030: `name`
+            (organization/store/api_key), `version` and `restored_version`
+            (loyalty_config), `role` and `store_id` (membership_added),
+            `from`/`to` (role_changed, status_changed). Older events may lack it.
         ip: { type: string }
 
   securitySchemes:

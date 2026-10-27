@@ -6,6 +6,7 @@ import { AppShell } from '../components/AppShell'
 import { NotFoundState } from '../components/states'
 import { strings } from '../i18n/strings'
 import { ApiKeysPage } from '../pages/apiKeys/ApiKeysPage'
+import { AuditPage } from '../pages/audit/AuditPage'
 import { ClientsPage } from '../pages/clients/ClientsPage'
 import { ComingSoonPage } from '../pages/ComingSoonPage'
 import { LoyaltyConfigPage } from '../pages/loyalty/LoyaltyConfigPage'
@@ -32,7 +33,7 @@ export function AppRouter() {
         <Route path="/loyalty-config" element={<LoyaltyConfigPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/api-keys" element={<ApiKeysPage />} />
-        <Route path="/audit" element={<ComingSoonPage title={strings.nav.audit} />} />
+        <Route path="/audit" element={<AuditPage />} />
       </Route>
 
       <Route path="/404" element={<NotFoundState />} />

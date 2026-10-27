@@ -21,6 +21,26 @@ func auditCreate(
 	targetID *int64,
 	ip, userAgent string,
 ) {
+	auditCreateWithMetadata(ctx, audit, log, actorType, actorID, action, organizationID, storeID, targetType, targetID, nil, ip, userAgent)
+}
+
+// auditCreateWithMetadata is auditCreate plus a small snapshot of what
+// changed (a role before/after, a key's name), so the audit screen can say
+// more than "something happened". Metadata must never carry secrets or
+// customer PII: every audit.read holder sees it.
+func auditCreateWithMetadata(
+	ctx context.Context,
+	audit domain.AuditEventRepository,
+	log *slog.Logger,
+	actorType domain.AuditActorType,
+	actorID *int64,
+	action string,
+	organizationID, storeID *int64,
+	targetType string,
+	targetID *int64,
+	metadata map[string]any,
+	ip, userAgent string,
+) {
 	event := &domain.AuditEvent{
 		ActorType:      actorType,
 		ActorID:        actorID,
@@ -29,6 +49,7 @@ func auditCreate(
 		Action:         action,
 		TargetType:     targetType,
 		TargetID:       targetID,
+		Metadata:       metadata,
 		IP:             ip,
 		UserAgent:      userAgent,
 	}

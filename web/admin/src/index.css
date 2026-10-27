@@ -436,6 +436,21 @@ textarea {
   margin-top: var(--space-6);
 }
 
+.audit-filter {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.audit-filter label {
+  font-weight: 600;
+}
+
+.data-table .cell-nowrap {
+  white-space: nowrap;
+}
+
 .row-inactive td {
   color: var(--color-text-muted);
 }

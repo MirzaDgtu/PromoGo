@@ -59,7 +59,8 @@ func handleCreateOrganization(orgs domain.OrganizationRepository, audit domain.A
 			writeError(w, http.StatusInternalServerError, "create organization")
 			return
 		}
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorStaffUserID(r), domain.AuditActionOrganizationCreated, &org.ID, nil, "organization", &org.ID, clientIP(r), r.UserAgent())
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorStaffUserID(r), domain.AuditActionOrganizationCreated, &org.ID, nil, "organization", &org.ID,
+			map[string]any{"name": org.Name}, clientIP(r), r.UserAgent())
 
 		writeJSON(w, http.StatusCreated, organizationResponseBody{ID: org.ID, Name: org.Name, CreatedAt: org.CreatedAt})
 	}
@@ -158,7 +159,8 @@ func handleCreateStore(stores domain.StoreRepository, audit domain.AuditEventRep
 			writeError(w, http.StatusInternalServerError, "create store")
 			return
 		}
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorStaffUserID(r), domain.AuditActionStoreCreated, &orgID, &store.ID, "store", &store.ID, clientIP(r), r.UserAgent())
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorStaffUserID(r), domain.AuditActionStoreCreated, &orgID, &store.ID, "store", &store.ID,
+			map[string]any{"name": store.Name}, clientIP(r), r.UserAgent())
 
 		writeJSON(w, http.StatusCreated, storeToBody(store))
 	}
@@ -201,7 +203,8 @@ func handleUpdateStore(stores domain.StoreRepository, audit domain.AuditEventRep
 			writeError(w, http.StatusInternalServerError, "update store")
 			return
 		}
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorStaffUserID(r), domain.AuditActionStoreUpdated, &orgID, &store.ID, "store", &store.ID, clientIP(r), r.UserAgent())
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorStaffUserID(r), domain.AuditActionStoreUpdated, &orgID, &store.ID, "store", &store.ID,
+			map[string]any{"name": store.Name}, clientIP(r), r.UserAgent())
 
 		writeJSON(w, http.StatusOK, storeToBody(store))
 	}

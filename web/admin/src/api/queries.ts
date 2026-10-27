@@ -330,6 +330,28 @@ export function useUpdateStaffMembership(orgID: number) {
   })
 }
 
+export type AuditEvent = components['schemas']['AuditEvent']
+export type AuditCategory = 'organization' | 'store' | 'staff' | 'loyalty_config' | 'api_key'
+
+export function useAuditEvents(orgID: number, category: AuditCategory | null, enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: ['audit', orgID, category],
+    queryFn: async ({ pageParam }) => {
+      const query: { cursor?: string; category?: AuditCategory } = {}
+      if (pageParam) query.cursor = pageParam
+      if (category) query.category = category
+      const { data, error, response } = await api.GET('/api/v1/admin/organizations/{orgID}/audit', {
+        params: { path: { orgID }, query },
+      })
+      if (error || !data) throw Object.assign(new Error('load audit events'), { response })
+      return data
+    },
+    initialPageParam: '',
+    getNextPageParam: (last) => last.next_cursor || undefined,
+    enabled,
+  })
+}
+
 // responseOf recovers the Response attached by the hooks above, so error UI
 // can branch on status and show the request id.
 export function responseOf(error: unknown): Response | undefined {

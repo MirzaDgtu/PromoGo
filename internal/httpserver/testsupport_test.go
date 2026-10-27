@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -885,15 +886,24 @@ func (f *fakeAuditEventRepo) Create(_ context.Context, e *domain.AuditEvent) err
 	return nil
 }
 
-func (f *fakeAuditEventRepo) ListByOrganization(_ context.Context, organizationID int64, limit int) ([]*domain.AuditEvent, error) {
+// ListByOrganization walks newest-first by id, which in the fake matches
+// (occurred_at, id) order since Create stamps both monotonically.
+func (f *fakeAuditEventRepo) ListByOrganization(_ context.Context, organizationID int64, q domain.AuditListQuery) ([]*domain.AuditEvent, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var out []*domain.AuditEvent
-	for i := len(f.all) - 1; i >= 0 && len(out) < limit; i-- {
+	for i := len(f.all) - 1; i >= 0 && len(out) < q.Limit; i-- {
 		e := f.all[i]
-		if e.OrganizationID != nil && *e.OrganizationID == organizationID {
-			out = append(out, e)
+		if e.OrganizationID == nil || *e.OrganizationID != organizationID {
+			continue
 		}
+		if q.BeforeID != 0 && e.ID >= q.BeforeID {
+			continue
+		}
+		if !strings.HasPrefix(e.Action, q.ActionPrefix) {
+			continue
+		}
+		out = append(out, e)
 	}
 	return out, nil
 }

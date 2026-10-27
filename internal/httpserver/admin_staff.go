@@ -189,7 +189,12 @@ func handleCreateStaffMembership(users domain.StaffUserRepository, memberships d
 			id := principal.StaffUserID
 			actorID = &id
 		}
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionStaffMembershipAdded, &orgID, nil, "staff_membership", &membership.ID, clientIP(r), r.UserAgent())
+		added := map[string]any{"role": string(membership.Role)}
+		if membership.StoreID != nil {
+			added["store_id"] = *membership.StoreID
+		}
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionStaffMembershipAdded, &orgID, membership.StoreID, "staff_membership", &membership.ID,
+			added, clientIP(r), r.UserAgent())
 
 		created := membershipToBody(membership)
 		created.ExternalSubject = user.ExternalSubject
@@ -284,13 +289,17 @@ func handleUpdateStaffMembership(memberships domain.StaffMembershipRepository, a
 			return
 		}
 
+		// Captured before any write: the audit records what changed from.
+		prevRole, prevStatus := target.Role, target.Status
+
 		if body.Role != "" {
 			if err := memberships.UpdateRole(r.Context(), membershipID, domain.Role(body.Role)); err != nil {
 				log.ErrorContext(r.Context(), "update staff membership role", "membership_id", membershipID, "error", err)
 				writeError(w, http.StatusInternalServerError, "update membership")
 				return
 			}
-			auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionStaffRoleChanged, &orgID, nil, "staff_membership", &membershipID, clientIP(r), r.UserAgent())
+			auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionStaffRoleChanged, &orgID, target.StoreID, "staff_membership", &membershipID,
+				map[string]any{"from": string(prevRole), "to": body.Role}, clientIP(r), r.UserAgent())
 		}
 
 		if body.Status != "" {
@@ -299,7 +308,8 @@ func handleUpdateStaffMembership(memberships domain.StaffMembershipRepository, a
 				writeError(w, http.StatusInternalServerError, "update membership")
 				return
 			}
-			auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionStaffStatusChanged, &orgID, nil, "staff_membership", &membershipID, clientIP(r), r.UserAgent())
+			auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionStaffStatusChanged, &orgID, target.StoreID, "staff_membership", &membershipID,
+				map[string]any{"from": string(prevStatus), "to": body.Status}, clientIP(r), r.UserAgent())
 		}
 
 		w.WriteHeader(http.StatusNoContent)

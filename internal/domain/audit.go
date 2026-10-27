@@ -71,10 +71,23 @@ type AuditEvent struct {
 	UserAgent      string
 }
 
+// AuditListQuery pages and filters ListByOrganization. Events are ordered
+// newest first by (OccurredAt, ID); BeforeOccurredAt/BeforeID is the
+// keyset cursor — the last event of the previous page — and BeforeID 0
+// selects the first page. ActionPrefix, when set, keeps only actions
+// starting with it (e.g. "staff."); callers pass a fixed category, never
+// raw user input, since it is matched with LIKE.
+type AuditListQuery struct {
+	Limit            int
+	BeforeOccurredAt time.Time
+	BeforeID         int64
+	ActionPrefix     string
+}
+
 // AuditEventRepository appends and lists AuditEvent rows.
 type AuditEventRepository interface {
 	Create(ctx context.Context, event *AuditEvent) error
-	// ListByOrganization returns the most recent events for organizationID,
-	// newest first, capped at limit.
-	ListByOrganization(ctx context.Context, organizationID int64, limit int) ([]*AuditEvent, error)
+	// ListByOrganization returns organizationID's events matching q,
+	// newest first.
+	ListByOrganization(ctx context.Context, organizationID int64, q AuditListQuery) ([]*AuditEvent, error)
 }

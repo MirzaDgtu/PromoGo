@@ -1593,6 +1593,84 @@ func TestHandleRollbackLoyaltyConfig_UnknownVersionRejected(t *testing.T) {
 
 // --- admin_audit.go ---
 
+func listAudit(t *testing.T, handler http.Handler, orgID int64, token, query string) (int, struct {
+	Events     []auditEventResponseBody `json:"events"`
+	NextCursor string                   `json:"next_cursor"`
+}) {
+	t.Helper()
+	req := adminReq(http.MethodGet, "/api/v1/admin/organizations/"+itoa(orgID)+"/audit"+query, token, nil)
+	req.SetPathValue("orgID", itoa(orgID))
+	rec := doRequest(handler, req)
+	var resp struct {
+		Events     []auditEventResponseBody `json:"events"`
+		NextCursor string                   `json:"next_cursor"`
+	}
+	if rec.Code == http.StatusOK {
+		decodeJSON(t, rec, &resp)
+	}
+	return rec.Code, resp
+}
+
+func TestHandleListAuditEvents_PaginatesAndFilters(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	orgID := org.ID
+	for _, action := range []string{domain.AuditActionStoreCreated, domain.AuditActionStaffRoleChanged, domain.AuditActionStoreUpdated} {
+		_ = fakes.AuditEvents.Create(context.Background(), &domain.AuditEvent{OrganizationID: &orgID, ActorType: domain.AuditActorStaff, Action: action})
+	}
+
+	code, first := listAudit(t, handler, org.ID, token, "?limit=2")
+	if code != http.StatusOK || len(first.Events) != 2 || first.NextCursor == "" {
+		t.Fatalf("first page = %d %+v, want 2 events and a cursor", code, first)
+	}
+	if first.Events[0].Action != domain.AuditActionStoreUpdated {
+		t.Errorf("first event = %q, want newest first", first.Events[0].Action)
+	}
+	_, second := listAudit(t, handler, org.ID, token, "?limit=2&cursor="+first.NextCursor)
+	if len(second.Events) != 1 || second.Events[0].Action != domain.AuditActionStoreCreated || second.NextCursor != "" {
+		t.Errorf("second page = %+v, want the oldest event and no cursor", second)
+	}
+
+	_, stores := listAudit(t, handler, org.ID, token, "?category=store")
+	if len(stores.Events) != 2 {
+		t.Errorf("category=store returned %d events, want 2", len(stores.Events))
+	}
+	if code, _ := listAudit(t, handler, org.ID, token, "?category=everything"); code != http.StatusBadRequest {
+		t.Errorf("unknown category status = %d, want 400", code)
+	}
+	if code, _ := listAudit(t, handler, org.ID, token, "?cursor=garbage"); code != http.StatusBadRequest {
+		t.Errorf("bad cursor status = %d, want 400", code)
+	}
+}
+
+// TestHandleListAuditEvents_RoleChangeIsReadable: a role change made
+// through the API comes back with who did it, to whom, and from/to.
+func TestHandleListAuditEvents_RoleChangeIsReadable(t *testing.T) {
+	handler, fakes := newTestServer(t)
+	org := seedOrganization(fakes, "Acme")
+	token := issueStaffToken(t, fakes, 1, org.ID, nil, domain.RoleRetailerAdmin)
+	fakes.StaffUsers.byID[1].DisplayName = "Админ"
+	target := fakes.StaffMemberships.seed(&domain.StaffMembership{StaffUserID: 2, OrganizationID: org.ID, Role: domain.RoleStoreManager, Status: domain.StaffActive})
+	fakes.StaffUsers.byID[2] = &domain.StaffUser{ID: 2, ExternalSubject: "anna-code", Email: "anna@x.ru", Status: domain.StaffActive}
+
+	req := adminReq(http.MethodPatch, "/api/v1/admin/organizations/"+itoa(org.ID)+"/staff/"+itoa(target.ID), token, map[string]any{"role": "support_viewer"})
+	req.SetPathValue("orgID", itoa(org.ID))
+	req.SetPathValue("membershipID", itoa(target.ID))
+	if rec := doRequest(handler, req); rec.Code != http.StatusNoContent {
+		t.Fatalf("PATCH status = %d (body=%s)", rec.Code, rec.Body.String())
+	}
+
+	_, resp := listAudit(t, handler, org.ID, token, "?category=staff")
+	if len(resp.Events) != 1 {
+		t.Fatalf("events = %+v, want one role change", resp.Events)
+	}
+	e := resp.Events[0]
+	if e.ActorName != "Админ" || e.TargetName != "anna@x.ru" || e.Metadata["from"] != "store_manager" || e.Metadata["to"] != "support_viewer" {
+		t.Errorf("event = %+v, want actor Админ, target anna@x.ru, store_manager -> support_viewer", e)
+	}
+}
+
 func TestHandleListAuditEvents_Success(t *testing.T) {
 	handler, fakes := newTestServer(t)
 	org := seedOrganization(fakes, "Acme")

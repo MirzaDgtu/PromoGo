@@ -162,7 +162,8 @@ func handleCreateStoreAPIKey(stores domain.StoreRepository, keys domain.StoreAPI
 			return
 		}
 
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, createdBy, domain.AuditActionAPIKeyCreated, &orgID, &store.ID, "store_api_key", &key.ID, clientIP(r), r.UserAgent())
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, createdBy, domain.AuditActionAPIKeyCreated, &orgID, &store.ID, "store_api_key", &key.ID,
+			map[string]any{"name": key.Name}, clientIP(r), r.UserAgent())
 
 		resp := struct {
 			storeAPIKeyResponseBody
@@ -188,6 +189,17 @@ func handleRevokeStoreAPIKey(stores domain.StoreRepository, keys domain.StoreAPI
 			return
 		}
 
+		// The key's name, for the audit record. Best-effort: a failed
+		// lookup must not block the revoke itself.
+		var keyName string
+		if list, err := keys.ListByStore(r.Context(), store.ID); err == nil {
+			for _, k := range list {
+				if k.ID == keyID {
+					keyName = k.Name
+				}
+			}
+		}
+
 		if err := keys.Revoke(r.Context(), store.ID, keyID); err != nil {
 			if errors.Is(err, domain.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "api key not found")
@@ -204,7 +216,8 @@ func handleRevokeStoreAPIKey(stores domain.StoreRepository, keys domain.StoreAPI
 			id := principal.StaffUserID
 			actorID = &id
 		}
-		auditCreate(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionAPIKeyRevoked, &orgID, &store.ID, "store_api_key", &keyID, clientIP(r), r.UserAgent())
+		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorID, domain.AuditActionAPIKeyRevoked, &orgID, &store.ID, "store_api_key", &keyID,
+			map[string]any{"name": keyName}, clientIP(r), r.UserAgent())
 
 		w.WriteHeader(http.StatusNoContent)
 	}

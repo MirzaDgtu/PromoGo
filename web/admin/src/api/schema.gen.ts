@@ -698,8 +698,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List recent audit events for an Organization
-         * @description Requires `audit.read`.
+         * List audit events for an Organization
+         * @description Requires `audit.read`. Newest first, keyset-paginated via `?limit=&cursor=` (pass back `next_cursor`), optionally narrowed by `?category=`. Staff actors and staff-membership targets carry a resolved display name.
          */
         get: operations["listAuditEvents"];
         put?: never;
@@ -1087,17 +1087,24 @@ export interface components {
         };
         AuditEvent: {
             /** Format: int64 */
-            id?: number;
+            id: number;
             /** Format: date-time */
-            occurred_at?: string;
+            occurred_at: string;
             /** @enum {string} */
-            actor_type?: "customer" | "staff" | "store_api_key" | "system";
+            actor_type: "customer" | "staff" | "store_api_key" | "system";
             /** Format: int64 */
             actor_id?: number | null;
-            action?: string;
+            /** @description For a staff actor, their display name, email, or access code. Omitted when unresolvable. */
+            actor_name?: string;
+            /** Format: int64 */
+            store_id?: number | null;
+            action: string;
             target_type?: string;
             /** Format: int64 */
             target_id?: number | null;
+            /** @description For a staff_membership target, the person's display name, email, or access code. */
+            target_name?: string;
+            /** @description Action-specific snapshot, recorded since DEC-030: `name` (organization/store/api_key), `version` and `restored_version` (loyalty_config), `role` and `store_id` (membership_added), `from`/`to` (role_changed, status_changed). Older events may lack it. */
             metadata?: {
                 [key: string]: unknown;
             };
@@ -2509,7 +2516,11 @@ export interface operations {
     };
     listAuditEvents: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                cursor?: string;
+                category?: "organization" | "store" | "staff" | "loyalty_config" | "api_key";
+            };
             header?: never;
             path: {
                 orgID: components["parameters"]["orgID"];
@@ -2525,10 +2536,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        events?: components["schemas"]["AuditEvent"][];
+                        events: components["schemas"]["AuditEvent"][];
+                        /** @description Opaque; omitted on the last page. */
+                        next_cursor?: string;
                     };
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             429: components["responses"]["TooManyRequests"];

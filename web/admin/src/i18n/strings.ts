@@ -316,6 +316,62 @@ export const strings = {
     disabled: (who: string) => `Доступ отключён: ${who}`,
     enabled: (who: string) => `Доступ включён: ${who}`,
   },
+  audit: {
+    title: 'Аудит',
+    titleForOrg: (org: string) => `Аудит — ${org}`,
+    intro:
+      'Кто и когда менял настройки этой организации: магазины, сотрудников, программу лояльности и API-ключи. Записи нельзя изменить или удалить.',
+    noOrgBody: 'Выберите организацию в боковой панели.',
+    filter: 'Показать',
+    categories: {
+      all: 'Все события',
+      organization: 'Организация',
+      store: 'Магазины',
+      staff: 'Сотрудники и доступ',
+      loyalty_config: 'Программа лояльности',
+      api_key: 'API-ключи',
+    },
+    empty: 'Событий пока нет',
+    emptyFiltered: 'Событий этого типа пока нет',
+    columns: {
+      when: 'Когда',
+      who: 'Кто',
+      what: 'Что произошло',
+      store: 'Магазин',
+      ip: 'IP-адрес',
+    },
+    loadMore: 'Показать ещё',
+    loadingMore: 'Загрузка…',
+    actors: {
+      staff: (id: number) => `Сотрудник #${id}`,
+      store_api_key: 'Касса или 1С (API-ключ)',
+      customer: 'Покупатель',
+      system: 'Система',
+    },
+    unknownPerson: 'сотрудник',
+    unknownStore: (id: number) => `Магазин #${id}`,
+    events: {
+      organizationCreated: (name: string) => (name ? `Создана организация «${name}»` : 'Создана организация'),
+      storeCreated: (name: string) => (name ? `Создан магазин «${name}»` : 'Создан магазин'),
+      storeUpdated: (name: string) => (name ? `Изменены данные магазина «${name}»` : 'Изменены данные магазина'),
+      membershipAdded: (who: string, role: string) => `Выдан доступ: ${who}${role ? ` — ${role}` : ''}`,
+      roleChanged: (who: string, from: string, to: string) =>
+        from && to ? `Изменена роль: ${who} — ${from} → ${to}` : `Изменена роль: ${who}`,
+      statusDisabled: (who: string) => `Отключён доступ: ${who}`,
+      statusEnabled: (who: string) => `Включён доступ: ${who}`,
+      statusChanged: (who: string) => `Изменён статус доступа: ${who}`,
+      loyaltyChanged: (version: number | null) =>
+        version ? `Сохранена программа лояльности (версия ${version})` : 'Изменена программа лояльности',
+      loyaltyRolledBack: (restored: number | null, version: number | null) =>
+        restored && version
+          ? `Программа лояльности возвращена к версии ${restored} (стала версией ${version})`
+          : 'Программа лояльности возвращена к прежней версии',
+      apiKeyCreated: (name: string) => (name ? `Выдан API-ключ «${name}»` : 'Выдан API-ключ'),
+      apiKeyRotated: (name: string) => (name ? `Перевыпущен API-ключ «${name}»` : 'Перевыпущен API-ключ'),
+      apiKeyRevoked: (name: string) => (name ? `Отозван API-ключ «${name}»` : 'Отозван API-ключ'),
+      unknown: (action: string) => `Событие ${action}`,
+    },
+  },
   storeRequired: {
     title: 'Выберите магазин',
     toStores: 'Перейти к магазинам',

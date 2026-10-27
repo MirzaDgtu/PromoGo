@@ -265,7 +265,7 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 	case "revokeStoreAPIKey":
 		return handleRevokeStoreAPIKey(deps.Stores, deps.StoreAPIKeys, deps.AuditEvents, deps.Log)
 	case "listAuditEvents":
-		return handleListAuditEvents(deps.AuditEvents, deps.Log)
+		return handleListAuditEvents(deps.AuditEvents, deps.StaffUsers, deps.StaffMemberships, deps.Log)
 
 	default:
 		panic("httpserver: no handler registered for operation " + op)
