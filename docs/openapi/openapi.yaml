@@ -889,6 +889,32 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
+  /api/v1/admin/organizations/{orgID}/stores/{storeID}/overview:
+    get:
+      operationId: getStoreOverview
+      tags: [Admin - Organizations]
+      summary: A store's onboarding checklist and recent loyalty traffic
+      description: >
+        Requires `stores.read` (DEC-031). `api_keys` is present only for
+        callers who also hold `api_keys.read`. Activity windows are trailing
+        24 hours and 7 days, independent of any timezone.
+      security:
+        - staffAccessToken: []
+      parameters:
+        - $ref: "#/components/parameters/orgID"
+        - $ref: "#/components/parameters/storeID"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StoreOverview" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { $ref: "#/components/responses/ServiceUnavailable" }
+
   /api/v1/admin/organizations/{orgID}/stores/{storeID}/clients:
     get:
       operationId: adminListClients
@@ -1609,6 +1635,44 @@ components:
         memberships:
           type: array
           items: { $ref: "#/components/schemas/StaffMeMembership" }
+
+    ActivityWindow:
+      type: object
+      required: [operations, points_accrued, points_redeemed, sales_amount]
+      properties:
+        operations: { type: integer, format: int64, description: Accruals, redemptions and refunds. }
+        points_accrued: { type: integer, format: int64 }
+        points_redeemed: { type: integer, format: int64, description: Non-negative. }
+        sales_amount:
+          type: string
+          format: decimal
+          description: Sum of accrual purchase amounts; refunds are not subtracted.
+
+    StoreOverview:
+      type: object
+      required: [store_id, loyalty_config, clients, last_24h, last_7d]
+      properties:
+        store_id: { type: integer, format: int64 }
+        loyalty_config:
+          type: object
+          required: [configured]
+          properties:
+            configured: { type: boolean }
+            version: { type: integer, format: int64 }
+        api_keys:
+          type: object
+          required: [active]
+          description: Omitted without `api_keys.read`.
+          properties:
+            active: { type: integer, description: Keys neither revoked nor expired. }
+            last_used_at:
+              type: string
+              format: date-time
+              description: Latest use of any of the store's keys, revoked ones included. Omitted if never used.
+        clients: { type: integer, format: int64 }
+        last_transaction_at: { type: string, format: date-time }
+        last_24h: { $ref: "#/components/schemas/ActivityWindow" }
+        last_7d: { $ref: "#/components/schemas/ActivityWindow" }
 
     AdminClient:
       type: object

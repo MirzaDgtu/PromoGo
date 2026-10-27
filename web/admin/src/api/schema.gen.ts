@@ -522,6 +522,26 @@ export interface paths {
         patch: operations["updateStaffMembership"];
         trace?: never;
     };
+    "/api/v1/admin/organizations/{orgID}/stores/{storeID}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A store's onboarding checklist and recent loyalty traffic
+         * @description Requires `stores.read` (DEC-031). `api_keys` is present only for callers who also hold `api_keys.read`. Activity windows are trailing 24 hours and 7 days, independent of any timezone.
+         */
+        get: operations["getStoreOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/organizations/{orgID}/stores/{storeID}/clients": {
         parameters: {
             query?: never;
@@ -951,6 +971,50 @@ export interface components {
             email?: string;
             display_name?: string;
             memberships?: components["schemas"]["StaffMeMembership"][];
+        };
+        ActivityWindow: {
+            /**
+             * Format: int64
+             * @description Accruals
+             */
+            operations: number;
+            /** Format: int64 */
+            points_accrued: number;
+            /**
+             * Format: int64
+             * @description Non-negative.
+             */
+            points_redeemed: number;
+            /**
+             * Format: decimal
+             * @description Sum of accrual purchase amounts; refunds are not subtracted.
+             */
+            sales_amount: string;
+        };
+        StoreOverview: {
+            /** Format: int64 */
+            store_id: number;
+            loyalty_config: {
+                configured: boolean;
+                /** Format: int64 */
+                version?: number;
+            };
+            /** @description Omitted without `api_keys.read`. */
+            api_keys?: {
+                /** @description Keys neither revoked nor expired. */
+                active: number;
+                /**
+                 * Format: date-time
+                 * @description Latest use of any of the store's keys, revoked ones included. Omitted if never used.
+                 */
+                last_used_at?: string;
+            };
+            /** Format: int64 */
+            clients: number;
+            /** Format: date-time */
+            last_transaction_at?: string;
+            last_24h: components["schemas"]["ActivityWindow"];
+            last_7d: components["schemas"]["ActivityWindow"];
         };
         AdminClient: {
             /** Format: int64 */
@@ -2144,6 +2208,34 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailable"];
+        };
+    };
+    getStoreOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgID: components["parameters"]["orgID"];
+                storeID: components["parameters"]["storeID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreOverview"];
+                };
+            };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];

@@ -161,6 +161,53 @@ func (f *fakeBalanceRepo) set(clientID, points int64) {
 }
 
 // fakeFullTransactionRepo is a complete in-memory domain.TransactionRepository.
+// fakeStoreActivityRepo computes domain.StoreActivity from the client and
+// transaction fakes, mirroring StoreActivityRepository's SQL.
+type fakeStoreActivityRepo struct {
+	clients *fakeFullClientRepo
+	txs     *fakeFullTransactionRepo
+}
+
+func (f *fakeStoreActivityRepo) StoreActivity(_ context.Context, storeID int64, now time.Time) (*domain.StoreActivity, error) {
+	a := &domain.StoreActivity{}
+	f.clients.mu.Lock()
+	for _, c := range f.clients.byID {
+		if c.StoreID == storeID {
+			a.Clients++
+		}
+	}
+	f.clients.mu.Unlock()
+
+	f.txs.mu.Lock()
+	defer f.txs.mu.Unlock()
+	add := func(w *domain.ActivityWindow, tx *domain.Transaction) {
+		w.Operations++
+		switch tx.Type {
+		case domain.TransactionAccrual:
+			w.PointsAccrued += tx.PointsDelta
+			w.SalesAmount = w.SalesAmount.Add(tx.Amount)
+		case domain.TransactionRedeem:
+			w.PointsRedeemed -= tx.PointsDelta
+		}
+	}
+	for _, tx := range f.txs.all {
+		if tx.StoreID != storeID {
+			continue
+		}
+		if a.LastTransactionAt == nil || tx.CreatedAt.After(*a.LastTransactionAt) {
+			at := tx.CreatedAt
+			a.LastTransactionAt = &at
+		}
+		if !tx.CreatedAt.Before(now.Add(-7 * 24 * time.Hour)) {
+			add(&a.Last7d, tx)
+		}
+		if !tx.CreatedAt.Before(now.Add(-24 * time.Hour)) {
+			add(&a.Last24h, tx)
+		}
+	}
+	return a, nil
+}
+
 type fakeFullTransactionRepo struct {
 	mu  sync.Mutex
 	all []*domain.Transaction
@@ -1096,6 +1143,7 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 		Transactions:   txs,
 		LoyaltyConfigs: configs,
 		StoreAPIKeys:   storeAPIKeys,
+		StoreActivity:  &fakeStoreActivityRepo{clients: clients, txs: txs},
 
 		Organizations:    orgs,
 		CustomerAccounts: customerAccounts,

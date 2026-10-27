@@ -15,6 +15,7 @@
   --color-danger: #b3261e;
   --color-danger-bg: #fbeceb;
   --color-success: #1e6b3e;
+  --color-warning: #8a5a00;
   --color-focus-ring: #2554c7;
 
   --space-1: 4px;
@@ -40,6 +41,7 @@
     --color-danger: #ff8a80;
     --color-danger-bg: #3a1f1d;
     --color-success: #5fd68a;
+    --color-warning: #f2c14e;
     --color-focus-ring: #6f9bff;
   }
 }
@@ -451,6 +453,74 @@ textarea {
   white-space: nowrap;
 }
 
+.checklist {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 760px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+}
+
+.check--ok {
+  border-left-color: var(--color-success);
+}
+
+.check--warn {
+  border-left-color: var(--color-warning);
+}
+
+.check h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.check p {
+  margin: var(--space-1) 0;
+}
+
+/* The icon carries a distinct glyph per state, so state never rests on color alone. */
+.check__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.check--ok .check__icon {
+  color: var(--color-success);
+}
+
+.check--warn .check__icon {
+  color: var(--color-warning);
+}
+
+.check--info .check__icon {
+  color: var(--color-text-muted);
+}
+
+.activity-table {
+  max-width: 560px;
+}
+
+.activity-table tbody th {
+  font-weight: 400;
+  text-align: left;
+}
+
 .row-inactive td {
   color: var(--color-text-muted);
 }
@@ -466,6 +536,10 @@ textarea {
 
 .status--active {
   color: var(--color-success);
+}
+
+.status--warn {
+  color: var(--color-warning);
 }
 
 .status--expired,

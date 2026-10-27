@@ -131,6 +131,8 @@ var routeTable = []routeMeta{
 		Contour: contourStaff, StaffPermission: domain.PermStoresRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodPatch, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}", OperationID: "updateStore",
 		Contour: contourStaff, StaffPermission: domain.PermStoresManage, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
+	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores/{storeID}/overview", OperationID: "getStoreOverview",
+		Contour: contourStaff, StaffPermission: domain.PermStoresRead, StaffScope: staffScopeStore, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodGet, Path: "/api/v1/admin/organizations/{orgID}/stores", OperationID: "listStores",
 		Contour: contourStaff, StaffIdentityOnly: true, RateLimitProfile: rlProfileAdmin},
 	{Method: http.MethodPost, Path: "/api/v1/admin/organizations/{orgID}/stores", OperationID: "createStore",
@@ -234,6 +236,8 @@ func handlerFor(op string, deps Deps) http.HandlerFunc {
 		return handleGetStore(deps.Stores, deps.Log)
 	case "updateStore":
 		return handleUpdateStore(deps.Stores, deps.AuditEvents, deps.Log)
+	case "getStoreOverview":
+		return handleGetStoreOverview(deps.Stores, deps.LoyaltyConfigs, deps.StoreAPIKeys, deps.StoreActivity, deps.Log)
 	case "listStores":
 		return handleListStores(deps.Stores, deps.Log)
 	case "createStore":

@@ -4,13 +4,12 @@ import { CallbackPage } from '../auth/CallbackPage'
 import { LoginPage } from '../auth/LoginPage'
 import { AppShell } from '../components/AppShell'
 import { NotFoundState } from '../components/states'
-import { strings } from '../i18n/strings'
 import { ApiKeysPage } from '../pages/apiKeys/ApiKeysPage'
 import { AuditPage } from '../pages/audit/AuditPage'
 import { ClientsPage } from '../pages/clients/ClientsPage'
-import { ComingSoonPage } from '../pages/ComingSoonPage'
 import { LoyaltyConfigPage } from '../pages/loyalty/LoyaltyConfigPage'
 import { OrganizationsPage } from '../pages/OrganizationsPage'
+import { OverviewPage } from '../pages/overview/OverviewPage'
 import { StaffPage } from '../pages/staff/StaffPage'
 import { RequireAuth } from './RequireAuth'
 
@@ -27,7 +26,7 @@ export function AppRouter() {
           </RequireAuth>
         }
       >
-        <Route index element={<ComingSoonPage title={strings.nav.dashboard} />} />
+        <Route index element={<OverviewPage />} />
         <Route path="/organizations" element={<OrganizationsPage />} />
         <Route path="/staff" element={<StaffPage />} />
         <Route path="/loyalty-config" element={<LoyaltyConfigPage />} />

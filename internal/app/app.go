@@ -225,6 +225,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Option) (*App, error) 
 		Transactions:   txRepo,
 		LoyaltyConfigs: configRepo,
 		StoreAPIKeys:   storeAPIKeyRepo,
+		StoreActivity:  postgres.NewStoreActivityRepository(pgPool),
 
 		Organizations:    orgRepo,
 		CustomerAccounts: customerAccountRepo,

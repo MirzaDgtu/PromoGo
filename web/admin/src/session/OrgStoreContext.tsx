@@ -97,6 +97,18 @@ export function OrgStoreProvider({ children, enabled }: { children: ReactNode; e
   const storesQuery = useStores(selectedOrgID, enabled)
   const stores = useMemo(() => storesQuery.data ?? [], [storesQuery.data])
 
+  // Once the organization's stores are known: an organization with a
+  // single visible store (typically a store-scoped manager's) selects it,
+  // since every store page would otherwise just ask for it; a remembered
+  // store that's no longer visible is dropped.
+  useEffect(() => {
+    if (!storesQuery.isSuccess) return
+    if (selectedStoreID != null && stores.some((s) => s.id === selectedStoreID)) return
+    setSelectedStoreID(stores.length === 1 ? (stores[0]?.id ?? null) : null)
+    // Only re-run when the visible store list changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stores, storesQuery.isSuccess])
+
   // Mirrors service.StaffPrincipal.HasPermission: platform_admin is
   // network-wide, so its permissions apply in organizations where it has
   // no membership of its own (e.g. one it just created).

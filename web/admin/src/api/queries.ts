@@ -352,6 +352,32 @@ export function useAuditEvents(orgID: number, category: AuditCategory | null, en
   })
 }
 
+export type StoreOverview = components['schemas']['StoreOverview']
+
+function storeOverviewQuery(orgID: number, storeID: number) {
+  return {
+    queryKey: ['storeOverview', orgID, storeID],
+    queryFn: async () => {
+      const { data, error, response } = await api.GET('/api/v1/admin/organizations/{orgID}/stores/{storeID}/overview', {
+        params: { path: { orgID, storeID } },
+      })
+      if (error || !data) throw Object.assign(new Error('load store overview'), { response })
+      return data
+    },
+  }
+}
+
+export function useStoreOverview(orgID: number, storeID: number) {
+  return useQuery(storeOverviewQuery(orgID, storeID))
+}
+
+// useStoreOverviews loads every store's overview for the organization-wide
+// summary, one request per store, sharing useStoreOverview's cache. Fine
+// for a pilot's handful of stores.
+export function useStoreOverviews(orgID: number, storeIDs: number[]) {
+  return useQueries({ queries: storeIDs.map((id) => storeOverviewQuery(orgID, id)) })
+}
+
 // responseOf recovers the Response attached by the hooks above, so error UI
 // can branch on status and show the request id.
 export function responseOf(error: unknown): Response | undefined {

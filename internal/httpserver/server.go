@@ -30,6 +30,7 @@ type Deps struct {
 	Transactions   domain.TransactionRepository
 	LoyaltyConfigs domain.LoyaltyConfigRepository
 	StoreAPIKeys   domain.StoreAPIKeyRepository
+	StoreActivity  domain.StoreActivityRepository
 
 	Organizations    domain.OrganizationRepository
 	CustomerAccounts domain.CustomerAccountRepository
