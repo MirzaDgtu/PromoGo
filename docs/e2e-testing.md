@@ -31,6 +31,9 @@ redemption, offline retry and duplicate delivery" and to
 5. **QR identification at a second POS interaction** —
    `POST /api/v1/me/qr` (mobile) then `POST /api/v1/clients/resolve-qr`
    (store), confirming the same client/balance the accrual established.
+   Then the QR anti-fraud rules: an immediate reissue is `429
+   qr_issue_cooldown`, an immediate rescan `429 qr_consume_cooldown`, and a
+   rescan after the interval `410 qr_gone`.
 6. **Redemption**, identified via the QR-resolved `client_id`.
 7. **Mobile transaction history** reflects both prior operations.
 8. **Refund** of the original accrual (allowed to drive the balance

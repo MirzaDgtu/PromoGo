@@ -336,6 +336,30 @@ func TestPilotEndToEnd(t *testing.T) {
 		t.Fatalf("QR resolve did not identify the expected client/balance: %+v", resolved)
 	}
 
+	// === 5a. QR anti-fraud (MVP-scope.md "Антифрод", DEC-011) ===
+	// The app can't mint a fresh code right away, and the register can't
+	// rescan: immediately the store hits the consume interval (1s by
+	// default — these calls take milliseconds), and once it has passed the
+	// code is spent.
+	var apiErr struct {
+		Code string `json:"code"`
+	}
+	doJSON(t, client, http.MethodPost, baseURL+"/api/v1/me/qr", custAuth, nil, &apiErr, http.StatusTooManyRequests)
+	if apiErr.Code != "qr_issue_cooldown" {
+		t.Fatalf("reissue QR: code = %q, want qr_issue_cooldown", apiErr.Code)
+	}
+	doJSON(t, client, http.MethodPost, baseURL+"/api/v1/clients/resolve-qr", storeAuth,
+		map[string]any{"payload": qr.Payload}, &apiErr, http.StatusTooManyRequests)
+	if apiErr.Code != "qr_consume_cooldown" {
+		t.Fatalf("immediate rescan: code = %q, want qr_consume_cooldown", apiErr.Code)
+	}
+	time.Sleep(cfg.AntiFraud.QRConsumeCooldown + 100*time.Millisecond)
+	doJSON(t, client, http.MethodPost, baseURL+"/api/v1/clients/resolve-qr", storeAuth,
+		map[string]any{"payload": qr.Payload}, &apiErr, http.StatusGone)
+	if apiErr.Code != "qr_gone" {
+		t.Fatalf("rescan after the interval: code = %q, want qr_gone", apiErr.Code)
+	}
+
 	// === 6. redemption, identified via the QR-resolved client_id ===
 	var redeem struct {
 		PointsRedeemed int64 `json:"points_redeemed"`
