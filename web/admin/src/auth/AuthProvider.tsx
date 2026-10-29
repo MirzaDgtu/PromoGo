@@ -12,7 +12,7 @@ import {
 } from 'react'
 
 import { api, setAccessToken, setOn401Handler } from '../api/client'
-import { oidcSettings } from './oidcConfig'
+import { CALLBACK_PATH, oidcSettings } from './oidcConfig'
 
 export type AuthStatus =
   | 'loading'
@@ -164,7 +164,10 @@ export function AuthProvider({
     // On first load (not the /auth/callback route), check whether
     // oidc-client-ts already has a live session (e.g. a page refresh) — if
     // so, re-derive the PromoGo staff session from it rather than forcing a
-    // fresh login every reload.
+    // fresh login every reload. On the callback route there is no stored
+    // user yet; answering "unauthenticated" here would race completeLogin
+    // and bounce a successful login back to /login.
+    if (window.location.pathname === CALLBACK_PATH) return
     let cancelled = false
     userManager
       .getUser()

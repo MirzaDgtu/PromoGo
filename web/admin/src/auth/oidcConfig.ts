@@ -17,6 +17,9 @@ export function isOIDCConfigured(): boolean {
   return Boolean(import.meta.env.VITE_OIDC_AUTHORITY && import.meta.env.VITE_OIDC_CLIENT_ID)
 }
 
+/** Where the IdP redirects back to; CallbackPage is routed here. */
+export const CALLBACK_PATH = '/auth/callback'
+
 // oidcSettings returns null when isOIDCConfigured() is false — callers must
 // check that first rather than relying on this to throw.
 export function oidcSettings(): UserManagerSettings | null {
@@ -24,7 +27,7 @@ export function oidcSettings(): UserManagerSettings | null {
   return {
     authority: import.meta.env.VITE_OIDC_AUTHORITY,
     client_id: import.meta.env.VITE_OIDC_CLIENT_ID,
-    redirect_uri: new URL('/auth/callback', window.location.origin).toString(),
+    redirect_uri: new URL(CALLBACK_PATH, window.location.origin).toString(),
     post_logout_redirect_uri: new URL('/login', window.location.origin).toString(),
     // Authorization Code + PKCE (oidc-client-ts always uses PKCE for the
     // code flow — see its README) — no implicit flow, per

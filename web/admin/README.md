@@ -5,9 +5,10 @@ operations. See `../../docs/admin-web-plan.md` and
 `../../docs/admin-web-implementation-prompt.md` for the product/architecture
 plan this implements.
 
-Status: Milestone 1 (foundation) — OIDC login shell, org/store context,
-permission-aware nav skeleton. Feature screens (Milestone 2) are not built
-yet; every nav destination renders a placeholder.
+Status: Milestone 1 (Pilot Admin) — all screens of `docs/admin-web-plan.md`
+6.2: overview, organizations and stores, staff and access, loyalty program,
+clients, API keys and audit. They are covered by component tests and by
+browser E2E against the real stack (`e2e/README.md`).
 
 ## Setup
 
@@ -17,7 +18,7 @@ cp .env.example .env.local   # fill in your OIDC provider's values
 npm run dev
 ```
 
-The dev server proxies `/api/*` to the Go backend on `:8080` (see
+The dev server proxies `/api/*` to the Go backend on host port `:8090` (see
 `vite.config.ts`) — run `make dev-stack` (or however this repo's backend is
 started) alongside `npm run dev`.
 
@@ -72,6 +73,8 @@ resolved permissions) while building this feature.
 - `npm run typecheck` — typecheck only.
 - `npm run lint` — oxlint.
 - `npm run test` — vitest (unit/component tests).
+- `npm run e2e` — Playwright browser E2E plus axe accessibility checks
+  against the running local stack (see `e2e/README.md`).
 - `npm run openapi:generate` — regenerate `src/api/schema.gen.ts` from
   `../../docs/openapi/openapi.yaml`.
 - `npm run openapi:check` — regenerate and fail if the checked-in generated

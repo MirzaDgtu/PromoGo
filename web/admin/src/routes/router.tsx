@@ -2,6 +2,7 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom'
 
 import { CallbackPage } from '../auth/CallbackPage'
 import { LoginPage } from '../auth/LoginPage'
+import { CALLBACK_PATH } from '../auth/oidcConfig'
 import { AppShell } from '../components/AppShell'
 import { NotFoundState } from '../components/states'
 import { strings } from '../i18n/strings'
@@ -18,7 +19,7 @@ export function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/auth/callback" element={<CallbackPage />} />
+      <Route path={CALLBACK_PATH} element={<CallbackPage />} />
 
       <Route
         element={

@@ -11,7 +11,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': {
+      // With the trailing slash, so the SPA's own /api-keys route isn't
+      // proxied to the backend on a reload or direct link.
+      '/api/': {
         target: 'http://localhost:8090',
         changeOrigin: false,
       },
