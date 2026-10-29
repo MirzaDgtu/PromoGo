@@ -20,7 +20,7 @@ const organizations = [
   { id: 2, name: 'Лютик', created_at: '2026-10-01T10:00:00Z' },
 ]
 const storesByOrg = [
-  [{ id: 7, organization_id: 1, name: 'Океан', address: 'г. Махачкала, ул. Ленина, 1', external_code: '000123' }],
+  [{ id: 7, organization_id: 1, name: 'Океан', address: 'г. Махачкала, ул. Ленина, 1', external_code: '000123', sms_invite_enabled: false }],
   [],
 ]
 const mutation = () => ({ isPending: false, error: null, reset: vi.fn(), mutateAsync: vi.fn() })
@@ -93,7 +93,12 @@ describe('OrganizationsPage', () => {
     await userEvent.type(within(form).getByLabelText('Адрес'), 'ул. Гагарина, 5')
     await userEvent.click(within(form).getByRole('button', { name: 'Создать' }))
 
-    expect(createStore.mutateAsync).toHaveBeenCalledWith({ name: 'Волна', address: 'ул. Гагарина, 5', external_code: '' })
+    expect(createStore.mutateAsync).toHaveBeenCalledWith({
+      name: 'Волна',
+      address: 'ул. Гагарина, 5',
+      external_code: '',
+      sms_invite_enabled: false,
+    })
     expect(screen.queryByRole('form')).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Магазин «Волна» создан')
   })
@@ -109,9 +114,17 @@ describe('OrganizationsPage', () => {
     const address = within(form).getByLabelText('Адрес')
     await userEvent.clear(address)
     await userEvent.type(address, 'ул. Гагарина, 5')
+    const invite = within(form).getByRole('checkbox', { name: /SMS-приглашение в приложение/ })
+    expect(invite).not.toBeChecked()
+    await userEvent.click(invite)
     await userEvent.click(within(form).getByRole('button', { name: 'Сохранить' }))
 
-    expect(updateStore.mutateAsync).toHaveBeenCalledWith({ name: 'Океан', address: 'ул. Гагарина, 5', external_code: '000123' })
+    expect(updateStore.mutateAsync).toHaveBeenCalledWith({
+      name: 'Океан',
+      address: 'ул. Гагарина, 5',
+      external_code: '000123',
+      sms_invite_enabled: true,
+    })
   })
 
   it('selecting a store also selects its organization', async () => {

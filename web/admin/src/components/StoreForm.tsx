@@ -10,11 +10,17 @@ export interface StoreFormValues {
   name: string
   address: string
   externalCode: string
+  smsInviteEnabled: boolean
 }
 
 /** Converts form values to the API body; an empty code clears it server-side. */
 export function toStoreInput(values: StoreFormValues): StoreProfileInput & { name: string } {
-  return { name: values.name.trim(), address: values.address.trim(), external_code: values.externalCode.trim() }
+  return {
+    name: values.name.trim(),
+    address: values.address.trim(),
+    external_code: values.externalCode.trim(),
+    sms_invite_enabled: values.smsInviteEnabled,
+  }
 }
 
 interface StoreFormProps {
@@ -29,7 +35,7 @@ interface StoreFormProps {
   error: unknown
 }
 
-const EMPTY: StoreFormValues = { name: '', address: '', externalCode: '' }
+const EMPTY: StoreFormValues = { name: '', address: '', externalCode: '', smsInviteEnabled: false }
 
 export function StoreForm({ title, initial = EMPTY, submitLabel, onSubmit, onCancel, pending, error }: StoreFormProps) {
   const {
@@ -79,6 +85,13 @@ export function StoreForm({ title, initial = EMPTY, submitLabel, onSubmit, onCan
           registration={register('externalCode', { validate: maxLength(MAX_EXTERNAL_CODE_LENGTH) })}
         />
       </div>
+      <label className="checkbox store-form__option">
+        <input type="checkbox" {...register('smsInviteEnabled')} />
+        <span>
+          <strong>{strings.stores.smsInvite}</strong>
+          <span className="muted"> — {strings.stores.smsInviteHint}</span>
+        </span>
+      </label>
       <div className="store-form__actions">
         <button type="submit" className="button-primary" disabled={pending}>
           {pending ? strings.form.saving : submitLabel}

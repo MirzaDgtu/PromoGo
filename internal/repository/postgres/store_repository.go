@@ -23,11 +23,11 @@ func NewStoreRepository(pool *pgxpool.Pool) *StoreRepository {
 }
 
 // storeColumns is the SELECT list scanStore reads, in order.
-const storeColumns = `id, organization_id, name, address, external_code, COALESCE(api_key_hash, '')`
+const storeColumns = `id, organization_id, name, address, external_code, sms_invite_enabled, COALESCE(api_key_hash, '')`
 
 func scanStore(row pgx.Row) (*domain.Store, error) {
 	store := &domain.Store{}
-	err := row.Scan(&store.ID, &store.OrganizationID, &store.Name, &store.Address, &store.ExternalCode, &store.APIKeyHash)
+	err := row.Scan(&store.ID, &store.OrganizationID, &store.Name, &store.Address, &store.ExternalCode, &store.SMSInviteEnabled, &store.APIKeyHash)
 	return store, err
 }
 
@@ -91,15 +91,15 @@ func (r *StoreRepository) ListByOrganization(ctx context.Context, organizationID
 // single-key column. Returns domain.ErrConflict on a duplicate
 // ExternalCode within the organization.
 func (r *StoreRepository) Create(ctx context.Context, store *domain.Store) error {
-	const query = `INSERT INTO stores (organization_id, name, address, external_code, api_key_hash)
-		VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	const query = `INSERT INTO stores (organization_id, name, address, external_code, sms_invite_enabled, api_key_hash)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 
 	var apiKeyHash any
 	if store.APIKeyHash != "" {
 		apiKeyHash = store.APIKeyHash
 	}
 
-	err := r.pool.QueryRow(ctx, query, store.OrganizationID, store.Name, store.Address, store.ExternalCode, apiKeyHash).Scan(&store.ID)
+	err := r.pool.QueryRow(ctx, query, store.OrganizationID, store.Name, store.Address, store.ExternalCode, store.SMSInviteEnabled, apiKeyHash).Scan(&store.ID)
 	if isUniqueViolation(err) {
 		return fmt.Errorf("create store %q: %w", store.Name, domain.ErrConflict)
 	}
@@ -110,11 +110,11 @@ func (r *StoreRepository) Create(ctx context.Context, store *domain.Store) error
 	return nil
 }
 
-// UpdateProfile saves Name, Address and ExternalCode only.
+// UpdateProfile saves Name, Address, ExternalCode and SMSInviteEnabled only.
 func (r *StoreRepository) UpdateProfile(ctx context.Context, store *domain.Store) error {
-	const query = `UPDATE stores SET name = $2, address = $3, external_code = $4 WHERE id = $1`
+	const query = `UPDATE stores SET name = $2, address = $3, external_code = $4, sms_invite_enabled = $5 WHERE id = $1`
 
-	tag, err := r.pool.Exec(ctx, query, store.ID, store.Name, store.Address, store.ExternalCode)
+	tag, err := r.pool.Exec(ctx, query, store.ID, store.Name, store.Address, store.ExternalCode, store.SMSInviteEnabled)
 	if isUniqueViolation(err) {
 		return fmt.Errorf("update store %d: %w", store.ID, domain.ErrConflict)
 	}

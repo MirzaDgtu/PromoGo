@@ -21,14 +21,15 @@ type LedgerRepository interface {
 	// deliveries of the same webhook; the common idempotent-replay path is
 	// detected earlier via TransactionRepository.GetByExternalID.
 	//
-	// If notify is non-nil, its NotificationOutboxEntry is inserted in the
-	// SAME database transaction as tx — the transactional-outbox guarantee
-	// (Phase 3 of docs/audit-remediation-prompt.md): a notification is
-	// queued if and only if the ledger write it describes actually
-	// committed. Pass nil to post without queuing anything (e.g. a
-	// zero-point accrual, which the caller decides isn't worth notifying
-	// about).
-	Post(ctx context.Context, tx *Transaction, notify *NotificationOutboxEntry) (*Transaction, *Balance, error)
+	// Each non-nil entry in notify is inserted in the SAME database
+	// transaction as tx — the transactional-outbox guarantee (Phase 3 of
+	// docs/audit-remediation-prompt.md): a notification is queued if and
+	// only if the ledger write it describes actually committed. nil entries
+	// are skipped (e.g. a zero-point accrual, which the caller decides isn't
+	// worth notifying about). An entry whose DedupeKey is already queued is
+	// silently not inserted again — the app invite (DEC-034) relies on this
+	// to go out once per phone.
+	Post(ctx context.Context, tx *Transaction, notify ...*NotificationOutboxEntry) (*Transaction, *Balance, error)
 
 	// PostRefund atomically posts a refund against
 	// refund.OriginalTransactionID. refund.PointsDelta on input is ignored —

@@ -77,10 +77,12 @@ type storeResponseBody struct {
 	Name           string  `json:"name"`
 	Address        string  `json:"address"`
 	ExternalCode   *string `json:"external_code"`
+	// SMSInviteEnabled: see domain.Store (DEC-034).
+	SMSInviteEnabled bool `json:"sms_invite_enabled"`
 }
 
 func storeToBody(s *domain.Store) storeResponseBody {
-	return storeResponseBody{ID: s.ID, OrganizationID: s.OrganizationID, Name: s.Name, Address: s.Address, ExternalCode: s.ExternalCode}
+	return storeResponseBody{ID: s.ID, OrganizationID: s.OrganizationID, Name: s.Name, Address: s.Address, ExternalCode: s.ExternalCode, SMSInviteEnabled: s.SMSInviteEnabled}
 }
 
 // storeProfileBody carries the editable store fields. On create, Name is
@@ -90,6 +92,8 @@ type storeProfileBody struct {
 	Name         *string `json:"name"`
 	Address      *string `json:"address"`
 	ExternalCode *string `json:"external_code"`
+	// SMSInviteEnabled is absent on create (off) unless sent.
+	SMSInviteEnabled *bool `json:"sms_invite_enabled"`
 }
 
 // applyTo validates the present fields and copies them onto store, or
@@ -119,6 +123,9 @@ func (b storeProfileBody) applyTo(store *domain.Store) (errMsg string) {
 		} else {
 			store.ExternalCode = &code
 		}
+	}
+	if b.SMSInviteEnabled != nil {
+		store.SMSInviteEnabled = *b.SMSInviteEnabled
 	}
 	return ""
 }
@@ -203,8 +210,14 @@ func handleUpdateStore(stores domain.StoreRepository, audit domain.AuditEventRep
 			writeError(w, http.StatusInternalServerError, "update store")
 			return
 		}
+		metadata := map[string]any{"name": store.Name}
+		if body.SMSInviteEnabled != nil {
+			// Turning invites on is the retailer taking on the consent
+			// question (DEC-034), so the audit trail records who did it.
+			metadata["sms_invite_enabled"] = store.SMSInviteEnabled
+		}
 		auditCreateWithMetadata(r.Context(), audit, log, domain.AuditActorStaff, actorStaffUserID(r), domain.AuditActionStoreUpdated, &orgID, &store.ID, "store", &store.ID,
-			map[string]any{"name": store.Name}, clientIP(r), r.UserAgent())
+			metadata, clientIP(r), r.UserAgent())
 
 		writeJSON(w, http.StatusOK, storeToBody(store))
 	}

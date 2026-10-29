@@ -27,6 +27,7 @@ type Config struct {
 	OIDC      OIDCConfig      `mapstructure:"oidc"`
 	RateLimit RateLimitConfig `mapstructure:"ratelimit"`
 	AntiFraud AntiFraudConfig `mapstructure:"antifraud"`
+	Invite    InviteConfig    `mapstructure:"invite"`
 }
 
 // AppConfig holds general application metadata.
@@ -179,6 +180,14 @@ type AntiFraudConfig struct {
 	QRConsumeCooldown time.Duration `mapstructure:"qr_consume_cooldown"`
 }
 
+// InviteConfig configures the SMS app invite for clients the register
+// registers (DEC-034). An empty AppURL turns invites off everywhere; each
+// store also opts in on its own. See Load's validateInvite.
+type InviteConfig struct {
+	AppURL          string `mapstructure:"app_url"`
+	DailyStoreLimit int64  `mapstructure:"daily_store_limit"`
+}
+
 // AuthConfig configures customer OTP/session auth and staff access-token
 // issuance. AccessTokenSecret is the only field with no default — set via
 // PROMOGO_AUTH_ACCESS_TOKEN_SECRET, never committed to configs/config.yaml
@@ -245,6 +254,9 @@ func Load(path string) (*Config, error) {
 	if err := cfg.validateFCM(); err != nil {
 		return nil, err
 	}
+	if err := cfg.validateInvite(); err != nil {
+		return nil, err
+	}
 	if err := cfg.validatePostgres(); err != nil {
 		return nil, err
 	}
@@ -278,6 +290,21 @@ func (c *Config) validateAntiFraud() error {
 	}
 	if c.AntiFraud.DailyRedeemPointsLimit <= 0 {
 		return fmt.Errorf("antifraud.daily_redeem_points_limit must be set (> 0) via PROMOGO_ANTIFRAUD_DAILY_REDEEM_POINTS_LIMIT outside development")
+	}
+	return nil
+}
+
+// validateInvite requires a positive daily cap whenever invites are on, and
+// an https:// link outside development — the link goes to customers.
+func (c *Config) validateInvite() error {
+	if c.Invite.AppURL == "" {
+		return nil
+	}
+	if c.Invite.DailyStoreLimit <= 0 {
+		return fmt.Errorf("invite.daily_store_limit must be > 0 when invite.app_url is set")
+	}
+	if c.App.Env != "development" && !strings.HasPrefix(c.Invite.AppURL, "https://") {
+		return fmt.Errorf("invite.app_url must use https:// outside development, got %q", c.Invite.AppURL)
 	}
 	return nil
 }
@@ -458,6 +485,9 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("sms.provider", "log")
 	v.SetDefault("sms.timeout", 5*time.Second)
+
+	v.SetDefault("invite.app_url", "")
+	v.SetDefault("invite.daily_store_limit", 200)
 
 	// Anti-fraud: daily_redeem_points_limit has a documented development-only
 	// default (1000) — validateAntiFraud requires it to be explicitly set

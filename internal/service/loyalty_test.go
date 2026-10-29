@@ -189,7 +189,7 @@ func (f *fakeLedgerRepo) enqueueOutbox(notify *domain.NotificationOutboxEntry) {
 	f.outbox = append(f.outbox, &entry)
 }
 
-func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction, notify ...*domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	for _, existing := range f.txs.all {
 		if existing.StoreID == tx.StoreID && existing.Type == tx.Type && existing.ExternalTxID == tx.ExternalTxID {
 			return nil, nil, domain.ErrConflict
@@ -208,7 +208,9 @@ func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction, notify 
 	posted.BalanceAfter = newPoints
 	posted.CreatedAt = time.Now()
 	f.txs.all = append(f.txs.all, &posted)
-	f.enqueueOutbox(notify)
+	for _, entry := range notify {
+		f.enqueueOutbox(entry)
+	}
 
 	return &posted, &domain.Balance{ClientID: tx.ClientID, Points: newPoints}, nil
 }
@@ -370,7 +372,7 @@ func newTestServiceWithAntiFraud(cfg *domain.LoyaltyConfig, antiFraud AntiFraudC
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	return &testDeps{
-		svc:      New(log, clients, txs, balances, ledger, configs, antiFraud),
+		svc:      New(log, clients, txs, balances, ledger, configs, antiFraud, Invites{}),
 		clients:  clients,
 		txs:      txs,
 		balances: balances,

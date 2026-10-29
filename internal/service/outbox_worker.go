@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -38,7 +39,9 @@ type OutboxWorkerConfig struct {
 
 // OutboxWorker delivers domain.NotificationOutboxEntry rows queued by
 // LedgerRepository (see its doc comment for the transactional-outbox
-// guarantee) via a domain.NotificationChannel, independent of and never
+// guarantee) via a domain.NotificationChannel — or, for an SMS entry (the
+// app invite, DEC-034), via a domain.SMSSender to the client's phone —
+// independent of and never
 // blocking the accrual/redeem/refund request path that queued them —
 // Phase 3 of docs/audit-remediation-prompt.md.
 //
@@ -53,12 +56,15 @@ type OutboxWorker struct {
 	log      *slog.Logger
 	outbox   domain.NotificationOutboxRepository
 	notifier domain.NotificationChannel
+	sms      domain.SMSSender
+	clients  domain.ClientRepository
 	cfg      OutboxWorkerConfig
 }
 
-// NewOutboxWorker constructs an OutboxWorker.
-func NewOutboxWorker(log *slog.Logger, outbox domain.NotificationOutboxRepository, notifier domain.NotificationChannel, cfg OutboxWorkerConfig) *OutboxWorker {
-	return &OutboxWorker{log: log, outbox: outbox, notifier: notifier, cfg: cfg}
+// NewOutboxWorker constructs an OutboxWorker. sms and clients deliver SMS
+// entries; clients resolves the entry's ClientID to a phone.
+func NewOutboxWorker(log *slog.Logger, outbox domain.NotificationOutboxRepository, notifier domain.NotificationChannel, sms domain.SMSSender, clients domain.ClientRepository, cfg OutboxWorkerConfig) *OutboxWorker {
+	return &OutboxWorker{log: log, outbox: outbox, notifier: notifier, sms: sms, clients: clients, cfg: cfg}
 }
 
 // Run polls until ctx is canceled, then returns once any poll already
@@ -136,7 +142,7 @@ func (w *OutboxWorker) pollOnce(ctx context.Context) {
 // success, MarkDeadLetter once MaxAttempts is exhausted, otherwise
 // MarkFailed with an exponential backoff before the next retry.
 func (w *OutboxWorker) deliver(ctx context.Context, entry *domain.NotificationOutboxEntry) {
-	err := w.notifier.Send(ctx, entry.ClientID, entry.Message)
+	err := w.send(ctx, entry)
 	if err == nil {
 		if markErr := w.outbox.MarkDelivered(ctx, entry.ID); markErr != nil {
 			w.log.WarnContext(ctx, "mark notification outbox entry delivered", "id", entry.ID, "error", markErr)
@@ -162,6 +168,18 @@ func (w *OutboxWorker) deliver(ctx context.Context, entry *domain.NotificationOu
 	}
 	metrics.OutboxDeliveryOutcomes.WithLabelValues("retried").Inc()
 	w.log.WarnContext(ctx, "notification delivery failed, will retry", "id", entry.ID, "template_id", entry.TemplateID, "attempts", attempts, "retry_in", backoff, "error", err)
+}
+
+// send delivers entry over its channel.
+func (w *OutboxWorker) send(ctx context.Context, entry *domain.NotificationOutboxEntry) error {
+	if entry.Channel != domain.OutboxChannelSMS {
+		return w.notifier.Send(ctx, entry.ClientID, entry.Message)
+	}
+	client, err := w.clients.GetByID(ctx, entry.ClientID)
+	if err != nil {
+		return fmt.Errorf("load client %d: %w", entry.ClientID, err)
+	}
+	return w.sms.Send(ctx, client.Phone, entry.Message)
 }
 
 // backoffFor returns the delay before attempt number attempts+1: doubling

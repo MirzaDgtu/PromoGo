@@ -297,17 +297,17 @@ func (f *fakeLedgerRepo) enqueueOutbox(notify *domain.NotificationOutboxEntry) {
 	f.outbox = append(f.outbox, &entry)
 }
 
-func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) Post(_ context.Context, tx *domain.Transaction, notify ...*domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.postLocked(tx, notify)
+	return f.postLocked(tx, notify...)
 }
 
 // postLocked is Post's body factored out so PostRedeemChecked can perform
 // its extra checks and the resulting write under a single critical section
 // (one f.mu.Lock() call), matching the real repository's SELECT ... FOR
 // UPDATE transaction. Callers must already hold f.mu.
-func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
+func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction, notify ...*domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	f.txs.mu.Lock()
 	for _, existing := range f.txs.all {
 		if existing.StoreID == tx.StoreID && existing.Type == tx.Type && existing.ExternalTxID == tx.ExternalTxID {
@@ -335,7 +335,9 @@ func (f *fakeLedgerRepo) postLocked(tx *domain.Transaction, notify *domain.Notif
 	f.txs.mu.Lock()
 	f.txs.all = append(f.txs.all, &posted)
 	f.txs.mu.Unlock()
-	f.enqueueOutbox(notify)
+	for _, entry := range notify {
+		f.enqueueOutbox(entry)
+	}
 
 	return &posted, &domain.Balance{ClientID: tx.ClientID, Points: newPoints}, nil
 }
@@ -1099,7 +1101,7 @@ func newTestDeps(t *testing.T) (Deps, *testFakes) {
 	loyaltySvc := service.New(log, clients, txs, balances, ledger, configs, service.AntiFraudConfig{
 		DailyRedeemPointsLimit: 1_000_000,
 		DailyRedeemWindow:      24 * time.Hour,
-	})
+	}, service.Invites{})
 
 	// Cooldowns are 0 by default so route tests aren't accidentally throttled
 	// by QR issue/consume cooldowns they didn't ask to exercise — tests that

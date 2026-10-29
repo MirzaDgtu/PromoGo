@@ -102,6 +102,10 @@ func (f *fakeOutboxRepo) CountPending(_ context.Context) (int64, error) {
 	return n, nil
 }
 
+func (f *fakeOutboxRepo) CountByStoreTemplateSince(_ context.Context, _ int64, _ string, _ time.Time) (int64, error) {
+	return 0, nil
+}
+
 func (f *fakeOutboxRepo) get(id int64) *domain.NotificationOutboxEntry {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -143,7 +147,7 @@ func TestOutboxWorker_SuccessfulDeliveryMarksDelivered(t *testing.T) {
 	channel := &fakeChannel{}
 	entry := outbox.add(&domain.NotificationOutboxEntry{ClientID: 1, Message: "hello", DedupeKey: "k1"})
 
-	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, OutboxWorkerConfig{
+	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, nil, nil, OutboxWorkerConfig{
 		BatchSize: 10, MaxConcurrency: 4, MaxAttempts: 3, BaseBackoff: time.Second, MaxBackoff: time.Minute,
 	})
 	w.pollOnce(context.Background())
@@ -162,7 +166,7 @@ func TestOutboxWorker_FailureSchedulesBackoffRetry(t *testing.T) {
 	channel := &fakeChannel{failClientIDs: map[int64]bool{1: true}}
 	entry := outbox.add(&domain.NotificationOutboxEntry{ClientID: 1, Message: "hello", DedupeKey: "k1"})
 
-	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, OutboxWorkerConfig{
+	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, nil, nil, OutboxWorkerConfig{
 		BatchSize: 10, MaxConcurrency: 4, MaxAttempts: 5, BaseBackoff: time.Second, MaxBackoff: time.Minute,
 	})
 	before := time.Now()
@@ -188,7 +192,7 @@ func TestOutboxWorker_ExhaustedAttemptsDeadLetters(t *testing.T) {
 	channel := &fakeChannel{failClientIDs: map[int64]bool{1: true}}
 	entry := outbox.add(&domain.NotificationOutboxEntry{ClientID: 1, Message: "hello", DedupeKey: "k1", Attempts: 2})
 
-	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, OutboxWorkerConfig{
+	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, nil, nil, OutboxWorkerConfig{
 		BatchSize: 10, MaxConcurrency: 4, MaxAttempts: 3, BaseBackoff: time.Second, MaxBackoff: time.Minute,
 	})
 	w.pollOnce(context.Background())
@@ -242,7 +246,7 @@ func TestOutboxWorker_ConcurrentDeliveryBoundedByMaxConcurrency(t *testing.T) {
 	}
 
 	const maxConcurrency = 3
-	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, OutboxWorkerConfig{
+	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, nil, nil, OutboxWorkerConfig{
 		BatchSize: 20, MaxConcurrency: maxConcurrency, MaxAttempts: 3, BaseBackoff: time.Second, MaxBackoff: time.Minute,
 	})
 	w.pollOnce(context.Background())
@@ -296,7 +300,7 @@ func TestOutboxWorker_InFlightPollSurvivesRunCtxCancellation(t *testing.T) {
 	entry := outbox.add(&domain.NotificationOutboxEntry{ClientID: 1, Message: "hello", DedupeKey: "k1"})
 	channel := &slowChannel{delay: 150 * time.Millisecond}
 
-	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, OutboxWorkerConfig{
+	w := NewOutboxWorker(testOutboxLogger(), outbox, channel, nil, nil, OutboxWorkerConfig{
 		PollInterval: 10 * time.Millisecond, BatchSize: 10, MaxConcurrency: 4,
 		MaxAttempts: 3, BaseBackoff: time.Second, MaxBackoff: time.Minute,
 		DeliverTimeout: 2 * time.Second,

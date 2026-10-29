@@ -35,10 +35,14 @@ func insertOutboxEntry(ctx context.Context, dbTx pgx.Tx, notify *domain.Notifica
 		return nil
 	}
 	const insert = `
-		INSERT INTO notification_outbox (client_id, template_id, template_version, message, dedupe_key)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO notification_outbox (client_id, channel, template_id, template_version, message, dedupe_key)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (dedupe_key) DO NOTHING`
-	if _, err := dbTx.Exec(ctx, insert, notify.ClientID, notify.TemplateID, notify.TemplateVersion, notify.Message, notify.DedupeKey); err != nil {
+	channel := notify.Channel
+	if channel == "" {
+		channel = domain.OutboxChannelPush
+	}
+	if _, err := dbTx.Exec(ctx, insert, notify.ClientID, channel, notify.TemplateID, notify.TemplateVersion, notify.Message, notify.DedupeKey); err != nil {
 		return fmt.Errorf("enqueue notification outbox entry: %w", err)
 	}
 	return nil
@@ -57,7 +61,7 @@ func insertOutboxEntry(ctx context.Context, dbTx pgx.Tx, notify *domain.Notifica
 // negative delta alone (confirmed against Postgres 16). Ensuring the row
 // exists first, then applying the delta with a plain UPDATE, checks the
 // constraint against the real post-update value instead.
-func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction, notify *domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
+func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction, notify ...*domain.NotificationOutboxEntry) (*domain.Transaction, *domain.Balance, error) {
 	dbTx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("post transaction %d/%s: begin tx: %w", tx.StoreID, tx.ExternalTxID, err)
@@ -106,8 +110,10 @@ func (r *LedgerRepository) Post(ctx context.Context, tx *domain.Transaction, not
 	}
 	tx.BalanceAfter = balance.Points
 
-	if err := insertOutboxEntry(ctx, dbTx, notify); err != nil {
-		return nil, nil, fmt.Errorf("post transaction %d/%s: %w", tx.StoreID, tx.ExternalTxID, err)
+	for _, entry := range notify {
+		if err := insertOutboxEntry(ctx, dbTx, entry); err != nil {
+			return nil, nil, fmt.Errorf("post transaction %d/%s: %w", tx.StoreID, tx.ExternalTxID, err)
+		}
 	}
 
 	if err := dbTx.Commit(ctx); err != nil {

@@ -37,6 +37,15 @@ var AccrualsWithoutConfig = promauto.NewCounter(prometheus.CounterOpts{
 	Help: "Accrual webhooks recorded at 0 points because the store has no loyalty config.",
 })
 
+// AppInvites counts the SMS app invite decision for each client the
+// register newly registers at a store with invites on (DEC-034): queued, or
+// skipped because the phone already has the app, the store hit its daily
+// cap, or a check failed.
+var AppInvites = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "promogo_app_invites_total",
+	Help: "SMS app invites for newly registered clients, by outcome.",
+}, []string{"outcome"}) // outcome: queued|has_app|daily_limit|error
+
 // RefundFailures counts a refund request that failed business validation
 // (unknown original transaction, over-refund, etc.), labeled by the
 // specific reason so a spike in one reason is distinguishable from another.

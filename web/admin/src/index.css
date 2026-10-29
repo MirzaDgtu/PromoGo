@@ -1179,6 +1179,11 @@ fieldset.field legend {
   align-items: start;
 }
 
+.store-form__option {
+  max-width: 72ch;
+  margin-top: var(--space-4);
+}
+
 .store-form__actions {
   display: flex;
   gap: var(--space-2);

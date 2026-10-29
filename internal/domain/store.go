@@ -17,7 +17,11 @@ type Store struct {
 	// ExternalCode is the store's identifier in the retailer's 1C, unique
 	// within OrganizationID; nil means not set.
 	ExternalCode *string
-	APIKeyHash   string
+	// SMSInviteEnabled turns on the SMS app invite for clients the
+	// register registers at this store (DEC-034). Off by default: the
+	// retailer answers for the customer's consent at the till.
+	SMSInviteEnabled bool
+	APIKeyHash       string
 }
 
 // StoreRepository persists and retrieves Store rows.
@@ -30,8 +34,8 @@ type StoreRepository interface {
 	// Create returns domain.ErrConflict if store.ExternalCode is already
 	// used by another store in the same organization.
 	Create(ctx context.Context, store *Store) error
-	// UpdateProfile saves store's Name, Address and ExternalCode (nothing
-	// else). Returns domain.ErrNotFound if the store doesn't exist and
+	// UpdateProfile saves store's Name, Address, ExternalCode and
+	// SMSInviteEnabled (nothing else). Returns domain.ErrNotFound if the store doesn't exist and
 	// domain.ErrConflict on a duplicate ExternalCode within the organization.
 	UpdateProfile(ctx context.Context, store *Store) error
 	// ListByOrganization returns every Store belonging to organizationID,

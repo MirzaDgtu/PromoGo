@@ -162,7 +162,16 @@ func New(ctx context.Context, cfg *config.Config, opts ...Option) (*App, error) 
 	loyaltyService := service.New(log, clientRepo, txRepo, balanceRepo, ledgerRepo, configRepo, service.AntiFraudConfig{
 		DailyRedeemPointsLimit: cfg.AntiFraud.DailyRedeemPointsLimit,
 		DailyRedeemWindow:      cfg.AntiFraud.DailyRedeemWindow,
+	}, service.Invites{
+		AppURL:           cfg.Invite.AppURL,
+		DailyStoreLimit:  cfg.Invite.DailyStoreLimit,
+		Stores:           storeRepo,
+		CustomerAccounts: customerAccountRepo,
+		Outbox:           outboxRepo,
 	})
+	if cfg.Invite.AppURL == "" {
+		log.Info("sms app invites are off: invite.app_url is not set")
+	}
 
 	// Accrual/redeem/refund notifications are queued transactionally by
 	// ledgerRepo (see domain.LedgerRepository's doc comment) and delivered
@@ -170,7 +179,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Option) (*App, error) 
 	// docs/audit-remediation-prompt.md Phase 3). The worker outlives any
 	// single request; Run starts/stops it alongside the HTTP server (see
 	// App.Run/Close).
-	outboxWorker := service.NewOutboxWorker(log, outboxRepo, notifier, service.OutboxWorkerConfig{
+	outboxWorker := service.NewOutboxWorker(log, outboxRepo, notifier, smsSender, clientRepo, service.OutboxWorkerConfig{
 		PollInterval:   2 * time.Second,
 		BatchSize:      50,
 		MaxConcurrency: 10,

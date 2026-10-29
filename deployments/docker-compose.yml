@@ -58,6 +58,9 @@ services:
       PROMOGO_OIDC_ISSUER_URL: ${PROMOGO_OIDC_ISSUER_URL:-}
       PROMOGO_OIDC_AUDIENCE: ${PROMOGO_OIDC_AUDIENCE:-}
       PROMOGO_OIDC_JWKS_URL: ${PROMOGO_OIDC_JWKS_URL:-}
+      # Empty keeps SMS app invites off (DEC-034); the dev SMS provider only
+      # logs, so a local link is safe to set.
+      PROMOGO_INVITE_APP_URL: ${PROMOGO_INVITE_APP_URL:-}
     ports:
       - "${APP_HOST:-127.0.0.1}:${APP_HOST_PORT:-8090}:8080"
     depends_on:

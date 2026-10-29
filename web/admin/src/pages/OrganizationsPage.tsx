@@ -356,7 +356,12 @@ function EditStoreForm({
   return (
     <StoreForm
       title={strings.stores.editTitle(store.name)}
-      initial={{ name: store.name, address: store.address, externalCode: store.external_code ?? '' }}
+      initial={{
+        name: store.name,
+        address: store.address,
+        externalCode: store.external_code ?? '',
+        smsInviteEnabled: store.sms_invite_enabled,
+      }}
       submitLabel={strings.stores.editSubmit}
       pending={update.isPending}
       error={update.error}

@@ -64,3 +64,16 @@ go run ./cmd/possim replay
 # наполнить «Обзор», «Клиентов» и «Аудит»
 go run ./cmd/possim flood -n 40 -clients 10
 ```
+
+## SMS-приглашение нового клиента
+
+Первая продажа на новый телефон регистрирует клиента. Если на магазине
+включено «SMS-приглашение в приложение» (Admin Web → Организации и магазины
+→ Изменить) и задан `PROMOGO_INVITE_APP_URL`, клиенту уходит SMS со ссылкой.
+Приглашение уходит один раз на номер (DEC-034). В разработке SMS только
+пишется в лог приложения:
+
+```powershell
+go run ./cmd/possim sale -phone +79991112233 -amount 1000
+docker logs promogo-app-1 2>&1 | Select-String app_invite
+```

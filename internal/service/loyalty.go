@@ -40,6 +40,29 @@ type AntiFraudConfig struct {
 	DailyRedeemWindow      time.Duration
 }
 
+// inviteLimitWindow is the rolling window Invites.DailyStoreLimit counts
+// over.
+const inviteLimitWindow = 24 * time.Hour
+
+// Invites configures the SMS app invite a newly registered client gets
+// (DEC-034). The zero value turns invites off: they need AppURL, the
+// repositories, and the store's own SMSInviteEnabled.
+type Invites struct {
+	// AppURL is the link the SMS points to.
+	AppURL string
+	// DailyStoreLimit caps how many invites one store can queue over
+	// inviteLimitWindow, so a leaked register key can't run up an SMS bill.
+	DailyStoreLimit int64
+
+	Stores           domain.StoreRepository
+	CustomerAccounts domain.CustomerAccountRepository
+	Outbox           domain.NotificationOutboxRepository
+}
+
+func (i Invites) enabled() bool {
+	return i.AppURL != "" && i.DailyStoreLimit > 0 && i.Stores != nil && i.CustomerAccounts != nil && i.Outbox != nil
+}
+
 // LoyaltyService is the core loyalty-engine use case: it loads state, runs
 // the store's configured domain.Mechanic, and posts the transaction,
 // balance change, and any resulting notification atomically via
@@ -55,6 +78,7 @@ type LoyaltyService struct {
 	ledger    domain.LedgerRepository
 	configs   domain.LoyaltyConfigRepository
 	antiFraud AntiFraudConfig
+	invites   Invites
 }
 
 // New constructs a LoyaltyService.
@@ -66,6 +90,7 @@ func New(
 	ledger domain.LedgerRepository,
 	configs domain.LoyaltyConfigRepository,
 	antiFraud AntiFraudConfig,
+	invites Invites,
 ) *LoyaltyService {
 	return &LoyaltyService{
 		log:       log,
@@ -75,6 +100,7 @@ func New(
 		ledger:    ledger,
 		configs:   configs,
 		antiFraud: antiFraud,
+		invites:   invites,
 	}
 }
 
@@ -116,7 +142,9 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 	// (see internal/auth.NormalizePhone). Falls back to the raw phone 1C
 	// sent on any normalization failure — this must never reject or alter
 	// behavior for input the webhook already accepted before this existed.
-	if normalized, err := auth.NormalizePhone(req.Phone); err == nil {
+	normalized, err := auth.NormalizePhone(req.Phone)
+	phoneNormalized := err == nil
+	if phoneNormalized {
 		req.Phone = normalized
 	}
 
@@ -128,9 +156,16 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 		return result, err
 	}
 
-	client, err := s.resolveOrCreateClient(ctx, req.StoreID, req.Phone)
+	client, created, err := s.resolveOrCreateClient(ctx, req.StoreID, req.Phone)
 	if err != nil {
 		return nil, fmt.Errorf("accrue: resolve client: %w", err)
+	}
+
+	// Only a phone we could normalize gets an SMS: a raw value 1C sent may
+	// not be a deliverable number at all.
+	var invite *domain.NotificationOutboxEntry
+	if created && phoneNormalized {
+		invite = s.appInvite(ctx, client)
 	}
 
 	tx := &domain.Transaction{
@@ -179,7 +214,7 @@ func (s *LoyaltyService) Accrue(ctx context.Context, req AccrueRequest) (*Accrue
 		}
 	}
 
-	posted, balance, err := s.ledger.Post(ctx, tx, notify)
+	posted, balance, err := s.ledger.Post(ctx, tx, notify, invite)
 	if errors.Is(err, domain.ErrConflict) {
 		// Lost a race with a concurrent replay of the same webhook.
 		return s.replayedAccrue(ctx, req.StoreID, req.ExternalTxID, req.Phone, req.Amount)
@@ -229,24 +264,85 @@ func (s *LoyaltyService) replayedAccrue(ctx context.Context, storeID int64, exte
 	return &AccrueResult{ClientID: existing.ClientID, PointsEarned: existing.PointsDelta, Balance: existing.BalanceAfter, Replayed: true}, nil
 }
 
-func (s *LoyaltyService) resolveOrCreateClient(ctx context.Context, storeID int64, phone string) (*domain.Client, error) {
-	client, err := s.clients.GetByPhone(ctx, storeID, phone)
+// resolveOrCreateClient reports created=true only when this call registered
+// the client, so a client is invited at most once by the request that
+// registered it.
+func (s *LoyaltyService) resolveOrCreateClient(ctx context.Context, storeID int64, phone string) (client *domain.Client, created bool, err error) {
+	client, err = s.clients.GetByPhone(ctx, storeID, phone)
 	if err == nil {
-		return client, nil
+		return client, false, nil
 	}
 	if !errors.Is(err, domain.ErrNotFound) {
-		return nil, err
+		return nil, false, err
 	}
 
 	client = &domain.Client{StoreID: storeID, Phone: phone, CreatedAt: time.Now()}
 	if err := s.clients.Create(ctx, client); err != nil {
 		if errors.Is(err, domain.ErrConflict) {
 			// Lost a race with a concurrent registration of the same phone.
-			return s.clients.GetByPhone(ctx, storeID, phone)
+			client, err = s.clients.GetByPhone(ctx, storeID, phone)
+			return client, false, err
 		}
-		return nil, err
+		return nil, false, err
 	}
-	return client, nil
+	return client, true, nil
+}
+
+// appInvite returns the SMS app invite to queue with a newly registered
+// client's first accrual, or nil if there is none to send (DEC-034). It
+// never fails the sale: a failed check is logged and skips the invite.
+//
+// The invite's DedupeKey is the phone, so the outbox holds at most one
+// invite per phone across every store and organization — a client who
+// shops at a second store isn't invited again.
+func (s *LoyaltyService) appInvite(ctx context.Context, client *domain.Client) *domain.NotificationOutboxEntry {
+	if !s.invites.enabled() {
+		return nil
+	}
+
+	store, err := s.invites.Stores.GetByID(ctx, client.StoreID)
+	if err != nil {
+		s.log.WarnContext(ctx, "app invite: load store", "store_id", client.StoreID, "error", err)
+		metrics.AppInvites.WithLabelValues("error").Inc()
+		return nil
+	}
+	if !store.SMSInviteEnabled {
+		return nil
+	}
+
+	_, err = s.invites.CustomerAccounts.GetByPhone(ctx, client.Phone)
+	switch {
+	case err == nil:
+		metrics.AppInvites.WithLabelValues("has_app").Inc()
+		return nil
+	case !errors.Is(err, domain.ErrNotFound):
+		s.log.WarnContext(ctx, "app invite: look up customer account", "store_id", client.StoreID, "error", err)
+		metrics.AppInvites.WithLabelValues("error").Inc()
+		return nil
+	}
+
+	// Concurrent sales can each pass this count before either commits, so
+	// the cap can be overshot by the number of in-flight registrations —
+	// fine for a cost guard.
+	sent, err := s.invites.Outbox.CountByStoreTemplateSince(ctx, client.StoreID, notifytemplates.AppInviteID, time.Now().Add(-inviteLimitWindow))
+	if err != nil {
+		s.log.WarnContext(ctx, "app invite: count recent invites", "store_id", client.StoreID, "error", err)
+		metrics.AppInvites.WithLabelValues("error").Inc()
+		return nil
+	}
+	if sent >= s.invites.DailyStoreLimit {
+		s.log.WarnContext(ctx, "app invite: store daily limit reached", "store_id", client.StoreID, "limit", s.invites.DailyStoreLimit)
+		metrics.AppInvites.WithLabelValues("daily_limit").Inc()
+		return nil
+	}
+
+	metrics.AppInvites.WithLabelValues("queued").Inc()
+	rendered := notifytemplates.AppInvite(store.Name, s.invites.AppURL)
+	return &domain.NotificationOutboxEntry{
+		ClientID: client.ID, Channel: domain.OutboxChannelSMS,
+		TemplateID: rendered.TemplateID, TemplateVersion: rendered.Version, Message: rendered.Message,
+		DedupeKey: "invite:" + client.Phone,
+	}
 }
 
 // RedeemRequest mirrors Idea.md's POST /api/v1/transactions/redeem payload.

@@ -34,7 +34,10 @@ const (
 	accrualCreditedID = "accrual_credited"
 	redeemDebitedID   = "redeem_debited"
 	refundAdjustedID  = "refund_adjusted"
-	// templateVersion applies to all three templates in this package —
+	// AppInviteID is exported because the per-store daily invite cap counts
+	// outbox rows by template (see domain.NotificationOutboxRepository).
+	AppInviteID = "app_invite"
+	// templateVersion applies to all templates in this package —
 	// bump it (and keep the old rendering available if in-flight outbox
 	// rows must remain interpretable) when wording changes materially.
 	templateVersion = 1
@@ -67,5 +70,17 @@ func RefundAdjusted(pointsDelta int64) Rendered {
 		TemplateID: refundAdjustedID,
 		Version:    templateVersion,
 		Message:    fmt.Sprintf("Возврат: скорректировано %d баллов", pointsDelta),
+	}
+}
+
+// AppInvite renders the SMS inviting a client the register just registered
+// to install the app (DEC-034). storeName tells the recipient who sent it;
+// appURL is where to get the app. Kept short: a Cyrillic SMS is one segment
+// only up to 70 characters, and every extra segment is billed.
+func AppInvite(storeName, appURL string) Rendered {
+	return Rendered{
+		TemplateID: AppInviteID,
+		Version:    templateVersion,
+		Message:    fmt.Sprintf("%s: ваши баллы — в приложении %s", storeName, appURL),
 	}
 }

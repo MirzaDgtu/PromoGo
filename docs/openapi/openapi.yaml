@@ -1559,7 +1559,7 @@ components:
 
     Store:
       type: object
-      required: [id, organization_id, name, address, external_code]
+      required: [id, organization_id, name, address, external_code, sms_invite_enabled]
       properties:
         id: { type: integer, format: int64 }
         organization_id: { type: integer, format: int64 }
@@ -1571,6 +1571,11 @@ components:
           type: string
           nullable: true
           description: The store's identifier in the retailer's 1C, unique within the organization; null when not set.
+        sms_invite_enabled:
+          type: boolean
+          description: >-
+            Whether a client the register registers at this store gets an SMS
+            invite to the app (DEC-034). Off by default.
 
     StoreProfileInput:
       type: object
@@ -1582,6 +1587,7 @@ components:
           type: string
           maxLength: 64
           description: Empty string clears the code.
+        sms_invite_enabled: { type: boolean }
 
     Role:
       type: string

@@ -51,7 +51,7 @@ func (r *NotificationOutboxRepository) ClaimBatch(ctx context.Context, limit int
 			LIMIT $1
 			FOR UPDATE SKIP LOCKED
 		)
-		RETURNING id, client_id, template_id, template_version, message, dedupe_key, status, attempts, next_attempt_at, COALESCE(last_error, ''), created_at, delivered_at`
+		RETURNING id, client_id, channel, template_id, template_version, message, dedupe_key, status, attempts, next_attempt_at, COALESCE(last_error, ''), created_at, delivered_at`
 
 	rows, err := r.pool.Query(ctx, query, limit, claimLease.String())
 	if err != nil {
@@ -63,7 +63,7 @@ func (r *NotificationOutboxRepository) ClaimBatch(ctx context.Context, limit int
 	for rows.Next() {
 		e := &domain.NotificationOutboxEntry{}
 		if err := rows.Scan(
-			&e.ID, &e.ClientID, &e.TemplateID, &e.TemplateVersion, &e.Message, &e.DedupeKey,
+			&e.ID, &e.ClientID, &e.Channel, &e.TemplateID, &e.TemplateVersion, &e.Message, &e.DedupeKey,
 			&e.Status, &e.Attempts, &e.NextAttemptAt, &e.LastError, &e.CreatedAt, &e.DeliveredAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan notification outbox entry: %w", err)
@@ -106,6 +106,18 @@ func (r *NotificationOutboxRepository) CountPending(ctx context.Context) (int64,
 	var n int64
 	if err := r.pool.QueryRow(ctx, query).Scan(&n); err != nil {
 		return 0, fmt.Errorf("count pending notification outbox entries: %w", err)
+	}
+	return n, nil
+}
+
+func (r *NotificationOutboxRepository) CountByStoreTemplateSince(ctx context.Context, storeID int64, templateID string, since time.Time) (int64, error) {
+	const query = `
+		SELECT count(*) FROM notification_outbox o
+		JOIN clients c ON c.id = o.client_id
+		WHERE o.template_id = $2 AND o.created_at >= $3 AND c.store_id = $1`
+	var n int64
+	if err := r.pool.QueryRow(ctx, query, storeID, templateID, since).Scan(&n); err != nil {
+		return 0, fmt.Errorf("count %s outbox entries for store %d: %w", templateID, storeID, err)
 	}
 	return n, nil
 }

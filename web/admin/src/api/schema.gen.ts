@@ -923,12 +923,15 @@ export interface components {
             address: string;
             /** @description The store's identifier in the retailer's 1C, unique within the organization; null when not set. */
             external_code: string | null;
+            /** @description Whether a client the register registers at this store gets an SMS invite to the app (DEC-034). Off by default. */
+            sms_invite_enabled: boolean;
         };
         StoreProfileInput: {
             name?: string;
             address?: string;
             /** @description Empty string clears the code. */
             external_code?: string;
+            sms_invite_enabled?: boolean;
         };
         /** @enum {string} */
         Role: "platform_admin" | "retailer_admin" | "store_manager" | "support_viewer";

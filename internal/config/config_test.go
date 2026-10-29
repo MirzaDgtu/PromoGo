@@ -152,3 +152,28 @@ func TestValidateRedis_TLSNotRequiredInDevelopment(t *testing.T) {
 		t.Errorf("validateRedis() with tls_enabled=false in development error = %v, want nil", err)
 	}
 }
+
+func TestValidateInvite(t *testing.T) {
+	tests := []struct {
+		name    string
+		env     string
+		invite  InviteConfig
+		wantErr bool
+	}{
+		{name: "off", env: "production", invite: InviteConfig{}},
+		{name: "https link", env: "production", invite: InviteConfig{AppURL: "https://promogo.app/get", DailyStoreLimit: 200}},
+		{name: "http link outside development", env: "production", invite: InviteConfig{AppURL: "http://promogo.app/get", DailyStoreLimit: 200}, wantErr: true},
+		{name: "http link in development", env: "development", invite: InviteConfig{AppURL: "http://localhost/app", DailyStoreLimit: 200}},
+		{name: "no daily limit", env: "development", invite: InviteConfig{AppURL: "http://localhost/app"}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := validConfig()
+			cfg.App.Env = tt.env
+			cfg.Invite = tt.invite
+			if err := cfg.validateInvite(); (err != nil) != tt.wantErr {
+				t.Fatalf("validateInvite() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

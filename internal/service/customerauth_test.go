@@ -248,14 +248,16 @@ func (f *fakeAuditEventRepo) actions() []string {
 // state to extract the code it needs to complete a test flow.
 type fakeSMSSender struct {
 	mu       sync.Mutex
+	phones   []string
 	messages []string
 }
 
 var otpCodePattern = regexp.MustCompile(`\d{6}`)
 
-func (f *fakeSMSSender) Send(_ context.Context, _, message string) error {
+func (f *fakeSMSSender) Send(_ context.Context, phone, message string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.phones = append(f.phones, phone)
 	f.messages = append(f.messages, message)
 	return nil
 }

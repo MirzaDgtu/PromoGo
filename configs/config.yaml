@@ -59,6 +59,16 @@ sms:
   sender: PromoGo
   timeout: 5s
 
+invite:
+  # SMS app invite for a client the register just registered (DEC-034).
+  # Empty app_url turns invites off everywhere; each store also opts in
+  # (stores.sms_invite_enabled, off by default). Must be https:// outside
+  # app.env=development. Set via PROMOGO_INVITE_APP_URL.
+  app_url: ""
+  # Cap on invites one store can queue per rolling 24h, so a leaked register
+  # key can't run up an SMS bill. PROMOGO_INVITE_DAILY_STORE_LIMIT.
+  daily_store_limit: 200
+
 auth:
   # HMAC signing secret for both customer and staff access tokens
   # (internal/auth/tokens.go). REQUIRED outside app.env=development — set

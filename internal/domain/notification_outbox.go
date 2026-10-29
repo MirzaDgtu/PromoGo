@@ -14,6 +14,19 @@ const (
 	NotificationOutboxDeadLetter NotificationOutboxStatus = "dead_letter"
 )
 
+// OutboxChannel is how a NotificationOutboxEntry reaches the client.
+type OutboxChannel string
+
+const (
+	// OutboxChannelPush delivers via NotificationChannel to the client's
+	// devices. It is the zero value's meaning: an entry with an empty
+	// Channel is a push.
+	OutboxChannelPush OutboxChannel = "push"
+	// OutboxChannelSMS delivers via SMSSender to the client's phone — for
+	// a client who doesn't have the app yet (the app invite, DEC-034).
+	OutboxChannelSMS OutboxChannel = "sms"
+)
+
 // NotificationOutboxEntry describes one notification to deliver, queued by
 // LedgerRepository (see its doc comment) in the same database transaction
 // as the ledger write it accompanies — the "transactional" half of
@@ -23,7 +36,9 @@ const (
 type NotificationOutboxEntry struct {
 	ID int64
 
-	ClientID        int64
+	ClientID int64
+	// Channel is empty or OutboxChannelPush for a push notification.
+	Channel         OutboxChannel
 	TemplateID      string
 	TemplateVersion int
 	Message         string
@@ -68,4 +83,8 @@ type NotificationOutboxRepository interface {
 	// processing (i.e. not yet delivered or dead-lettered) — feeds the
 	// outbox backlog gauge (see internal/metrics).
 	CountPending(ctx context.Context) (int64, error)
+	// CountByStoreTemplateSince counts rows rendered from templateID for
+	// storeID's clients created at or after since, whatever their status —
+	// the per-store daily app invite cap (DEC-034).
+	CountByStoreTemplateSince(ctx context.Context, storeID int64, templateID string, since time.Time) (int64, error)
 }
