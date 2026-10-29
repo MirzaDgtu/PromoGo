@@ -172,6 +172,7 @@ function History({
       ) : history.data.length === 0 ? (
         <EmptyState title={h.empty} />
       ) : (
+        <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
@@ -240,6 +241,7 @@ function History({
             )}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   )
@@ -262,7 +264,7 @@ function HistoryRow({
       <td>
         {v.version} {isCurrent && <span className="badge">{h.current}</span>}
       </td>
-      <td>{dateTimeFormat.format(new Date(v.created_at))}</td>
+      <td className="cell-nowrap">{dateTimeFormat.format(new Date(v.created_at))}</td>
       <td>{v.changed_by_staff_user_id != null ? h.authorStaff(v.changed_by_staff_user_id) : h.authorSystem}</td>
       <td>{h.accrualSummary(v.accrual_percent, v.min_purchase_amount)}</td>
       <td>{h.redemptionSummary(v.max_redeem_percent, v.points_exchange_rate, v.min_balance_to_redeem)}</td>

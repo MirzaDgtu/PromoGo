@@ -148,6 +148,7 @@ function OrgStaff({ orgID, orgName }: { orgID: number; orgName: string }) {
       ) : rows.length === 0 ? (
         <EmptyState title={t.empty} />
       ) : (
+        <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
@@ -302,6 +303,7 @@ function OrgStaff({ orgID, orgName }: { orgID: number; orgName: string }) {
             })}
           </tbody>
         </table>
+        </div>
       )}
     </>
   )

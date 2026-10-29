@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T00:00:00Z",
+  "title": "Design System: PromoGo Admin",
+  "extensions": {
+    "colorMeta": {
+      "frame": { "role": "neutral", "displayName": "Register Body" },
+      "sheet": { "role": "neutral", "displayName": "Working Sheet" },
+      "accent": { "role": "primary", "displayName": "Petrol" },
+      "positive": { "role": "success", "displayName": "Exchange OK" },
+      "warning": { "role": "warning", "displayName": "Needs a Look" },
+      "negative": { "role": "danger", "displayName": "Stop" }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Screen Title", "purpose": "One per screen: the screen's name with its scope." },
+      "figure": { "displayName": "Figure", "purpose": "A single headline number, tabular." },
+      "code": { "displayName": "Machine String", "purpose": "Key ids, secrets, request ids, IPs, receipts, access codes only." }
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "value": "0 12px 32px -8px rgb(9 14 16 / 0.22), 0 2px 6px rgb(9 14 16 / 0.08)",
+        "purpose": "Only for what floats: the one-time-secret dialog and the tablet drawer."
+      }
+    ],
+    "motion": [
+      { "name": "dur-instant", "value": "90ms", "purpose": "Button press." },
+      { "name": "dur-fast", "value": "140ms", "purpose": "Hover, colour and border changes." },
+      { "name": "dur-base", "value": "200ms", "purpose": "Route content, inline rows, scrim." },
+      { "name": "dur-slow", "value": "260ms", "purpose": "Dialog, drawer, notice." },
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Every arrival." },
+      { "name": "ease-in-out", "value": "cubic-bezier(0.65, 0, 0.35, 1)", "purpose": "Skeleton pulse." }
+    ],
+    "breakpoints": [
+      { "name": "drawer", "value": "1100px" },
+      { "name": "overview-stack", "value": "1180px" },
+      { "name": "min-width", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action of a screen.",
+      "html": "<button class=\"ds-btn-primary\">+ Выдать ключ</button>",
+      "css": ".ds-btn-primary { min-height: 32px; padding: 0 12px; border: 1px solid var(--accent, #1b6c80); border-radius: 6px; background: var(--accent, #1b6c80); color: var(--on-accent, #fff); font: 500 14px 'IBM Plex Sans', system-ui, sans-serif; cursor: pointer; transition: background-color 140ms cubic-bezier(0.16,1,0.3,1), transform 90ms; } .ds-btn-primary:hover { background: var(--accent-hover, #155a6b); border-color: var(--accent-hover, #155a6b); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent, #1b6c80); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action.",
+      "html": "<button class=\"ds-btn\">Отмена</button>",
+      "css": ".ds-btn { min-height: 32px; padding: 0 12px; border: 1px solid var(--control-soft, #cfd6da); border-radius: 6px; background: var(--sheet, #fff); color: var(--text, #131416); font: 500 14px 'IBM Plex Sans', system-ui, sans-serif; cursor: pointer; transition: background-color 140ms, border-color 140ms; } .ds-btn:hover { background: var(--raised, #f4f6f7); border-color: var(--control, #8a959b); } .ds-btn:focus-visible { outline: 2px solid var(--accent, #1b6c80); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above, hint below.",
+      "html": "<label class=\"ds-field\"><span>Название</span><input type=\"text\" placeholder=\"Касса 1\"><small>Например, «Касса 1» или «Обмен с 1С»</small></label>",
+      "css": ".ds-field { display: grid; gap: 6px; font: 14px/1.5 'IBM Plex Sans', system-ui, sans-serif; color: var(--text, #131416); } .ds-field span { font-weight: 500; } .ds-field input { min-height: 32px; padding: 0 12px; border: 1px solid var(--control, #8a959b); border-radius: 6px; background: var(--sheet, #fff); font: inherit; } .ds-field input:focus-visible { outline: none; border-color: var(--accent, #1b6c80); box-shadow: 0 0 0 3px var(--accent-soft, #e2eff2); } .ds-field small { color: var(--muted, #565e63); font-size: 13px; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-active",
+      "description": "State with its text and a shape-coded dot.",
+      "html": "<span class=\"ds-status\">Активен</span> <span class=\"ds-status ds-status--warn\">Требует внимания</span>",
+      "css": ".ds-status { display: inline-flex; gap: 6px; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; background: var(--positive-soft, #ddf5e7); color: var(--positive-ink, #0c4027); font: 500 12px/1.2 'IBM Plex Sans', system-ui, sans-serif; } .ds-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-status--warn { background: var(--warning-soft, #fdf3e1); color: var(--warning-ink, #6b2f09); } .ds-status--warn::before { background: none; border: 1.5px solid currentColor; }"
+    },
+    {
+      "name": "Exchange Light",
+      "kind": "custom",
+      "refersTo": "exchange",
+      "description": "Signature: the selected store's register/1C exchange status in the top bar.",
+      "html": "<a class=\"ds-exchange\" href=\"#\"><span class=\"ds-lamp\"></span><span><strong>Касса или 1С</strong> · подключена 5 минут назад</span></a>",
+      "css": ".ds-exchange { display: inline-flex; gap: 8px; align-items: center; min-height: 28px; padding: 0 12px; border-radius: 999px; color: var(--muted, #565e63); font: 13px 'IBM Plex Sans', system-ui, sans-serif; text-decoration: none; } .ds-exchange:hover { background: var(--active, #dde4e7); color: var(--text, #131416); } .ds-exchange strong { color: var(--text, #131416); font-weight: 500; } .ds-lamp { width: 8px; height: 8px; border-radius: 50%; background: var(--positive, #1e7b4f); }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Sidebar destination with an authored 16px icon; active is a grey pill with an accent icon.",
+      "html": "<a class=\"ds-nav ds-nav--active\" href=\"#\"><svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"5\" cy=\"11\" r=\"2.75\"/><path d=\"m7 9 6.5-6.5M11 5l1.75 1.75M9.5 6.5l1.25 1.25\"/></svg>API-ключи</a>",
+      "css": ".ds-nav { display: flex; gap: 12px; align-items: center; min-height: 34px; padding: 0 8px; border-radius: 6px; color: var(--muted, #565e63); font: 14px 'IBM Plex Sans', system-ui, sans-serif; text-decoration: none; } .ds-nav svg { width: 16px; height: 16px; } .ds-nav:hover { color: var(--text, #131416); } .ds-nav--active { background: var(--active, #dde4e7); color: var(--text, #131416); font-weight: 500; } .ds-nav--active svg { color: var(--accent, #1b6c80); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Касса — the register",
+    "overview": "A tinted L-frame (sidebar + top bar) is the register's body; a white sheet is its screen where each task happens. Colour goes on data and state; the petrol accent marks the one primary action, the current selection and focus. The exchange light in the top bar is the product's own element: whether the store's register or 1C is talking to the loyalty core.",
+    "keyCharacteristics": [
+      "Tinted frame + white sheet, separated by one tone step",
+      "IBM Plex Sans throughout, Plex Mono for machine strings only",
+      "Shape-coded status marks, never colour alone",
+      "Short, functional motion with a fade-only reduced-motion path"
+    ],
+    "rules": [
+      { "name": "Colour budget under 3%", "body": "Chrome stays grey; colour belongs to data and state.", "section": "colors" },
+      { "name": "Flat at rest", "body": "Only the dialog and the tablet drawer float.", "section": "elevation" },
+      { "name": "One title per screen", "body": "22px/600, the screen's name with its scope.", "section": "typography" }
+    ],
+    "dos": [
+      "Do keep one primary action per screen",
+      "Do use tabular figures wherever numbers align",
+      "Do keep labels in the accessibility tree when hiding them visually"
+    ],
+    "donts": [
+      "Don't use coloured left borders, gradients, glass or shadows at rest",
+      "Don't use glyphs as icons",
+      "Don't add a UI library"
+    ]
+  }
+}

@@ -68,6 +68,8 @@ export const strings = {
     apiKeys: 'API-ключи',
     audit: 'Аудит',
     logout: 'Выйти',
+    menu: 'Меню',
+    product: 'Admin',
   },
   form: {
     nameRequired: 'Укажите название',

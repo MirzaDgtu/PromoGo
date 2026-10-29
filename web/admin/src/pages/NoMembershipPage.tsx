@@ -14,8 +14,8 @@ export function NoMembershipPage() {
   const [copied, setCopied] = useState(false)
 
   return (
-    <main className="no-access">
-      <div className="no-access__card">
+    <main className="standalone">
+      <div className="standalone__card standalone__card--wide no-access__card">
         <h1>{t.title}</h1>
         <p>{t.body}</p>
 
@@ -44,7 +44,7 @@ export function NoMembershipPage() {
           </>
         )}
 
-        <p className="no-access__actions">
+        <p className="standalone__actions">
           <button type="button" onClick={() => window.location.reload()}>
             {t.retry}
           </button>

@@ -1,9 +1,10 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes } from 'react-router-dom'
 
 import { CallbackPage } from '../auth/CallbackPage'
 import { LoginPage } from '../auth/LoginPage'
 import { AppShell } from '../components/AppShell'
 import { NotFoundState } from '../components/states'
+import { strings } from '../i18n/strings'
 import { ApiKeysPage } from '../pages/apiKeys/ApiKeysPage'
 import { AuditPage } from '../pages/audit/AuditPage'
 import { ClientsPage } from '../pages/clients/ClientsPage'
@@ -35,7 +36,19 @@ export function AppRouter() {
         <Route path="/audit" element={<AuditPage />} />
       </Route>
 
-      <Route path="/404" element={<NotFoundState />} />
+      <Route
+        path="/404"
+        element={
+          <main className="standalone">
+            <div className="standalone__card">
+              <NotFoundState />
+              <p className="standalone__actions">
+                <Link to="/">{strings.notFound.backHome}</Link>
+              </p>
+            </div>
+          </main>
+        }
+      />
       <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
   )

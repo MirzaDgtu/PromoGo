@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { responseOf, useStoreOverview, useStoreOverviews, type StoreOverview } from '../../api/queries'
+import { AttentionIcon, CheckIcon, InfoIcon } from '../../components/icons'
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from '../../components/states'
 import { strings } from '../../i18n/strings'
 import { useOrgStore } from '../../session/OrgStoreContext'
@@ -62,11 +63,11 @@ export function OverviewPage() {
 }
 
 function Check({ state, title, children }: { state: CheckState; title: string; children: ReactNode }) {
-  const icon = state === 'ok' ? '✓' : state === 'warn' ? '!' : 'i'
+  const Icon = state === 'ok' ? CheckIcon : state === 'warn' ? AttentionIcon : InfoIcon
   return (
     <li className={`check check--${state}`}>
       <span className="check__icon" aria-hidden="true">
-        {icon}
+        <Icon />
       </span>
       <div>
         <h3>
@@ -112,68 +113,78 @@ function StoreOverviewView({ orgID, storeID, storeName }: { orgID: number; store
     <>
       {heading}
 
-      <section aria-labelledby="overview-checklist">
-        <h2 id="overview-checklist">{t.checklist}</h2>
-        <ul className="checklist">
-          <Check state={o.loyalty_config.configured ? 'ok' : 'warn'} title={t.loyalty.title}>
-            <p>{o.loyalty_config.configured ? t.loyalty.ok(o.loyalty_config.version ?? 0) : t.loyalty.missing}</p>
-            {!o.loyalty_config.configured && can('loyalty_config.write', orgID, storeID) && (
-              <Link to="/loyalty-config">{t.loyalty.action}</Link>
-            )}
-          </Check>
-
-          {register.kind !== 'hidden' && (
-            <Check state={registerCheck(register)} title={t.register.title}>
-              <p>
-                {register.kind === 'connected'
-                  ? t.register.ok(relativeTime(register.lastUsedAt))
-                  : register.kind === 'stale'
-                    ? t.register.stale(relativeTime(register.lastUsedAt))
-                    : register.kind === 'never_used'
-                      ? t.register.neverUsed
-                      : t.register.noKey}
-              </p>
-              {register.kind !== 'connected' && <Link to="/api-keys">{t.register.action}</Link>}
+      <div className="overview">
+        <section aria-labelledby="overview-checklist">
+          <h2 id="overview-checklist">{t.checklist}</h2>
+          <ul className="checklist">
+            <Check state={o.loyalty_config.configured ? 'ok' : 'warn'} title={t.loyalty.title}>
+              <p>{o.loyalty_config.configured ? t.loyalty.ok(o.loyalty_config.version ?? 0) : t.loyalty.missing}</p>
+              {!o.loyalty_config.configured && can('loyalty_config.write', orgID, storeID) && (
+                <Link to="/loyalty-config">{t.loyalty.action}</Link>
+              )}
             </Check>
-          )}
 
-          <Check state={o.last_transaction_at ? 'ok' : 'info'} title={t.sales.title}>
-            <p>{o.last_transaction_at ? t.sales.ok(relativeTime(o.last_transaction_at)) : t.sales.none}</p>
-          </Check>
-        </ul>
-      </section>
+            {register.kind !== 'hidden' && (
+              <Check state={registerCheck(register)} title={t.register.title}>
+                <p>
+                  {register.kind === 'connected'
+                    ? t.register.ok(relativeTime(register.lastUsedAt))
+                    : register.kind === 'stale'
+                      ? t.register.stale(relativeTime(register.lastUsedAt))
+                      : register.kind === 'never_used'
+                        ? t.register.neverUsed
+                        : t.register.noKey}
+                </p>
+                {register.kind !== 'connected' && <Link to="/api-keys">{t.register.action}</Link>}
+              </Check>
+            )}
 
-      <section className="page-section" aria-labelledby="overview-activity">
-        <h2 id="overview-activity">{t.activity}</h2>
-        <p>
-          {t.clients(o.clients)}
-          {o.clients > 0 && can('clients.read', orgID, storeID) && (
-            <>
-              {' '}
-              <Link to="/clients">{t.toClients}</Link>
-            </>
-          )}
-        </p>
-        <table className="data-table activity-table">
-          <thead>
-            <tr>
-              <th scope="col">{t.metrics.metric}</th>
-              <th scope="col" className="cell-number">
-                {t.metrics.last24h}
-              </th>
-              <th scope="col" className="cell-number">
-                {t.metrics.last7d}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <MetricRow label={t.metrics.operations} a={o.last_24h.operations} b={o.last_7d.operations} />
-            <MetricRow label={t.metrics.salesAmount} a={money(o.last_24h.sales_amount)} b={money(o.last_7d.sales_amount)} />
-            <MetricRow label={t.metrics.pointsAccrued} a={o.last_24h.points_accrued} b={o.last_7d.points_accrued} />
-            <MetricRow label={t.metrics.pointsRedeemed} a={o.last_24h.points_redeemed} b={o.last_7d.points_redeemed} />
-          </tbody>
-        </table>
-      </section>
+            <Check state={o.last_transaction_at ? 'ok' : 'info'} title={t.sales.title}>
+              <p>{o.last_transaction_at ? t.sales.ok(relativeTime(o.last_transaction_at)) : t.sales.none}</p>
+            </Check>
+          </ul>
+        </section>
+
+        <section className="activity" aria-labelledby="overview-activity">
+          <h2 id="overview-activity">{t.activity}</h2>
+          <p className="activity__clients">
+            {t.clients(o.clients)}
+            {o.clients > 0 && can('clients.read', orgID, storeID) && (
+              <>
+                {' '}
+                <Link to="/clients">{t.toClients}</Link>
+              </>
+            )}
+          </p>
+          <table className="data-table activity-table">
+            <thead>
+              <tr>
+                <th scope="col">{t.metrics.metric}</th>
+                <th scope="col" className="cell-number">
+                  {t.metrics.last24h}
+                </th>
+                <th scope="col" className="cell-number">
+                  {t.metrics.last7d}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <MetricRow label={t.metrics.operations} a={o.last_24h.operations} b={o.last_7d.operations} />
+              <MetricRow
+                label={t.metrics.salesAmount}
+                a={money(o.last_24h.sales_amount)}
+                b={money(o.last_7d.sales_amount)}
+              />
+              <MetricRow label={t.metrics.pointsAccrued} a={o.last_24h.points_accrued} b={o.last_7d.points_accrued} />
+              <MetricRow
+                label={t.metrics.pointsRedeemed}
+                a={o.last_24h.points_redeemed}
+                b={o.last_7d.points_redeemed}
+              />
+            </tbody>
+          </table>
+        </section>
+      </div>
     </>
   )
 }
@@ -190,7 +201,11 @@ function MetricRow({ label, a, b }: { label: string; a: number | string; b: numb
 }
 
 function StatusCell({ state, text }: { state: CheckState; text: string }) {
-  return <span className={`status status--${state === 'ok' ? 'active' : state === 'warn' ? 'warn' : 'revoked'}`}>{text}</span>
+  return (
+    <span className={`status status--${state === 'ok' ? 'active' : state === 'warn' ? 'warn' : 'revoked'}`}>
+      {text}
+    </span>
+  )
 }
 
 function OrganizationOverview({ orgID }: { orgID: number }) {
@@ -203,58 +218,66 @@ function OrganizationOverview({ orgID }: { orgID: number }) {
   return (
     <>
       <p className="muted page-intro">{t.orgIntro}</p>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th scope="col">{t.columns.store}</th>
-            <th scope="col">{t.columns.loyalty}</th>
-            <th scope="col">{t.columns.register}</th>
-            <th scope="col">{t.columns.lastOperation}</th>
-            <th scope="col" className="cell-number">
-              {t.columns.operations7d}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {stores.map((store, i) => {
-            const r = results[i]
-            const o: StoreOverview | undefined = r?.data
-            return (
-              <tr key={store.id}>
-                <td>
-                  <button
-                    type="button"
-                    className="link-button"
-                    aria-label={t.open(store.name ?? '')}
-                    onClick={() => setSelectedStoreID(store.id)}
-                  >
-                    {store.name}
-                  </button>
-                </td>
-                {!o ? (
-                  <td colSpan={4} className="muted">
-                    {r?.isError ? strings.serverError.title : strings.common.loading}
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th scope="col">{t.columns.store}</th>
+              <th scope="col">{t.columns.loyalty}</th>
+              <th scope="col">{t.columns.register}</th>
+              <th scope="col">{t.columns.lastOperation}</th>
+              <th scope="col" className="cell-number">
+                {t.columns.operations7d}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {stores.map((store, i) => {
+              const r = results[i]
+              const o: StoreOverview | undefined = r?.data
+              return (
+                <tr key={store.id}>
+                  <td>
+                    <button
+                      type="button"
+                      className="link-button"
+                      aria-label={t.open(store.name ?? '')}
+                      onClick={() => setSelectedStoreID(store.id)}
+                    >
+                      {store.name}
+                    </button>
                   </td>
-                ) : (
-                  <>
-                    <td>
-                      <StatusCell
-                        state={o.loyalty_config.configured ? 'ok' : 'warn'}
-                        text={o.loyalty_config.configured ? t.cell.configured : t.cell.notConfigured}
-                      />
+                  {!o ? (
+                    <td colSpan={4} className="muted">
+                      {r?.isError ? strings.serverError.title : strings.common.loading}
                     </td>
-                    <td>
-                      <RegisterCell overview={o} />
-                    </td>
-                    <td>{o.last_transaction_at ? relativeTime(o.last_transaction_at) : <span className="muted">{t.cell.never}</span>}</td>
-                    <td className="cell-number">{o.last_7d.operations.toLocaleString('ru-RU')}</td>
-                  </>
-                )}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                  ) : (
+                    <>
+                      <td>
+                        <StatusCell
+                          state={o.loyalty_config.configured ? 'ok' : 'warn'}
+                          text={o.loyalty_config.configured ? t.cell.configured : t.cell.notConfigured}
+                        />
+                      </td>
+                      <td>
+                        <RegisterCell overview={o} />
+                      </td>
+                      <td>
+                        {o.last_transaction_at ? (
+                          relativeTime(o.last_transaction_at)
+                        ) : (
+                          <span className="muted">{t.cell.never}</span>
+                        )}
+                      </td>
+                      <td className="cell-number">{o.last_7d.operations.toLocaleString('ru-RU')}</td>
+                    </>
+                  )}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </>
   )
 }

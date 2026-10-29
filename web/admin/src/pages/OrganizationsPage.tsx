@@ -9,6 +9,7 @@ import {
   useUpdateStore,
 } from '../api/queries'
 import type { components } from '../api/schema.gen'
+import { ChevronIcon } from '../components/icons'
 import { NameForm } from '../components/NameForm'
 import { StoreForm, toStoreInput } from '../components/StoreForm'
 import { EmptyState, ErrorState, LoadingState } from '../components/states'
@@ -120,6 +121,7 @@ function OrganizationsTable({
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set())
 
   return (
+    <div className="table-wrap">
     <table className="org-table">
       <thead>
         <tr>
@@ -157,6 +159,7 @@ function OrganizationsTable({
         )
       })}
     </table>
+    </div>
   )
 }
 
@@ -193,7 +196,7 @@ function OrganizationGroup({
             aria-label={collapsed ? strings.organizations.expand(name) : strings.organizations.collapse(name)}
             onClick={onToggle}
           >
-            {collapsed ? '▸' : '▾'}
+            <ChevronIcon className={collapsed ? 'disclosure' : 'disclosure disclosure--open'} />
           </button>
           <button type="button" className="link-button org-group__name" onClick={() => setSelectedOrgID(org.id)}>
             {name}

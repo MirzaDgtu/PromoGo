@@ -3,17 +3,23 @@ import { useState, type ReactNode } from 'react'
 import { requestIdFrom } from '../api/client'
 import { strings } from '../i18n/strings'
 
+// LoadingState shows the shape of what's coming as a few pulsing lines;
+// the label stays for screen readers.
 export function LoadingState({ label = strings.common.loading }: { label?: string }) {
   return (
-    <p role="status" aria-live="polite">
-      {label}
-    </p>
+    <div role="status" aria-live="polite" className="skeleton">
+      <span className="skeleton__line" aria-hidden="true" />
+      <span className="skeleton__line" aria-hidden="true" />
+      <span className="skeleton__line" aria-hidden="true" />
+      <span className="skeleton__line" aria-hidden="true" />
+      <span className="visually-hidden">{label}</span>
+    </div>
   )
 }
 
 export function EmptyState({ title, body }: { title: string; body?: ReactNode }) {
   return (
-    <div role="status">
+    <div role="status" className="state">
       <h2>{title}</h2>
       {body}
     </div>
@@ -22,7 +28,7 @@ export function EmptyState({ title, body }: { title: string; body?: ReactNode })
 
 export function ForbiddenState() {
   return (
-    <div role="alert">
+    <div role="alert" className="state">
       <h2>{strings.forbidden.title}</h2>
       <p>{strings.forbidden.body}</p>
     </div>
@@ -31,7 +37,7 @@ export function ForbiddenState() {
 
 export function NotFoundState() {
   return (
-    <div role="alert">
+    <div role="alert" className="state">
       <h2>{strings.notFound.title}</h2>
       <p>{strings.notFound.body}</p>
     </div>
@@ -56,11 +62,11 @@ export function ErrorState({
   const [copied, setCopied] = useState(false)
 
   return (
-    <div role="alert">
+    <div role="alert" className="state state--error">
       <h2>{title}</h2>
       <p>{body}</p>
       {requestId && (
-        <p>
+        <p className="state__request">
           <code>{requestId}</code>{' '}
           <button
             type="button"

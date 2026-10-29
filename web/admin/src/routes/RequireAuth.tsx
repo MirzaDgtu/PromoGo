@@ -17,7 +17,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   switch (status) {
     case 'loading':
     case 'authenticating':
-      return <LoadingState />
+      return (
+        <main className="standalone">
+          <LoadingState />
+        </main>
+      )
     case 'unconfigured':
     case 'unauthenticated':
       return <Navigate to="/login" replace />

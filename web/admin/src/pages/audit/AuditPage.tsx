@@ -86,6 +86,7 @@ function OrgAudit({ orgID, orgName }: { orgID: number; orgName: string }) {
         <EmptyState title={category ? t.emptyFiltered : t.empty} />
       ) : (
         <>
+          <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
@@ -100,7 +101,7 @@ function OrgAudit({ orgID, orgName }: { orgID: number; orgName: string }) {
               {events.map((e) => (
                 <tr key={e.id}>
                   <td className="cell-nowrap">{dateTimeFormat.format(new Date(e.occurred_at))}</td>
-                  <td>{describeActor(e)}</td>
+                  <td className="cell-nowrap">{describeActor(e)}</td>
                   <td>{describeEvent(e, storeName)}</td>
                   <td>{e.store_id != null ? storeName(e.store_id) : <span className="muted">—</span>}</td>
                   <td>{e.ip ? <code>{e.ip}</code> : <span className="muted">—</span>}</td>
@@ -108,8 +109,9 @@ function OrgAudit({ orgID, orgName }: { orgID: number; orgName: string }) {
               ))}
             </tbody>
           </table>
+          </div>
           {query.hasNextPage && (
-            <p>
+            <p className="load-more">
               <button type="button" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
                 {query.isFetchingNextPage ? t.loadingMore : t.loadMore}
               </button>

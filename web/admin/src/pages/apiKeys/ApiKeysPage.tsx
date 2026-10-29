@@ -131,6 +131,7 @@ function StoreApiKeys({ orgID, storeID, storeName }: { orgID: number; storeID: n
       ) : query.data.length === 0 ? (
         <EmptyState title={t.empty} body={<p>{t.emptyBody}</p>} />
       ) : (
+        <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
@@ -198,9 +199,9 @@ function StoreApiKeys({ orgID, storeID, storeName }: { orgID: number; storeID: n
                       ))}
                     </ul>
                   </td>
-                  <td>{dateFormat.format(new Date(key.created_at))}</td>
-                  <td>{key.last_used_at ? dateTimeFormat.format(new Date(key.last_used_at)) : <span className="muted">{t.never}</span>}</td>
-                  <td>{key.expires_at ? dateFormat.format(new Date(key.expires_at)) : <span className="muted">{t.noExpiry}</span>}</td>
+                  <td className="cell-nowrap">{dateFormat.format(new Date(key.created_at))}</td>
+                  <td className="cell-nowrap">{key.last_used_at ? dateTimeFormat.format(new Date(key.last_used_at)) : <span className="muted">{t.never}</span>}</td>
+                  <td className="cell-nowrap">{key.expires_at ? dateFormat.format(new Date(key.expires_at)) : <span className="muted">{t.noExpiry}</span>}</td>
                   <td>
                     <span className={`status status--${status}`}>{t.status[status]}</span>
                   </td>
@@ -224,6 +225,7 @@ function StoreApiKeys({ orgID, storeID, storeName }: { orgID: number; storeID: n
             })}
           </tbody>
         </table>
+        </div>
       )}
     </>
   )

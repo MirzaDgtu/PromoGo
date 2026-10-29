@@ -195,6 +195,7 @@ function ClientList({ orgID, storeID, onOpen }: { orgID: number; storeID: number
   return (
     <section className="page-section">
       {clients.some((c) => isMaskedPhone(c.phone)) && <p className="muted">{t.maskedNote}</p>}
+      <div className="table-wrap">
       <table className="data-table">
         <thead>
           <tr>
@@ -220,14 +221,15 @@ function ClientList({ orgID, storeID, onOpen }: { orgID: number; storeID: number
                 <td>
                   <AppStatus connected={client.app_connected} />
                 </td>
-                <td>{dateFormat.format(new Date(client.created_at))}</td>
+                <td className="cell-nowrap">{dateFormat.format(new Date(client.created_at))}</td>
               </tr>
             )
           })}
         </tbody>
       </table>
+      </div>
       {query.hasNextPage && (
-        <p>
+        <p className="load-more">
           <button type="button" disabled={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
             {query.isFetchingNextPage ? t.loadingMore : t.loadMore}
           </button>
@@ -263,7 +265,7 @@ function ClientCard({
 
   return (
     <>
-      <p>
+      <p className="client-back">
         <button type="button" className="link-button" onClick={onBack}>
           {d.back}
         </button>
@@ -300,6 +302,7 @@ function ClientCard({
         ) : history.data.length === 0 ? (
           <p className="muted">{d.historyEmpty}</p>
         ) : (
+          <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
@@ -320,9 +323,9 @@ function ClientCard({
             <tbody>
               {history.data.map((tx) => (
                 <tr key={tx.id}>
-                  <td>{dateTimeFormat.format(new Date(tx.created_at))}</td>
+                  <td className="cell-nowrap">{dateTimeFormat.format(new Date(tx.created_at))}</td>
                   <td>{d.types[tx.type]}</td>
-                  <td className="cell-number">{formatMoney(tx.amount, tx.currency)}</td>
+                  <td className="cell-number cell-nowrap">{formatMoney(tx.amount, tx.currency)}</td>
                   <td className="cell-number">{formatPointsDelta(tx.points_delta)}</td>
                   <td className="cell-number">{tx.balance_after.toLocaleString('ru-RU')}</td>
                   <td>
@@ -332,6 +335,7 @@ function ClientCard({
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
     </>

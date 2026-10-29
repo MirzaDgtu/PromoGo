@@ -4,8 +4,8 @@ import { useAuth } from '../auth/AuthProvider'
 export function DisabledAccountPage() {
   const { logout } = useAuth()
   return (
-    <main style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
-      <div style={{ textAlign: 'center', maxWidth: 420 }}>
+    <main className="standalone">
+      <div className="standalone__card">
         <h1>{strings.disabledAccount.title}</h1>
         <p>{strings.disabledAccount.body}</p>
         <button type="button" onClick={() => void logout()}>

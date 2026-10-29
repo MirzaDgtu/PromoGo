@@ -31,12 +31,14 @@ export class ErrorBoundary extends Component<Props, State> {
   override render() {
     if (this.state.error) {
       return (
-        <main role="alert" style={{ padding: 32 }}>
-          <h1>{strings.serverError.title}</h1>
-          <p>{strings.serverError.body}</p>
-          <button type="button" onClick={() => this.setState({ error: null })}>
-            {strings.common.retry}
-          </button>
+        <main role="alert" className="standalone">
+          <div className="standalone__card">
+            <h1>{strings.serverError.title}</h1>
+            <p className="muted">{strings.serverError.body}</p>
+            <button type="button" onClick={() => this.setState({ error: null })}>
+              {strings.common.retry}
+            </button>
+          </div>
         </main>
       )
     }

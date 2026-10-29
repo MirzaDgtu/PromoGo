@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Navigate } from 'react-router-dom'
 
-import { strings } from '../i18n/strings'
+import { LoadingState } from '../components/states'
 import { useAuth } from './AuthProvider'
 
 // Handles the OIDC Authorization Code + PKCE redirect back from the IdP at
@@ -27,8 +27,8 @@ export function CallbackPage() {
   }
 
   return (
-    <main style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
-      <p aria-live="polite">{strings.common.loading}</p>
+    <main className="standalone">
+      <LoadingState />
     </main>
   )
 }
