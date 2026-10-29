@@ -34,3 +34,10 @@ dist/
 
 # Local dev infra state
 deployments/*.local.yml
+
+# Admin Web has its own image (web/admin/Dockerfile); the Go build never
+# needs its dependencies or build output.
+web/admin/node_modules/
+web/admin/dist/
+web/admin/playwright-report/
+web/admin/test-results/

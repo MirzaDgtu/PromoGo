@@ -1,0 +1,44 @@
+# Admin Web, same-origin with the API (docs/admin-web-plan.md 5.2):
+#   /api/*      -> the Go backend
+#   /assets/*   -> hashed build files, cached for a year
+#   anything else -> index.html (SPA routes), never cached
+# /metrics, /healthz and /readyz are deliberately not proxied: they fall
+# through to index.html and stay reachable only on the backend's own port.
+server {
+    listen 8080;
+    server_tokens off;
+    root /usr/share/nginx/html;
+
+    # nginx drops server-level add_header in any location that sets its own,
+    # so every location includes the security headers itself.
+
+    location /api/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        proxy_pass ${PROMOGO_API_UPSTREAM};
+        proxy_set_header Host $host;
+        # The backend trusts this only from PROMOGO_HTTP_TRUSTED_PROXIES,
+        # which must cover this proxy (rate limits and audit use the IP).
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 1m;
+    }
+
+    # "/api" without the slash is not an SPA route either.
+    location = /api {
+        return 404;
+    }
+
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        # A new release must reach an open tab on its next load, so the
+        # entry document is always revalidated.
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}

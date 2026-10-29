@@ -52,6 +52,14 @@ oidc-mock-up:
 oidc-mock-down:
 	$(COMPOSE) --profile dev-oidc stop oidc-mock
 
+# Admin Web image as it ships (nginx + built SPA), on :8092 — see
+# docs/admin-web-deployment.md. Rebuilds the image on every run.
+admin-web-up:
+	$(COMPOSE) --profile admin-web up -d --build admin-web
+
+admin-web-down:
+	$(COMPOSE) --profile admin-web stop admin-web
+
 # ── Migrations ───────────────────────────────────────────────────────────────
 
 migrate-up:

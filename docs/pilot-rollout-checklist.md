@@ -67,6 +67,11 @@ release candidate is cut, per [[DEC-017]] through [[DEC-021]]:
       (see the security review's item 4 checklist — this was flagged
       there as something to re-check at actual cutover time, not just in
       code review).
+- [ ] Admin Web is built and shipped per `docs/admin-web-deployment.md`:
+      an image per environment with that environment's OIDC values, the
+      IdP's redirect URIs registered, `PROMOGO_HTTP_TRUSTED_PROXIES`
+      covering admin-web as well as the load balancer, and the post-deploy
+      checks done.
 - [ ] `AntiFraudConfig.DailyRedeemPointsLimit`/`DailyRedeemWindow` are set
       to real, business-approved values (not left at development
       defaults) — outside `development` the app fails startup if these

@@ -82,5 +82,24 @@ services:
     ports:
       - "${OIDC_MOCK_HOST:-127.0.0.1}:${OIDC_MOCK_HOST_PORT:-8091}:8080"
 
+  # Admin Web as it ships: the built SPA behind nginx, proxying /api/ to app
+  # (docs/admin-web-deployment.md). Opt in with `make admin-web-up`
+  # (profile "admin-web"). The OIDC values are baked in at build time and
+  # reuse the backend's issuer/audience — the SPA's client id is the
+  # audience the backend checks.
+  admin-web:
+    build:
+      context: ../web/admin
+      args:
+        VITE_OIDC_AUTHORITY: ${PROMOGO_OIDC_ISSUER_URL:-}
+        VITE_OIDC_CLIENT_ID: ${PROMOGO_OIDC_AUDIENCE:-}
+    profiles: ["admin-web"]
+    environment:
+      PROMOGO_API_UPSTREAM: http://app:8080
+    ports:
+      - "${ADMIN_WEB_HOST:-127.0.0.1}:${ADMIN_WEB_HOST_PORT:-8092}:8080"
+    depends_on:
+      - app
+
 volumes:
   postgres_data:

@@ -167,10 +167,11 @@
 - Компонентные тесты.
 - Браузерные E2E критических сценариев с axe-проверкой каждого экрана
   (`web/admin/e2e/`).
+- Образ admin-web (nginx + SPA, same-origin) и инструкция по выкладке и
+  откату: `docs/admin-web-deployment.md`.
 
 Из Definition of Done остаются:
 - CI — в проекте пока не настроен;
-- обновление deployment/rollback-документов под раздачу SPA;
 - ручной security/regression review новой поверхности перед rollout.
 
 ### M2. Кассы и интеграции

@@ -99,3 +99,6 @@ resolved permissions) while building this feature.
   every real authorization check happens server-side.
 - Same-origin deployment (`docs/admin-web-plan.md` 5.2): the built SPA is
   served at `/`, the backend at `/api/*`, no CORS configuration needed.
+  `Dockerfile` + `nginx/` build that image; how to build, ship and roll it
+  back is in `../../docs/admin-web-deployment.md` (`make admin-web-up`
+  runs it locally on :8092).

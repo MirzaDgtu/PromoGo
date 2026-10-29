@@ -1,0 +1,7 @@
+node_modules
+dist
+playwright-report
+test-results
+# OIDC values come in as build args; a local env file must never be baked in.
+.env
+.env.*
