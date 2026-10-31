@@ -90,24 +90,52 @@ export function AuthProvider({
     const settings = oidcSettings()
     return settings ? new UserManager(settings) : null
   }, [])
-  // Coalesces concurrent 401s from multiple in-flight requests into a
-  // single silent-renew attempt, so a page that fires several queries at
-  // once doesn't open several renewal flows — see the module doc on
-  // controlled re-auth (no infinite retry loops).
+  // Coalesces concurrent 401s from multiple in-flight requests, and the
+  // token-expiry event, into a single silent-renew attempt, so a page that
+  // fires several queries at once doesn't open several renewal flows — see
+  // the module doc on controlled re-auth (no infinite retry loops).
   const renewalInFlight = useRef<Promise<void> | null>(null)
+  // Whether a 401 is waiting on the attempt in flight. An attempt started
+  // ahead of expiry stays invisible while the staff token still works; a 401
+  // means requests are already failing, so the outcome has to reach the user.
+  const renewalAwaited = useRef(false)
+  // True while this session holds a staff token, so the expiry event can't
+  // bring back a session that has already expired or ended.
+  const sessionLive = useRef(false)
+  // Bumped whenever one session ends or another begins. Every async auth
+  // operation records the generation it started in and drops its result once
+  // that has changed, so a late response from a previous person can never
+  // restore their token, status or cache under the next person's identity.
+  const sessionGeneration = useRef(0)
+  // The OIDC user of the current session. oidc-client-ts stores a silent
+  // renewal's user itself, before a stale result can be dropped, so this is
+  // what gets put back — otherwise a reload would revive the previous person.
+  const sessionUser = useRef<User | null>(null)
+
+  const startGeneration = useCallback((): number => {
+    renewalInFlight.current = null
+    renewalAwaited.current = false
+    sessionLive.current = false
+    sessionGeneration.current += 1
+    return sessionGeneration.current
+  }, [])
 
   const finishLogin = useCallback(
-    async (user: User) => {
+    async (user: User, generation: number) => {
       const idToken = user.id_token
       if (!idToken) {
         setStatus('unauthenticated')
         return
       }
+      sessionUser.current = user
       setIdentity({ subject: user.profile.sub, email: user.profile.email ?? '', name: user.profile.name ?? '' })
       const result = await exchangeIDToken(idToken)
+      if (generation !== sessionGeneration.current) return
       if ('accessToken' in result) {
         setAccessToken(result.accessToken)
+        sessionLive.current = true
         const me = await api.GET('/api/v1/staff/me')
+        if (generation !== sessionGeneration.current) return
         if (me.data) {
           setStaffUserID(me.data.staff_user_id ?? null)
           setStatus(me.data.memberships && me.data.memberships.length > 0 ? 'authenticated' : 'no_membership')
@@ -123,38 +151,70 @@ export function AuthProvider({
     [],
   )
 
-  const attemptSilentRenewal = useCallback((): Promise<void> => {
-    if (!userManager) return Promise.resolve()
-    if (renewalInFlight.current) return renewalInFlight.current
-    const attempt = (async () => {
-      try {
-        const user = await userManager.signinSilent()
-        if (user?.id_token) {
-          const result = await exchangeIDToken(user.id_token)
-          if ('accessToken' in result) {
-            setAccessToken(result.accessToken)
-            await queryClient.invalidateQueries()
+  const attemptSilentRenewal = useCallback(
+    (cause: 'unauthorized' | 'expiring'): Promise<void> => {
+      if (!userManager) return Promise.resolve()
+      if (cause === 'unauthorized') renewalAwaited.current = true
+      if (renewalInFlight.current) return renewalInFlight.current
+      const generation = sessionGeneration.current
+      const attempt = (async () => {
+        try {
+          const user = await userManager.signinSilent()
+          if (generation !== sessionGeneration.current) {
+            await userManager.storeUser(sessionUser.current)
             return
           }
+          if (user) {
+            // Recorded before the exchange: a rotating IdP has already spent
+            // the previous refresh token. Stored again because a stale attempt
+            // may have put the previous user back just before this resolved.
+            sessionUser.current = user
+            await userManager.storeUser(user)
+          }
+          if (user?.id_token) {
+            const result = await exchangeIDToken(user.id_token)
+            if (generation !== sessionGeneration.current) {
+              await userManager.storeUser(sessionUser.current)
+              return
+            }
+            if ('accessToken' in result) {
+              setAccessToken(result.accessToken)
+              if (renewalAwaited.current) await queryClient.invalidateQueries()
+              return
+            }
+          }
+          throw new Error('silent renewal did not yield a usable session')
+        } catch {
+          if (generation !== sessionGeneration.current || !renewalAwaited.current) return
+          sessionLive.current = false
+          setAccessToken(null)
+          setStatus('session_expired')
+        } finally {
+          // A newer session may already have its own renewal in flight.
+          if (generation === sessionGeneration.current) {
+            renewalInFlight.current = null
+            renewalAwaited.current = false
+          }
         }
-        throw new Error('silent renewal did not yield a usable session')
-      } catch {
-        setAccessToken(null)
-        setStatus('session_expired')
-      } finally {
-        renewalInFlight.current = null
-      }
-    })()
-    renewalInFlight.current = attempt
-    return attempt
-  }, [userManager, queryClient])
+      })()
+      renewalInFlight.current = attempt
+      return attempt
+    },
+    [userManager, queryClient],
+  )
 
   useEffect(() => {
     setOn401Handler(() => {
-      void attemptSilentRenewal()
+      void attemptSilentRenewal('unauthorized')
     })
     return () => setOn401Handler(null)
   }, [attemptSilentRenewal])
+
+  useEffect(() => {
+    return userManager?.events.addAccessTokenExpiring(() => {
+      if (sessionLive.current) void attemptSilentRenewal('expiring')
+    })
+  }, [userManager, attemptSilentRenewal])
 
   useEffect(() => {
     if (!userManager) {
@@ -169,48 +229,57 @@ export function AuthProvider({
     // and bounce a successful login back to /login.
     if (window.location.pathname === CALLBACK_PATH) return
     let cancelled = false
+    const generation = startGeneration()
     userManager
       .getUser()
       .then(async (user) => {
-        if (cancelled) return
+        if (cancelled || generation !== sessionGeneration.current) return
         if (user && !user.expired) {
-          await finishLogin(user)
+          await finishLogin(user, generation)
         } else {
           setStatus('unauthenticated')
         }
       })
       .catch(() => {
-        if (!cancelled) setStatus('unauthenticated')
+        if (!cancelled && generation === sessionGeneration.current) setStatus('unauthenticated')
       })
     return () => {
       cancelled = true
     }
-    // Runs once on mount; finishLogin/userManager are stable for the
+    // Runs once on mount; finishLogin/startGeneration/userManager are stable for the
     // provider's lifetime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const login = useCallback(async () => {
     if (!userManager) return
+    startGeneration()
     setStatus('authenticating')
     await userManager.signinRedirect()
-  }, [userManager])
+  }, [userManager, startGeneration])
 
   const completeLogin = useCallback(async () => {
     if (!userManager) {
       setStatus('unconfigured')
       return
     }
+    const generation = startGeneration()
     setStatus('authenticating')
     try {
-      const user = await userManager.signinRedirectCallback()
-      await finishLogin(user)
+      // signinCallback dispatches on the request's type. Silent renewal loads
+      // this same route in a hidden iframe: there it only notifies the parent
+      // window, which exchanges the code itself, and resolves with no user.
+      const user = await userManager.signinCallback()
+      if (!user || generation !== sessionGeneration.current) return
+      await finishLogin(user, generation)
     } catch {
-      setStatus('unauthenticated')
+      if (generation === sessionGeneration.current) setStatus('unauthenticated')
     }
-  }, [userManager, finishLogin])
+  }, [userManager, finishLogin, startGeneration])
 
   const logout = useCallback(async () => {
+    startGeneration()
+    sessionUser.current = null
     setAccessToken(null)
     setStaffUserID(null)
     setIdentity(null)
@@ -222,7 +291,7 @@ export function AuthProvider({
       // actually matters for this app; losing the IdP-side logout redirect
       // is a degraded-but-safe outcome, not one worth surfacing an error for.
     })
-  }, [userManager, queryClient])
+  }, [userManager, queryClient, startGeneration])
 
   const value = useMemo<AuthContextValue>(
     () => ({ status, staffUserID, identity, login, logout, completeLogin }),

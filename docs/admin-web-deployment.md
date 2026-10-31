@@ -95,7 +95,9 @@ docker build \
    - прямой заход на `https://admin.example.ru/api-keys` открывает SPA, а не
      404 бэкенда;
    - `curl -sI https://admin.example.ru/` показывает `Cache-Control: no-cache`
-     и `X-Frame-Options: DENY`;
+     и `X-Frame-Options: DENY`, а `curl -sI https://admin.example.ru/auth/callback`
+     показывает `X-Frame-Options: SAMEORIGIN` — этот маршрут загружается в
+     скрытом iframe при тихом обновлении сессии;
    - `curl -s https://admin.example.ru/metrics` возвращает HTML админки, а не
      метрики;
    - в аудите вход отображается с реальным IP администратора, а не с адресом

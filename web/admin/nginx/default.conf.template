@@ -34,6 +34,17 @@ server {
         try_files $uri =404;
     }
 
+    # OIDC silent renewal loads this route in a same-origin hidden iframe, so
+    # it alone relaxes X-Frame-Options; the other headers match the snippet.
+    location = /auth/callback {
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Cache-Control "no-cache" always;
+        try_files /index.html =404;
+    }
+
     location / {
         include /etc/nginx/snippets/security-headers.conf;
         # A new release must reach an open tab on its next load, so the

@@ -134,7 +134,7 @@ export function LoyaltyConfigForm({ config, canWrite, onSubmit, pending, error, 
             inputMode="numeric" registration={register('minBalanceToRedeem', { validate: pointsRule })} />
         </fieldset>
 
-        <Preview control={control} valid={Object.keys(errors).length === 0} />
+        <Preview control={control} />
       </div>
 
       {canWrite && (
@@ -169,10 +169,24 @@ export function LoyaltyConfigForm({ config, canWrite, onSubmit, pending, error, 
   )
 }
 
-function Preview({ control, valid }: { control: Control<LoyaltyFormValues>; valid: boolean }) {
+function Preview({ control }: { control: Control<LoyaltyFormValues> }) {
   const amountID = useId()
   const [amount, setAmount] = useState('1000')
-  const v = useWatch({ control })
+  const {
+    accrualPercent = '',
+    minPurchaseAmount = '',
+    pointsExchangeRate = '',
+    maxRedeemPercent = '',
+    minBalanceToRedeem = '',
+  } = useWatch({ control })
+  // Watched values render before formState.errors catches up, so these exact
+  // strings are validated here: the arithmetic below throws on anything else.
+  const valid =
+    percentRule(accrualPercent) === true &&
+    amountRule(minPurchaseAmount) === true &&
+    rateRule(pointsExchangeRate) === true &&
+    percentRule(maxRedeemPercent) === true &&
+    pointsRule(minBalanceToRedeem) === true
   const amountOK = fitsNumeric(amount, 20, 2)
 
   let body: ReactNode
@@ -180,10 +194,10 @@ function Preview({ control, valid }: { control: Control<LoyaltyFormValues>; vali
     body = <p className="muted">{t.preview.invalid}</p>
   } else {
     const a = normalizeDecimal(amount)
-    const rate = normalizeDecimal(v.pointsExchangeRate ?? '1')
-    const minPurchase = normalizeDecimal(v.minPurchaseAmount ?? '0')
-    const earned = accruedPoints(a, normalizeDecimal(v.accrualPercent ?? '0'), minPurchase)
-    const cap = maxRedeemablePoints(a, normalizeDecimal(v.maxRedeemPercent ?? '0'), rate)
+    const rate = normalizeDecimal(pointsExchangeRate)
+    const minPurchase = normalizeDecimal(minPurchaseAmount)
+    const earned = accruedPoints(a, normalizeDecimal(accrualPercent), minPurchase)
+    const cap = maxRedeemablePoints(a, normalizeDecimal(maxRedeemPercent), rate)
     body = (
       <ul>
         <li>

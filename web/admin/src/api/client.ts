@@ -15,22 +15,33 @@ export function setAccessToken(token: string | null): void {
 
 // on401 is invoked once per 401 response, after the request has already
 // failed — AuthProvider wires this to its silent-renew-then-retry flow so
-// this module doesn't need to know anything about OIDC.
+// this module doesn't need to know anything about OIDC. A 401 for a token
+// that is no longer current is skipped: that session already ended or was
+// renewed, and renewing again could revive it after a logout. So is a 401
+// from the ID-token exchange: that endpoint judges the ID token, not the staff
+// token, and its caller handles the refusal.
 let on401: (() => void) | null = null
 
 export function setOn401Handler(handler: (() => void) | null): void {
   on401 = handler
 }
 
+const bearer = (token: string) => `Bearer ${token}`
+
 const authMiddleware: Middleware = {
   async onRequest({ request }) {
     if (currentAccessToken) {
-      request.headers.set('Authorization', `Bearer ${currentAccessToken}`)
+      request.headers.set('Authorization', bearer(currentAccessToken))
     }
     return request
   },
-  async onResponse({ response }) {
-    if (response.status === 401) {
+  async onResponse({ request, response, schemaPath }) {
+    if (
+      response.status === 401 &&
+      schemaPath !== '/api/v1/staff/auth/oidc' &&
+      currentAccessToken &&
+      request.headers.get('Authorization') === bearer(currentAccessToken)
+    ) {
       on401?.()
     }
     return response

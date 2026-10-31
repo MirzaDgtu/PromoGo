@@ -39,7 +39,11 @@ export function oidcSettings(): UserManagerSettings | null {
     // the client's perspective — oidc-client-ts's own storage (sessionStorage,
     // its default) only ever holds the OIDC session used to silently renew,
     // never PromoGo's own access token, which AuthProvider keeps in memory.
-    automaticSilentRenew: true,
+    //
+    // The library's own renewal stays off: it would write users to that store
+    // behind AuthProvider's session-generation checks, so AuthProvider renews
+    // on the access-token-expiring event itself.
+    automaticSilentRenew: false,
     monitorSession: false,
   }
 }

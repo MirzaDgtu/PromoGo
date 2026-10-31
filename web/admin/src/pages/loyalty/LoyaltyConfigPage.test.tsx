@@ -1,9 +1,10 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { LoyaltyConfig, LoyaltyConfigVersion } from '../../api/queries'
+import { ErrorBoundary } from '../../components/ErrorBoundary'
 import { LoyaltyConfigPage } from './LoyaltyConfigPage'
 
 const orgStore = {
@@ -96,6 +97,60 @@ describe('LoyaltyConfigPage', () => {
     await userEvent.type(field(/Стоимость одного балла/), '0')
     expect(await screen.findByText('Должно быть больше нуля')).toBeInTheDocument()
     expect(screen.getByText('Исправьте значения в форме, чтобы увидеть пример.')).toBeInTheDocument()
+  })
+
+  describe('without act, where the watched value renders before the validation result', () => {
+    const actEnvironment = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+    const input = async (element: HTMLElement, value: string) => {
+      setValue.call(element, value)
+      element.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    }
+
+    beforeEach(() => {
+      actEnvironment.IS_REACT_ACT_ENVIRONMENT = false
+      vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    })
+    afterEach(() => {
+      actEnvironment.IS_REACT_ACT_ENVIRONMENT = true
+      vi.restoreAllMocks()
+    })
+
+    it.each([
+      ['letters', 'abc'],
+      ['a lone minus', '-'],
+      ['an unfinished decimal', '1.'],
+      ['a second separator', '1.2.3'],
+      ['an empty value', ''],
+    ])('keeps the draft and shows the field error on %s instead of crashing', async (_, value) => {
+      render(
+        <MemoryRouter>
+          <ErrorBoundary>
+            <LoyaltyConfigPage />
+          </ErrorBoundary>
+        </MemoryRouter>,
+      )
+      await input(field(/Стоимость одного балла/), '2')
+      await input(field(/Начислять/), value)
+
+      expect(screen.getByText('Введите число, например 5 или 2,5')).toBeInTheDocument()
+      expect(screen.getByText('Исправьте значения в форме, чтобы увидеть пример.')).toBeInTheDocument()
+      expect(field(/Стоимость одного балла/)).toHaveValue('2')
+      expect(field(/Начислять/)).toHaveValue(value)
+    })
+  })
+
+  it('survives pasted text and recovers the preview once the value is fixed', async () => {
+    renderPage()
+    await userEvent.clear(field(/Оплатить баллами/))
+    await userEvent.click(field(/Оплатить баллами/))
+    await userEvent.paste('половина')
+    expect(screen.getByText('Исправьте значения в форме, чтобы увидеть пример.')).toBeInTheDocument()
+
+    await userEvent.clear(field(/Оплатить баллами/))
+    await userEvent.type(field(/Оплатить баллами/), '50')
+    expect(await screen.findByText('Баллами можно оплатить до 500 ₽ (500 баллов)')).toBeInTheDocument()
   })
 
   it('previews accrual and the redemption cap, explaining that 0 % is uncapped', async () => {
